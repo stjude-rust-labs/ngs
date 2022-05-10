@@ -246,6 +246,22 @@ pub fn resolve_instrument_prediction(
     );
 }
 
+/// Main method to evaluate the detected instrument names and flowcell names and
+/// return a result for the derived instruments. This may fail, and the
+/// resulting `DerivedInstrumentResult` should be evaluated accordingly.
+pub fn predict(
+    instrument_names: HashSet<String>,
+    flowcell_names: HashSet<String>,
+) -> DerivedInstrumentResult {
+    let instruments = super::instruments::build_instrument_lookup_table();
+    let flowcells = super::flowcells::build_flowcell_lookup_table();
+
+    let iid_results = predict_instrument(instrument_names, &instruments);
+    let fcid_results = predict_instrument(flowcell_names, &flowcells);
+
+    resolve_instrument_prediction(iid_results, fcid_results)
+}
+
 #[cfg(test)]
 mod tests {
     use crate::derive::instrument::{flowcells, instruments};
@@ -271,14 +287,8 @@ mod tests {
     fn test_derive_instrument_novaseq_succesfully() {
         let detected_iids = HashSet::from(["A00000".to_string()]);
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, true);
         assert_eq!(
             result.instruments,
@@ -296,14 +306,8 @@ mod tests {
     fn test_derive_instrument_conflicting_instrument_ids() {
         let detected_iids = HashSet::from(["A00000".to_string(), "D00000".to_string()]);
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, false);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());
@@ -320,14 +324,8 @@ mod tests {
     fn test_derive_instrument_conflicting_flowcell_ids() {
         let detected_iids = HashSet::from(["A00000".to_string()]);
         let detected_fcids = HashSet::from(["H00000RXX".to_string(), "B0000".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, false);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());
@@ -342,14 +340,8 @@ mod tests {
     fn test_derive_instrument_medium_instrument_evidence() {
         let detected_iids = HashSet::from(["A00000".to_string()]);
         let detected_fcids = HashSet::new();
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, true);
         assert_eq!(
             result.instruments,
@@ -364,14 +356,8 @@ mod tests {
     fn test_derive_instrument_low_instrument_evidence() {
         let detected_iids = HashSet::from(["K00000".to_string()]);
         let detected_fcids = HashSet::new();
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, true);
         assert_eq!(
             result.instruments,
@@ -389,14 +375,8 @@ mod tests {
     fn test_derive_instrument_medium_flowcell_evidence() {
         let detected_iids = HashSet::new();
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, true);
         assert_eq!(
             result.instruments,
@@ -411,14 +391,8 @@ mod tests {
     fn test_derive_instrument_low_flowcell_evidence() {
         let detected_iids = HashSet::new();
         let detected_fcids = HashSet::from(["H0000ADXX".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, true);
         assert_eq!(
             result.instruments,
@@ -437,14 +411,8 @@ mod tests {
     fn test_derive_instrument_conflicting_flowcell_and_instrument_evidence() {
         let detected_iids = HashSet::from(["K00000".to_string()]);
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, false);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "high".to_string());
@@ -459,14 +427,8 @@ mod tests {
     fn test_derive_instrument_no_matches() {
         let detected_iids = HashSet::from(["QQQQQ".to_string()]);
         let detected_fcids = HashSet::from(["ZZZZZZ".to_string()]);
+        let result = predict(detected_iids, detected_fcids);
 
-        let instruments = instruments::build_instrument_lookup_table();
-        let flowcells = flowcells::build_flowcell_lookup_table();
-
-        let iid_results = predict_instrument(detected_iids, &instruments);
-        let fcid_results = predict_instrument(detected_fcids, &flowcells);
-
-        let result = resolve_instrument_prediction(iid_results, fcid_results);
         assert_eq!(result.succeeded, false);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());

@@ -1,10 +1,7 @@
 use futures::TryStreamExt;
-use std::{
-    collections::{HashMap, HashSet},
-    io,
-};
+use std::{collections::HashSet, io};
 
-use crate::derive::instrument::{compute, flowcells, instruments, reads};
+use crate::derive::instrument::{compute, reads};
 
 use clap::ArgMatches;
 use noodles_bam as bam;
@@ -12,11 +9,8 @@ use noodles_sam::AlignmentRecord;
 use tokio::fs::File;
 use tracing::info;
 
-async fn app(
-    src: &str,
-    instruments: &HashMap<&'static str, HashSet<&'static str>>,
-    flowcells: &HashMap<&'static str, HashSet<&'static str>>,
-) -> io::Result<()> {
+/// Main function
+async fn app(src: &str) -> io::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 
@@ -41,28 +35,23 @@ async fn app(
         }
     }
 
-    let iid_results = compute::predict_instrument(instrument_names, &instruments);
-    let fcid_results = compute::predict_instrument(flowcell_names, &flowcells);
-
-    let result = compute::resolve_instrument_prediction(iid_results, fcid_results);
+    let result = compute::predict(instrument_names, flowcell_names);
     let output = serde_json::to_string_pretty(&result).unwrap();
     println!("{}", output);
     Ok(())
 }
+
 pub fn derive(matches: &ArgMatches) -> io::Result<()> {
     let src = matches
         .value_of("src")
         .expect("Could not parse the arguments that were passed in for src.");
     info!("Starting derive subcommand.");
 
-    let instrument_lookup = instruments::build_instrument_lookup_table();
-    let flowcell_lookup = flowcells::build_flowcell_lookup_table();
-
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .unwrap();
 
-    let app = app(src, &instrument_lookup, &flowcell_lookup);
+    let app = app(src);
     rt.block_on(app)
 }
