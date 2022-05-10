@@ -16,7 +16,14 @@ fn main() -> io::Result<()> {
 
     let derive_instrument_cmd = Command::new("instrument")
         .about("Derives the instrument used to produce the file (only Illumina is supported)")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true));
+        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .arg(
+            Arg::new("first_n_reads")
+                .short('n')
+                .long("first-n-reads")
+                .takes_value(true)
+                .help("Only consider the first n reads in the file"),
+        );
 
     let derive_cmd = Command::new("derive")
         .about("Forensic analysis tool useful for backwards computing information from next-generation sequencing data.")
