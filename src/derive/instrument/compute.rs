@@ -269,16 +269,31 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_derive_instrument_from_invalid_name() {
+    fn test_derive_instrument_from_invalid_instrument_name() {
         let instruments = instruments::build_instrument_lookup_table();
         let result = possible_instruments_for_query(String::from("NoMatchingName"), &instruments);
         assert!(result.is_empty());
     }
 
     #[test]
-    fn test_derive_instrument_from_valid_name() {
+    fn test_derive_instrument_from_valid_instrument_name() {
         let instruments = instruments::build_instrument_lookup_table();
         let result = possible_instruments_for_query(String::from("A00000"), &instruments);
+        assert_eq!(result.len(), 1);
+        assert!(result.contains("NovaSeq"));
+    }
+
+    #[test]
+    fn test_derive_instrument_from_invalid_flowcell_name() {
+        let flowcells = flowcells::build_flowcell_lookup_table();
+        let result = possible_instruments_for_query(String::from("NoMatchingName"), &flowcells);
+        assert!(result.is_empty());
+    }
+
+    #[test]
+    fn test_derive_instrument_from_valid_flowcell_name() {
+        let flowcells = flowcells::build_flowcell_lookup_table();
+        let result = possible_instruments_for_query(String::from("H00000RXX"), &flowcells);
         assert_eq!(result.len(), 1);
         assert!(result.contains("NovaSeq"));
     }
