@@ -22,7 +22,10 @@ fn main() -> io::Result<()> {
                 .short('n')
                 .long("first-n-reads")
                 .takes_value(true)
-                .help("Only consider the first n reads in the file"),
+                .help(
+                    "Only consider the first n reads in the file. If less \
+                      than or equal to zero, the whole file will be read.",
+                ),
         );
 
     let derive_cmd = Command::new("derive")
