@@ -248,7 +248,7 @@ pub fn resolve_instrument_prediction(
 
 #[cfg(test)]
 mod tests {
-    use crate::derive::{flowcells, instruments};
+    use crate::derive::instrument::{flowcells, instruments};
 
     use super::*;
 

@@ -14,9 +14,14 @@ git_testament!(TESTAMENT);
 fn main() -> io::Result<()> {
     let version = render_testament!(TESTAMENT);
 
+    let derive_instrument_cmd = Command::new("instrument")
+        .about("Derives the instrument used to produce the file (only Illumina is supported)")
+        .arg(Arg::new("src").help("Source file.").index(1).required(true));
+
     let derive_cmd = Command::new("derive")
         .about("Forensic analysis tool useful for backwards computing information from next-generation sequencing data.")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true));
+        .subcommand_required(true)
+        .subcommand(derive_instrument_cmd);
 
     let flagstat_cmd = Command::new("flagstat")
         .about("Generates stats from the marked flags in a SAM/BAM/CRAM file.")
@@ -36,8 +41,12 @@ fn main() -> io::Result<()> {
         .finish();
     let _ = tracing::subscriber::set_global_default(subscriber);
 
-    if let Some(m) = matches.subcommand_matches("derive") {
-        commands::derive(m)
+    if let Some(derive) = matches.subcommand_matches("derive") {
+        if let Some(m) = derive.subcommand_matches("instrument") {
+            commands::derive::instrument::derive(m)
+        } else {
+            unreachable!();
+        }
     } else if let Some(m) = matches.subcommand_matches("flagstat") {
         commands::flagstat(m)
     } else {

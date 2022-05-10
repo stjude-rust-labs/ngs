@@ -1,4 +1,1 @@
-pub mod compute;
-pub mod flowcells;
-pub mod instruments;
-pub mod reads;
+pub mod instrument;
