@@ -7,7 +7,6 @@ mod exitcodes;
 mod utils;
 
 use git_testament::{git_testament, render_testament};
-use tracing_subscriber;
 
 git_testament!(TESTAMENT);
 

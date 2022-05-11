@@ -27,8 +27,8 @@ impl InstrumentDetectionResults {
             // set being passed into the update function.
             let new_set = self
                 .possible_instruments
-                .intersection(&results)
-                .map(|s| s.clone())
+                .intersection(results)
+                .cloned()
                 .collect();
             self.possible_instruments = new_set;
         } else {
@@ -96,8 +96,7 @@ pub fn possible_instruments_for_query(
     for (pattern, machines) in lookup_table {
         let re = Regex::new(pattern).unwrap();
         if re.is_match(query.as_str()) {
-            let matching_machines: Vec<String> =
-                machines.into_iter().map(|x| x.to_string()).collect();
+            let matching_machines: Vec<String> = machines.iter().map(|x| x.to_string()).collect();
             result.extend(matching_machines);
         }
     }
@@ -220,7 +219,7 @@ pub fn resolve_instrument_prediction(
     let overlapping_instruments: HashSet<String> = fcid_results
         .possible_instruments
         .intersection(&iid_results.possible_instruments)
-        .map(|r| r.clone())
+        .cloned()
         .collect();
 
     if overlapping_instruments.is_empty() {
@@ -237,13 +236,13 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    return DerivedInstrumentResult::from(
+    DerivedInstrumentResult::from(
         true,
         Some(overlapping_instruments),
         "high".to_string(),
         Some("instrument and flowcell id".to_string()),
         None,
-    );
+    )
 }
 
 /// Main method to evaluate the detected instrument names and flowcell names and

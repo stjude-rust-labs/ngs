@@ -23,7 +23,7 @@ impl IlluminaReadName {
     /// ```
     ///
     pub fn from(name: String) -> Self {
-        let parts: Vec<&str> = name.split(":").collect();
+        let parts: Vec<&str> = name.split(':').collect();
         let num_parts = parts.len();
 
         if num_parts == 5 {
