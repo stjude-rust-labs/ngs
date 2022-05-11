@@ -19,6 +19,7 @@
 //!
 use clap::ArgMatches;
 use futures::TryStreamExt;
+use sam::reader::record::Fields;
 use tokio::{fs::File, io};
 use tracing::info;
 
@@ -204,7 +205,8 @@ async fn app(
     reader.read_header().await?;
     reader.read_reference_sequences().await?;
 
-    let mut records = reader.records();
+    let fields = Fields::FLAGS;
+    let mut records = reader.records_with_fields(fields);
     while let Some(record) = records.try_next().await? {
         if record.flags().is_qc_fail() {
             count(qc_fail_counts, &record);
