@@ -303,7 +303,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, true);
+        assert!(result.succeeded);
         assert_eq!(
             result.instruments,
             Some(HashSet::from(["NovaSeq".to_string()]))
@@ -322,7 +322,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, false);
+        assert!(!result.succeeded);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());
         assert_eq!(result.evidence, Some("instrument id".to_string()));
@@ -340,7 +340,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H00000RXX".to_string(), "B0000".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, false);
+        assert!(!result.succeeded);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());
         assert_eq!(result.evidence, Some("flowcell id".to_string()));
@@ -356,7 +356,7 @@ mod tests {
         let detected_fcids = HashSet::new();
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, true);
+        assert!(result.succeeded);
         assert_eq!(
             result.instruments,
             Some(HashSet::from(["NovaSeq".to_string()]))
@@ -372,7 +372,7 @@ mod tests {
         let detected_fcids = HashSet::new();
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, true);
+        assert!(result.succeeded);
         assert_eq!(
             result.instruments,
             Some(HashSet::from([
@@ -391,7 +391,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, true);
+        assert!(result.succeeded);
         assert_eq!(
             result.instruments,
             Some(HashSet::from(["NovaSeq".to_string()]))
@@ -407,7 +407,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H0000ADXX".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, true);
+        assert!(result.succeeded);
         assert_eq!(
             result.instruments,
             Some(HashSet::from([
@@ -427,7 +427,7 @@ mod tests {
         let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, false);
+        assert!(!result.succeeded);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "high".to_string());
         assert_eq!(
@@ -443,7 +443,7 @@ mod tests {
         let detected_fcids = HashSet::from(["ZZZZZZ".to_string()]);
         let result = predict(detected_iids, detected_fcids);
 
-        assert_eq!(result.succeeded, false);
+        assert!(!result.succeeded);
         assert_eq!(result.instruments, None);
         assert_eq!(result.confidence, "unknown".to_string());
         assert_eq!(result.evidence, None);
