@@ -42,13 +42,13 @@ pub fn generate(matches: &ArgMatches) -> io::Result<()> {
     let mut human = ReferenceGenomeSequenceProvider::new(reference, 150, -150..150)?;
     human.precache();
 
-    let mut total_reads: usize = 0;
+    let mut total_reads: u64 = 0;
     if let Some(num_reads) = matches.value_of("num-reads") {
         total_reads = num_reads
             .parse()
             .expect("Could not parse number of reads from command line args.");
     } else if let Some(coverage) = matches.value_of("coverage") {
-        let cov: usize = coverage
+        let cov: u64 = coverage
             .parse()
             .expect("Could not parse coverage as size from command line args.");
         total_reads = human.reads_needed_for_coverage(cov);

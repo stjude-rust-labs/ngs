@@ -13,14 +13,14 @@ use rand::{distributions::WeightedIndex, prelude::Distribution};
 use tracing::{debug, info};
 
 #[derive(Debug)]
-pub struct SeqLen(String, usize);
+pub struct SeqLen(String, u64);
 
 impl SeqLen {
     pub fn get_seq_name(&self) -> &String {
         &self.0
     }
 
-    pub fn get_seq_len(&self) -> usize {
+    pub fn get_seq_len(&self) -> u64 {
         self.1
     }
 }
@@ -43,22 +43,24 @@ pub trait SequenceProvider {
 }
 
 pub struct ReferenceGenomeSequenceProvider {
+    error_freq: f64,
+    inner_distance_dist: Uniform<i64>,
     repository: fasta::Repository,
-    inner_distance_dist: Uniform<isize>,
-    read_length: usize,
+    read_length: u64,
     rng: ThreadRng,
     // Key is the sequence name, value is the length of the sequence.
     sequence_names: Vec<String>,
-    sequence_lengths: Vec<usize>,
-    sequence_dist: WeightedIndex<usize>,
-    total_size: usize,
+    sequence_lengths: Vec<u64>,
+    sequence_dist: WeightedIndex<u64>,
+    total_size: u64,
 }
 
 impl ReferenceGenomeSequenceProvider {
     pub fn new(
         path: PathBuf,
-        read_length: usize,
-        inner_distance: Range<isize>,
+        read_length: u64,
+        inner_distance: Range<i64>,
+        error_freq: f64,
     ) -> io::Result<Self> {
         // (1) Parses the extension for the reference file.
         let extension = path
@@ -97,7 +99,7 @@ impl ReferenceGenomeSequenceProvider {
 
         // (4) Load all of the sequences and their lengths into a cache for
         // later use.
-        let mut total_size: usize = 0;
+        let mut total_size: u64 = 0;
         let mut sequence_names = Vec::new();
         let mut sequence_lengths = Vec::new();
 
@@ -106,7 +108,7 @@ impl ReferenceGenomeSequenceProvider {
             debug!("Reading sequence for {}", record.name());
 
             let name = record.name().to_owned();
-            let len = record.sequence().len();
+            let len = record.sequence().len() as u64;
 
             sequence_names.push(name);
             sequence_lengths.push(len);
@@ -145,7 +147,7 @@ impl ReferenceGenomeSequenceProvider {
         )
     }
 
-    pub fn reads_needed_for_coverage(&self, coverage: usize) -> usize {
+    pub fn reads_needed_for_coverage(&self, coverage: u64) -> u64 {
         coverage * (self.total_size / self.read_length)
     }
 }
@@ -161,16 +163,16 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
             let seq = random_seq.get_seq_name();
             let len = random_seq.get_seq_len();
 
-            let min_start = 0usize;
+            let min_start = 0u64;
             // at most, read to the end of the chromosome.
             let max_start = len - (self.read_length * 2);
             let start = self.rng.gen_range(min_start..max_start);
             let inner_distance_offset = self.inner_distance_dist.sample(&mut self.rng);
 
-            if let Ok(start_pos) = Position::try_from(start) {
-                if let Ok(end_as_isize) = isize::try_from(start + (self.read_length * 2)) {
-                    if let Ok(end) = usize::try_from(end_as_isize + inner_distance_offset) {
-                        if let Ok(end_pos) = Position::try_from(end) {
+            if let Ok(start_pos) = Position::try_from(start as usize) {
+                if let Ok(end_as_isize) = i64::try_from(start + (self.read_length * 2)) {
+                    if let Ok(end) = u64::try_from(end_as_isize + inner_distance_offset) {
+                        if let Ok(end_pos) = Position::try_from(end as usize) {
                             if let Some(Ok(chr)) = self.repository.get(seq) {
                                 if let Some(sequence) = chr.get(start_pos..end_pos) {
                                     let sequence_as_vec = sequence.to_vec();
@@ -193,13 +195,13 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
         PairedRead(
             fastq::Record::new(
                 read_name_one,
-                forward_sequence.unwrap()[0..self.read_length].to_vec(),
-                "J".repeat(self.read_length),
+                forward_sequence.unwrap()[0..self.read_length as usize].to_vec(),
+                "J".repeat(self.read_length as usize),
             ),
             fastq::Record::new(
                 read_name_two,
-                reverse_sequence.unwrap()[0..self.read_length].to_vec(),
-                "J".repeat(self.read_length),
+                reverse_sequence.unwrap()[0..self.read_length as usize].to_vec(),
+                "J".repeat(self.read_length as usize),
             ),
         )
     }
