@@ -144,6 +144,10 @@ impl ReferenceGenomeSequenceProvider {
             self.sequence_lengths[index],
         )
     }
+
+    pub fn reads_needed_for_coverage(&self, coverage: usize) -> usize {
+        coverage * (self.total_size / self.read_length)
+    }
 }
 
 impl SequenceProvider for ReferenceGenomeSequenceProvider {

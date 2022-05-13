@@ -1,4 +1,4 @@
-use clap::{Arg, Command};
+use clap::{Arg, ArgGroup, Command};
 use std::io;
 
 mod commands;
@@ -50,15 +50,46 @@ fn main() -> io::Result<()> {
     let generate_cmd = Command::new("generate")
         .about("Generates a BAM file from a given reference genome.")
         .arg(
-            Arg::new("dest")
-                .help("Destination location for the BAM file.")
-                .index(1)
+            Arg::new("reads-one-file")
+                .long("--reads-one-file")
+                .takes_value(true)
+                .help("Destination for the first reads FASTQ file.")
+                .required(true),
+        )
+        .arg(
+            Arg::new("reads-two-file")
+                .long("--reads-two-file")
+                .takes_value(true)
+                .help("Destination for the second reads FASTQ file.")
                 .required(true),
         )
         .arg(
             Arg::new("reference")
+                .long("--reference-fasta")
+                .takes_value(true)
                 .help("Reference FASTA to generate the data based off of.")
-                .index(2)
+                .required(true),
+        )
+        .arg(
+            Arg::new("num-reads")
+                .short('n')
+                .long("--num-reads")
+                .takes_value(true)
+                .help("Specifies the exact number of read pairs to generate.")
+                .conflicts_with("coverage"),
+        )
+        .arg(
+            Arg::new("coverage")
+                .short('c')
+                .long("--coverage")
+                .takes_value(true)
+                .help("Dynamically calculate the number of reads needed for a particular mean coverage.")
+                .conflicts_with("num-reads"),
+        )
+        .group(
+            ArgGroup::new("reads-count")
+                .arg("coverage")
+                .arg("num-reads")
                 .required(true),
         );
 

@@ -16,7 +16,25 @@ pub fn generate(matches: &ArgMatches) -> io::Result<()> {
         .value_of("reference")
         .map(PathBuf::from)
         .expect("missing reference");
+
+    let reads_one_file = matches
+        .value_of("reads-one-file")
+        .map(PathBuf::from)
+        .expect("missing reads one file");
+
+    let reads_two_file = matches
+        .value_of("reads-two-file")
+        .map(PathBuf::from)
+        .expect("missing reads two file");
+
     info!("Starting generate command...");
+    let mut writer_read_one = File::create(reads_one_file)
+        .map(|x| GzEncoder::new(x, Compression::default()))
+        .map(fastq::Writer::new)?;
+
+    let mut writer_read_two = File::create(reads_two_file)
+        .map(|x| GzEncoder::new(x, Compression::default()))
+        .map(fastq::Writer::new)?;
 
     // (1) Read in all sequences in reference FASTA and then precache all of the
     // results before showing the progress bar.
@@ -24,18 +42,22 @@ pub fn generate(matches: &ArgMatches) -> io::Result<()> {
     let mut human = ReferenceGenomeSequenceProvider::new(reference, 150, -150..150)?;
     human.precache();
 
-    // (2) Set up the output writers.
-    info!("Generating reads...");
-    let mut writer_read_one = File::create("/Users/cmcleod/Desktop/Test_R1.fq.gz")
-        .map(|x| GzEncoder::new(x, Compression::default()))
-        .map(fastq::Writer::new)?;
+    let mut total_reads: usize = 0;
+    if let Some(num_reads) = matches.value_of("num-reads") {
+        total_reads = num_reads
+            .parse()
+            .expect("Could not parse number of reads from command line args.");
+    } else if let Some(coverage) = matches.value_of("coverage") {
+        let cov: usize = coverage
+            .parse()
+            .expect("Could not parse coverage as size from command line args.");
+        total_reads = human.reads_needed_for_coverage(cov);
+    }
 
-    let mut writer_read_two = File::create("/Users/cmcleod/Desktop/Test_R2.fq.gz")
-        .map(|x| GzEncoder::new(x, Compression::default()))
-        .map(fastq::Writer::new)?;
+    // (2) Set up the output writers.
+    info!("Generating {} reads...", total_reads);
 
     // (3) Set up the progress bar.
-    let total_reads = 1_000_000;
     // let total_reads = 10;
     let pb = ProgressBar::new(total_reads as u64);
     pb.set_style(
