@@ -1,10 +1,59 @@
-/// Characters:
-/// 'A' => 0x41, 'a' => 0x61
-/// 'C' => 0x43, 'c' => 0x63
-/// 'G' => 0x47, 'g' => 0x67
-/// 'T' => 0x54, 't' => 0x67
-fn compliment(c: &u8) -> Option<u8> {
-    match c {
+use noodles_fastq as fastq;
+
+/// Simple utility struct used for passing around a sequence name and its
+/// associated length. This is useful for, say, generating a random chromosome
+/// and random coordinates within that chromosome to generate a read pair from.
+#[derive(Debug)]
+pub struct SeqLen(pub String, pub usize);
+
+impl SeqLen {
+    /// Gets the sequence name
+    pub fn get_seq_name(&self) -> &String {
+        &self.0
+    }
+
+    /// Gets the length of the sequence
+    pub fn get_seq_len(&self) -> usize {
+        self.1
+    }
+}
+
+/// Struct representing a pair of fastq::Records: one for the forward read and
+/// one for the reverse read. This is useful for returning the read pair to a
+/// caller of the `SequenceProvider.generate_read_pair` method.
+#[derive(Debug)]
+pub struct PairedRead(pub fastq::Record, pub fastq::Record);
+
+impl PairedRead {
+    /// Gets the forward read.
+    pub fn get_forward_read(&self) -> &fastq::Record {
+        &self.0
+    }
+
+    /// Gets the reverse read.
+    pub fn get_reverse_read(&self) -> &fastq::Record {
+        &self.1
+    }
+}
+
+/// Utility method to compliment a bytes string. This method is considered to be
+/// temporary until Michael implements a reverse compliment method within
+/// noodles (see
+/// https://github.com/zaeleus/noodles/issues/86#issuecomment-1124383295) for
+/// more details.
+///
+/// # Arguments
+///
+/// * `seq`: the sequence of bytes to compliment.
+///
+/// # Examples
+///
+/// ```
+/// let input = "ACTGactg".as_bytes();
+/// compliment(input);
+/// ```
+fn compliment(seq: &u8) -> Option<u8> {
+    match seq {
         0x61 => Some(0x74), // 'a' => 't'
         0x63 => Some(0x67), // 'c' => 'g'
         0x67 => Some(0x63), // 'g' => 'c'
@@ -17,6 +66,12 @@ fn compliment(c: &u8) -> Option<u8> {
     }
 }
 
+/// Reverse compliments a byte string, failing if any of the characters in the
+/// string fail to be complimented. This is wrapped in an Option accordingly.
+///
+/// # Arguments
+///
+/// * `seq`: the sequence of bytes to reverse compliment.
 pub fn reverse_compliment(seq: &[u8]) -> Option<Vec<u8>> {
     let iter = seq.iter().map(compliment);
 
@@ -34,9 +89,9 @@ mod tests {
 
     #[test]
     fn test_compliment_valid() {
-        let input: Vec<u8> = "ACTGactg".as_bytes().to_vec();
+        let input = "ACTGactg".as_bytes();
         assert_eq!(
-            super::reverse_compliment(&input),
+            super::reverse_compliment(input),
             Some(Vec::from("cagtCAGT"))
         );
     }

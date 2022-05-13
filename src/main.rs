@@ -1,4 +1,4 @@
-use clap::{Arg, ArgGroup, Command};
+use clap::{arg, Arg, ArgGroup, Command};
 use std::io;
 
 mod commands;
@@ -11,21 +11,25 @@ use git_testament::{git_testament, render_testament};
 
 git_testament!(TESTAMENT);
 
+/// Utility method to add the verbosity arguments to any subcommands passed to Clap.
+///
+/// # Arguments
+///
+/// * `subcommand` — The Clap subcommand to add these arguments to.
+fn add_verbosity_args(subcommand: Command) -> Command {
+    subcommand
+        .arg(arg!(-q --quiet "Only errors are printed to the stderr stream."))
+        .arg(
+            arg!(-v --verbose "All available information, including debug information, is \
+                printed to stderr."),
+        )
+}
+
 fn main() -> io::Result<()> {
     let version = render_testament!(TESTAMENT);
 
     let derive_instrument_cmd = Command::new("instrument")
         .about("Derives the instrument used to produce the file (only Illumina is supported)")
-        .arg(
-            Arg::new("quiet")
-                .short('q')
-                .long("quiet")
-                .help("Only errors are print to stderr."),
-        )
-        .arg(Arg::new("verbose").short('v').long("verbose").help(
-            "All available information, including debug information, is \
-                printed to stderr.",
-        ))
         .arg(Arg::new("src").help("Source file.").index(1).required(true))
         .arg(
             Arg::new("first_n_reads")
@@ -70,6 +74,13 @@ fn main() -> io::Result<()> {
                 .help("Reference FASTA to generate the data based off of.")
                 .required(true),
         )
+        .arg(Arg::new("error-rate")
+                 .short('e')
+                 .long("--error-rate")
+                 .takes_value(true)
+                 .default_value("0.0001")
+                 .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
+        )
         .arg(
             Arg::new("num-reads")
                 .short('n')
@@ -97,35 +108,44 @@ fn main() -> io::Result<()> {
         .version(version.as_str())
         .propagate_version(true)
         .subcommand_required(true)
-        .subcommand(derive_cmd)
-        .subcommand(flagstat_cmd)
-        .subcommand(generate_cmd)
+        .subcommand(add_verbosity_args(derive_cmd))
+        .subcommand(add_verbosity_args(flagstat_cmd))
+        .subcommand(add_verbosity_args(generate_cmd))
         .get_matches();
 
-    let mut level = tracing::Level::INFO;
-    if matches.value_of("quiet").is_some() {
-        level = tracing::Level::ERROR;
-    } else if matches.value_of("verbose").is_some() {
-        level = tracing::Level::DEBUG;
-    }
-
-    let subscriber = tracing_subscriber::fmt::Subscriber::builder()
-        .with_max_level(level)
-        .with_writer(std::io::stderr)
-        .finish();
-    let _ = tracing::subscriber::set_global_default(subscriber);
-
-    if let Some(derive) = matches.subcommand_matches("derive") {
-        if let Some(m) = derive.subcommand_matches("instrument") {
-            commands::derive::instrument::derive(m)
-        } else {
-            unreachable!();
+    if let Some((name, subcommand)) = matches.subcommand() {
+        println!("{:?}", subcommand.value_of("quiet"));
+        let mut level = tracing::Level::INFO;
+        if subcommand.is_present("quiet") {
+            level = tracing::Level::ERROR;
+        } else if subcommand.is_present("verbose") {
+            level = tracing::Level::DEBUG;
         }
-    } else if let Some(m) = matches.subcommand_matches("flagstat") {
-        commands::flagstat(m)
-    } else if let Some(m) = matches.subcommand_matches("generate") {
-        commands::generate(m)
-    } else {
-        unreachable!();
+
+        let subscriber = tracing_subscriber::fmt::Subscriber::builder()
+            .with_max_level(level)
+            .with_writer(std::io::stderr)
+            .finish();
+        let _ = tracing::subscriber::set_global_default(subscriber);
+
+        match name {
+            "derive" => {
+                if let Some(m) = subcommand.subcommand_matches("instrument") {
+                    return commands::derive::instrument::derive(m);
+                } else {
+                    unreachable!();
+                }
+            }
+            "flagstat" => return commands::flagstat(subcommand),
+            "generate" => return commands::generate(subcommand),
+            s => {
+                return Err(io::Error::new(
+                    io::ErrorKind::InvalidInput,
+                    format!("Unknown subcommand: {}", s),
+                ))
+            }
+        }
     }
+
+    unreachable!();
 }

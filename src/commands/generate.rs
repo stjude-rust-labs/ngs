@@ -6,7 +6,7 @@ use flate2::{write::GzEncoder, Compression};
 use generate::provider::SequenceProvider;
 use indicatif::{ProgressBar, ProgressStyle};
 use noodles_fastq as fastq;
-use tracing::info;
+use tracing::{debug, info};
 
 use crate::generate;
 
@@ -27,11 +27,20 @@ pub fn generate(matches: &ArgMatches) -> io::Result<()> {
         .map(PathBuf::from)
         .expect("missing reads two file");
 
+    let error_rate = matches
+        .value_of("error-rate")
+        .map(|x| x.parse::<f64>())
+        .expect("missing error rate")
+        .expect("Could not parse error rate as a float.");
+    let error_freq = (1.0 / error_rate) as usize;
+
     info!("Starting generate command...");
+    debug!("Opening read one file at {:?}", reads_one_file);
     let mut writer_read_one = File::create(reads_one_file)
         .map(|x| GzEncoder::new(x, Compression::default()))
         .map(fastq::Writer::new)?;
 
+    debug!("Opening read two file at {:?}", reads_two_file);
     let mut writer_read_two = File::create(reads_two_file)
         .map(|x| GzEncoder::new(x, Compression::default()))
         .map(fastq::Writer::new)?;
@@ -39,16 +48,15 @@ pub fn generate(matches: &ArgMatches) -> io::Result<()> {
     // (1) Read in all sequences in reference FASTA and then precache all of the
     // results before showing the progress bar.
     info!("Loading reference genome...");
-    let mut human = ReferenceGenomeSequenceProvider::new(reference, 150, -150..150)?;
-    human.precache();
+    let mut human = ReferenceGenomeSequenceProvider::new(reference, 150, -150..150, error_freq)?;
 
-    let mut total_reads: u64 = 0;
+    let mut total_reads: usize = 0;
     if let Some(num_reads) = matches.value_of("num-reads") {
         total_reads = num_reads
             .parse()
             .expect("Could not parse number of reads from command line args.");
     } else if let Some(coverage) = matches.value_of("coverage") {
-        let cov: u64 = coverage
+        let cov: usize = coverage
             .parse()
             .expect("Could not parse coverage as size from command line args.");
         total_reads = human.reads_needed_for_coverage(cov);
