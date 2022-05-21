@@ -65,7 +65,7 @@ pub fn derive(matches: &ArgMatches) -> io::Result<()> {
         .value_of("src")
         .expect("Could not parse the arguments that were passed in for src.");
 
-    let first_n_reads = matches.value_of("first_n_reads").map(|s| {
+    let first_n_reads = matches.value_of("first-n-reads").map(|s| {
         s.parse::<usize>()
             .expect("Subsample must be specified as a parsable integer")
     });

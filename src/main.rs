@@ -32,7 +32,7 @@ fn main() -> io::Result<()> {
         .about("Derives the instrument used to produce the file (only Illumina is supported)")
         .arg(Arg::new("src").help("Source file.").index(1).required(true))
         .arg(
-            Arg::new("first_n_reads")
+            Arg::new("first-n-reads")
                 .short('n')
                 .long("first-n-reads")
                 .takes_value(true)
