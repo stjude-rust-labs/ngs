@@ -19,13 +19,14 @@
 //!
 use clap::ArgMatches;
 use futures::TryStreamExt;
+use sam::record::{Flags, ReadName};
 use tokio::{fs::File, io};
 use tracing::info;
 
 use crate::utils;
 
-use noodles_bam as bam;
-use noodles_sam::{self as sam, AlignmentRecord};
+use noodles_bam::{self as bam, lazy::Record};
+use noodles_sam as sam;
 
 #[derive(Debug, Default)]
 struct Counts {
@@ -47,9 +48,7 @@ struct Counts {
     mate_reference_sequence_id_mismatch_hq: u64,
 }
 
-fn count(counts: &mut Counts, record: &bam::Record) {
-    let flags = record.flags();
-
+fn count(counts: &mut Counts, record: &Record, read_name: &ReadName, flags: &Flags) {
     counts.read += 1;
 
     if !flags.is_unmapped() {
@@ -96,11 +95,29 @@ fn count(counts: &mut Counts, record: &bam::Record) {
                 } else {
                     counts.mate_mapped += 1;
 
-                    if record.mate_reference_sequence_id() != record.reference_sequence_id() {
+                    let mate_reference_sequence_id =
+                        record.mate_reference_sequence_id().unwrap_or_else(|_| {
+                            panic!(
+                                "Could not parse mate's reference sequence id for read: {}",
+                                read_name
+                            )
+                        });
+                    let reference_sequence_id =
+                        record.reference_sequence_id().unwrap_or_else(|_| {
+                            panic!(
+                                "Could not parse reference sequence id for read: {}",
+                                read_name
+                            )
+                        });
+
+                    if reference_sequence_id != mate_reference_sequence_id {
                         counts.mate_reference_sequence_id_mismatch += 1;
 
                         let mapq = record
                             .mapping_quality()
+                            .unwrap_or_else(|_| {
+                                panic!("Could not read mapping quality from read: {}", read_name)
+                            })
                             .map(u8::from)
                             .unwrap_or(sam::record::mapping_quality::MISSING);
 
@@ -204,12 +221,19 @@ async fn app(
     reader.read_header().await?;
     reader.read_reference_sequences().await?;
 
-    let mut records = reader.records();
+    let mut records = reader.lazy_records();
     while let Some(record) = records.try_next().await? {
-        if record.flags().is_qc_fail() {
-            count(qc_fail_counts, &record);
+        let read_name = record
+            .read_name()
+            .expect("Could not read record's name.")
+            .expect("Read's name is None.");
+        let flags = record
+            .flags()
+            .expect(format!("Could not parse flags for read: {}", read_name).as_str());
+        if flags.is_qc_fail() {
+            count(qc_fail_counts, &record, &read_name, &flags);
         } else {
-            count(qc_pass_counts, &record);
+            count(qc_pass_counts, &record, &read_name, &flags);
         }
     }
 

@@ -14,12 +14,12 @@ flate2 = "1.0.23"
 futures = "0.3.21"
 git-testament = "0.2.1"
 indicatif = "0.16.2"
-noodles-bam = {version = "0.18.0", features = ["async"]}
-noodles-bgzf = {version = "0.11.0", features = ["libdeflate"]}
-noodles-core = "0.6.0"
-noodles-fasta = "0.10.0"
+noodles-bam = {version = "0.21.0", features = ["async"]}
+noodles-bgzf = {version = "0.14.0", features = ["libdeflate"]}
+noodles-core = "0.8.0"
+noodles-fasta = "0.13.0"
 noodles-fastq = "0.5.0"
-noodles-sam = "0.15.0"
+noodles-sam = "0.18.0"
 rand = "0.8.5"
 regex = "1.5.5"
 serde = {version = "1.0.137", features = ["derive"]}

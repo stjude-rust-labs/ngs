@@ -114,7 +114,6 @@ fn main() -> io::Result<()> {
         .get_matches();
 
     if let Some((name, subcommand)) = matches.subcommand() {
-        println!("{:?}", subcommand.value_of("quiet"));
         let mut level = tracing::Level::INFO;
         if subcommand.is_present("quiet") {
             level = tracing::Level::ERROR;

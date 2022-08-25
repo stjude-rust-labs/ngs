@@ -5,7 +5,6 @@ use crate::derive::instrument::{compute, reads};
 
 use clap::ArgMatches;
 use noodles_bam as bam;
-use noodles_sam::AlignmentRecord;
 use tokio::fs::File;
 use tracing::info;
 
@@ -27,9 +26,9 @@ async fn app(src: &str, first_n_reads: Option<usize>) -> io::Result<()> {
         sample_max = s;
     }
 
-    let mut records = reader.records();
+    let mut records = reader.lazy_records();
     while let Some(record) = records.try_next().await? {
-        if let Some(read_name) = record.read_name() {
+        if let Ok(Some(read_name)) = record.read_name() {
             let read = reads::IlluminaReadName::from(read_name.to_string());
             instrument_names.insert(read.instrument_name);
             if let Some(fc) = read.flowcell {
