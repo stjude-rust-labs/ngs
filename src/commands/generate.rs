@@ -1,7 +1,7 @@
 use std::{fs::File, io, path::PathBuf};
 
 use crate::generate::provider::ReferenceGenomeSequenceProvider;
-use clap::ArgMatches;
+use clap::{Arg, ArgGroup, ArgMatches, Command};
 use flate2::{write::GzEncoder, Compression};
 use generate::provider::SequenceProvider;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -10,6 +10,60 @@ use tracing::{debug, info};
 
 use crate::generate;
 
+pub fn get_command<'a>() -> Command<'a> {
+    Command::new("generate")
+        .about("Generates a BAM file from a given reference genome.")
+        .arg(
+            Arg::new("reads-one-file")
+                .long("--reads-one-file")
+                .takes_value(true)
+                .help("Destination for the first reads FASTQ file.")
+                .required(true),
+        )
+        .arg(
+            Arg::new("reads-two-file")
+                .long("--reads-two-file")
+                .takes_value(true)
+                .help("Destination for the second reads FASTQ file.")
+                .required(true),
+        )
+        .arg(
+            Arg::new("reference")
+                .long("--reference-fasta")
+                .takes_value(true)
+                .help("Reference FASTA to generate the data based off of.")
+                .required(true),
+        )
+        .arg(Arg::new("error-rate")
+                 .short('e')
+                 .long("--error-rate")
+                 .takes_value(true)
+                 .default_value("0.0001")
+                 .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
+        )
+        .arg(
+            Arg::new("num-reads")
+                .short('n')
+                .long("--num-reads")
+                .takes_value(true)
+                .help("Specifies the exact number of read pairs to generate.")
+                .conflicts_with("coverage"),
+        )
+        .arg(
+            Arg::new("coverage")
+                .short('c')
+                .long("--coverage")
+                .takes_value(true)
+                .help("Dynamically calculate the number of reads needed for a particular mean coverage.")
+                .conflicts_with("num-reads"),
+        )
+        .group(
+            ArgGroup::new("reads-count")
+                .arg("coverage")
+                .arg("num-reads")
+                .required(true),
+        )
+}
 pub fn generate(matches: &ArgMatches) -> io::Result<()> {
     // (0) Parse arguments needed for subcommand.
     let reference = matches

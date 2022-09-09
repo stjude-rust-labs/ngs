@@ -3,10 +3,26 @@ use std::{collections::HashSet, io};
 
 use crate::derive::instrument::{compute, reads};
 
-use clap::ArgMatches;
+use clap::{Arg, ArgMatches, Command};
 use noodles_bam as bam;
 use tokio::fs::File;
 use tracing::info;
+
+pub fn get_command<'a>() -> Command<'a> {
+    Command::new("instrument")
+        .about("Derives the instrument used to produce the file (only Illumina is supported)")
+        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .arg(
+            Arg::new("first-n-reads")
+                .short('n')
+                .long("first-n-reads")
+                .takes_value(true)
+                .help(
+                    "Only consider the first n reads in the file. If less \
+                      than or equal to zero, the whole file will be read.",
+                ),
+        )
+}
 
 /// Runs the bulk of the derive instrument subcommand in an `async` context.
 async fn app(src: &str, first_n_reads: Option<usize>) -> io::Result<()> {

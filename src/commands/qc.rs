@@ -2,7 +2,7 @@ use futures::TryStreamExt;
 
 use std::{io, path::PathBuf};
 
-use clap::ArgMatches;
+use clap::{Arg, ArgMatches, Command};
 use noodles_bam as bam;
 use num_format::{Locale, ToFormattedString};
 use tokio::{fs::File, io::AsyncWriteExt};
@@ -12,6 +12,36 @@ use crate::qc::{
     gc_content::GCContentHistogram, metrics::QualityCheckMetrics,
     template_length::TemplateLengthHistogram,
 };
+
+pub fn get_command<'a>() -> Command<'a> {
+    Command::new("qc")
+        .about("Generates quality control metrics for BAM files.")
+        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .arg(
+            Arg::new("output-prefix")
+                .long("--output-prefix")
+                .short('p')
+                .help("Output prefix for the files that will be created.")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("output-directory")
+                .long("--output-directory")
+                .short('o')
+                .help("The directory to output files to.")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("max-records")
+                .long("--max-records")
+                .short('m')
+                .help("Maximum number of records to process.")
+                .takes_value(true)
+                .required(false),
+        )
+}
 
 async fn app(
     src: &str,

@@ -1,4 +1,4 @@
-use clap::{arg, Arg, ArgGroup, Command};
+use clap::{arg, Command};
 use std::io;
 
 mod commands;
@@ -29,105 +29,9 @@ fn add_verbosity_args(subcommand: Command) -> Command {
 fn main() -> io::Result<()> {
     let version = render_testament!(TESTAMENT);
 
-    let derive_instrument_cmd = Command::new("instrument")
-        .about("Derives the instrument used to produce the file (only Illumina is supported)")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true))
-        .arg(
-            Arg::new("first-n-reads")
-                .short('n')
-                .long("first-n-reads")
-                .takes_value(true)
-                .help(
-                    "Only consider the first n reads in the file. If less \
-                      than or equal to zero, the whole file will be read.",
-                ),
-        );
-
-    let derive_cmd = Command::new("derive")
-        .about("Forensic analysis tool useful for backwards computing information from next-generation sequencing data.")
-        .subcommand_required(true)
-        .subcommand(derive_instrument_cmd);
-
-    let generate_cmd = Command::new("generate")
-        .about("Generates a BAM file from a given reference genome.")
-        .arg(
-            Arg::new("reads-one-file")
-                .long("--reads-one-file")
-                .takes_value(true)
-                .help("Destination for the first reads FASTQ file.")
-                .required(true),
-        )
-        .arg(
-            Arg::new("reads-two-file")
-                .long("--reads-two-file")
-                .takes_value(true)
-                .help("Destination for the second reads FASTQ file.")
-                .required(true),
-        )
-        .arg(
-            Arg::new("reference")
-                .long("--reference-fasta")
-                .takes_value(true)
-                .help("Reference FASTA to generate the data based off of.")
-                .required(true),
-        )
-        .arg(Arg::new("error-rate")
-                 .short('e')
-                 .long("--error-rate")
-                 .takes_value(true)
-                 .default_value("0.0001")
-                 .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
-        )
-        .arg(
-            Arg::new("num-reads")
-                .short('n')
-                .long("--num-reads")
-                .takes_value(true)
-                .help("Specifies the exact number of read pairs to generate.")
-                .conflicts_with("coverage"),
-        )
-        .arg(
-            Arg::new("coverage")
-                .short('c')
-                .long("--coverage")
-                .takes_value(true)
-                .help("Dynamically calculate the number of reads needed for a particular mean coverage.")
-                .conflicts_with("num-reads"),
-        )
-        .group(
-            ArgGroup::new("reads-count")
-                .arg("coverage")
-                .arg("num-reads")
-                .required(true),
-        );
-
-    let qc_cmd = Command::new("qc")
-        .about("Generates quality control metrics for BAM files.")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true))
-        .arg(
-            Arg::new("output-prefix")
-                .long("--output-prefix")
-                .short('p')
-                .help("Output prefix for the files that will be created.")
-                .required(true)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::new("output-directory")
-                .long("--output-directory")
-                .short('o')
-                .help("The directory to output files to.")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::new("max-records")
-                .long("--max-records")
-                .short('m')
-                .help("Maximum number of records to process.")
-                .takes_value(true)
-                .required(false),
-        );
+    let derive_cmd = commands::derive::get_command();
+    let generate_cmd = commands::generate::get_command();
+    let qc_cmd = commands::qc::get_command();
 
     let matches = Command::new("ngs")
         .version(version.as_str())
