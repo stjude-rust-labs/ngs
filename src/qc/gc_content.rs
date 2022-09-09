@@ -90,7 +90,7 @@ impl GCContentHistogram {
         //     sam_record.as_ref().len() as f64
         // );
         let gc_content_this_read_pct =
-            ((gc_this_read as f64 / sam_record.as_ref().len() as f64) * 100.0).floor() as usize;
+            ((gc_this_read as f64 / sam_record.as_ref().len() as f64) * 100.0).round() as usize;
         // println!("Pct: {}", gc_content_this_read_pct);
         self.histogram.increment(gc_content_this_read_pct).unwrap();
     }
