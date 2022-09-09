@@ -73,13 +73,13 @@ impl ReferenceGenomeSequenceProvider {
         // file's type. For the moment, we only parse uncompressed FASTA files,
         // but we may expand this in the future (thus, the match statement).
         let mut reader = match extension {
-            "fa" => File::open(&path)
+            "fa" | "fna" | "fasta" => File::open(&path)
                 .map(BufReader::new)
                 .map(fasta::Reader::new)?,
             ext => {
                 return Err(io::Error::new(
                     ErrorKind::InvalidInput,
-                    format!("Could not parse reference genome with extension {}.", ext),
+                    format!("Could not parse reference genome with extension {}. Supported extension types are: fa, fna, fasta.", ext),
                 ))
             }
         };
