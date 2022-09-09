@@ -5,6 +5,7 @@ mod commands;
 mod derive;
 mod exitcodes;
 mod generate;
+mod qc;
 mod utils;
 
 use git_testament::{git_testament, render_testament};
@@ -104,6 +105,34 @@ fn main() -> io::Result<()> {
                 .required(true),
         );
 
+    let qc_cmd = Command::new("qc")
+        .about("Generates quality control metrics for BAM files.")
+        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .arg(
+            Arg::new("output-prefix")
+                .long("--output-prefix")
+                .short('p')
+                .help("Output prefix for the files that will be created.")
+                .required(true)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("output-directory")
+                .long("--output-directory")
+                .short('o')
+                .help("The directory to output files to.")
+                .required(false)
+                .takes_value(true),
+        )
+        .arg(
+            Arg::new("max-records")
+                .long("--max-records")
+                .short('m')
+                .help("Maximum number of records to process.")
+                .takes_value(true)
+                .required(false),
+        );
+
     let matches = Command::new("ngs")
         .version(version.as_str())
         .propagate_version(true)
@@ -111,6 +140,7 @@ fn main() -> io::Result<()> {
         .subcommand(add_verbosity_args(derive_cmd))
         .subcommand(add_verbosity_args(flagstat_cmd))
         .subcommand(add_verbosity_args(generate_cmd))
+        .subcommand(add_verbosity_args(qc_cmd))
         .get_matches();
 
     if let Some((name, subcommand)) = matches.subcommand() {
@@ -137,6 +167,7 @@ fn main() -> io::Result<()> {
             }
             "flagstat" => return commands::flagstat(subcommand),
             "generate" => return commands::generate(subcommand),
+            "qc" => return commands::qc(subcommand),
             s => {
                 return Err(io::Error::new(
                     io::ErrorKind::InvalidInput,
