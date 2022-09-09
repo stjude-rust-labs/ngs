@@ -48,10 +48,6 @@ fn main() -> io::Result<()> {
         .subcommand_required(true)
         .subcommand(derive_instrument_cmd);
 
-    let flagstat_cmd = Command::new("flagstat")
-        .about("Generates stats from the marked flags in a SAM/BAM/CRAM file.")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true));
-
     let generate_cmd = Command::new("generate")
         .about("Generates a BAM file from a given reference genome.")
         .arg(
@@ -138,7 +134,6 @@ fn main() -> io::Result<()> {
         .propagate_version(true)
         .subcommand_required(true)
         .subcommand(add_verbosity_args(derive_cmd))
-        .subcommand(add_verbosity_args(flagstat_cmd))
         .subcommand(add_verbosity_args(generate_cmd))
         .subcommand(add_verbosity_args(qc_cmd))
         .get_matches();
@@ -165,7 +160,6 @@ fn main() -> io::Result<()> {
                     unreachable!();
                 }
             }
-            "flagstat" => return commands::flagstat(subcommand),
             "generate" => return commands::generate(subcommand),
             "qc" => return commands::qc(subcommand),
             s => {
