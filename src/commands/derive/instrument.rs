@@ -69,7 +69,7 @@ pub fn derive(matches: &ArgMatches) -> io::Result<()> {
             .expect("Subsample must be specified as a parsable integer")
     });
 
-    info!("Starting derive subcommand.");
+    info!("Starting derive instrument subcommand.");
 
     let rt = tokio::runtime::Builder::new_current_thread()
         .enable_all()
