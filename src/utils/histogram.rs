@@ -14,7 +14,7 @@ pub struct SimpleHistogram {
     range_stop: usize,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct BinOutOfBounds;
 
 impl SimpleHistogram {
