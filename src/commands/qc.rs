@@ -54,6 +54,7 @@ async fn app(
     let mut metrics = QualityCheckMetrics::new();
     let mut template_length_histogram = TemplateLengthHistogram::with_capacity(1024);
     let mut gc_content_histogram = GCContentHistogram::new();
+    let mut rng = rand::thread_rng();
 
     reader.read_header().await?;
     reader.read_reference_sequences().await?;
@@ -67,7 +68,7 @@ async fn app(
     while let Some(record) = records.try_next().await? {
         metrics.process(&record);
         template_length_histogram.process(&record);
-        gc_content_histogram.process(&record);
+        gc_content_histogram.process(&record, &mut rng);
 
         record_count += 1;
         if record_count % 1_000_000 == 0 && record_count > 0 {
