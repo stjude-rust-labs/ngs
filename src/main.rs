@@ -2,6 +2,7 @@ use clap::{arg, Command};
 use std::io;
 
 mod commands;
+mod common;
 mod derive;
 mod exitcodes;
 mod generate;

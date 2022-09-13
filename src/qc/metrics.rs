@@ -1,9 +1,9 @@
+use std::{fs::File, io::Write, path::PathBuf};
+
 use noodles_bam::lazy::Record;
 use serde::Serialize;
 
-use crate::qc::template_length::TemplateLengthHistogram;
-
-use super::gc_content::GCContentHistogram;
+use super::{ComputationalLoad, Error, QualityCheckFacet};
 
 #[derive(Debug, Serialize)]
 pub struct ReadDesignation {
@@ -24,20 +24,17 @@ pub struct ReadCountMetrics {
 pub struct SummaryMetrics {
     duplication_pct: f64,
     unmapped_pct: f64,
-    gc_content_pct: f64,
-    template_length_unknown_pct: f64,
-    template_length_out_of_range_pct: f64,
 }
 
 #[derive(Debug, Serialize)]
-pub struct QualityCheckMetrics {
+pub struct SummaryMetricsFacet {
     read_count_metrics: ReadCountMetrics,
-    summary_metrics: Option<SummaryMetrics>,
+    summary: Option<SummaryMetrics>,
 }
 
-impl QualityCheckMetrics {
-    pub fn new() -> Self {
-        QualityCheckMetrics {
+impl SummaryMetricsFacet {
+    pub fn default() -> Self {
+        SummaryMetricsFacet {
             read_count_metrics: ReadCountMetrics {
                 total: 0,
                 unmapped: 0,
@@ -48,11 +45,25 @@ impl QualityCheckMetrics {
                     supplementary: 0,
                 },
             },
-            summary_metrics: None,
+            summary: None,
         }
     }
+}
 
-    pub fn process(&mut self, record: &Record) {
+impl QualityCheckFacet for SummaryMetricsFacet {
+    fn name(&self) -> &'static str {
+        "SummaryMetrics"
+    }
+
+    fn computational_load(&self) -> ComputationalLoad {
+        ComputationalLoad::Light
+    }
+
+    fn default(&self) -> bool {
+        true
+    }
+
+    fn process(&mut self, record: &Record) -> Result<(), Error> {
         // (1) Count the number of reads in the file.
         self.read_count_metrics.total += 1;
 
@@ -74,13 +85,11 @@ impl QualityCheckMetrics {
                 self.read_count_metrics.designations.primary += 1;
             }
         }
+
+        Ok(())
     }
 
-    pub fn summarize(
-        &mut self,
-        template_length_histogram: &TemplateLengthHistogram,
-        gc_content: &GCContentHistogram,
-    ) {
+    fn summarize(&mut self) -> Result<(), super::Error> {
         let summary = SummaryMetrics {
             duplication_pct: self.read_count_metrics.duplicates as f64
                 / self.read_count_metrics.total as f64
@@ -88,19 +97,27 @@ impl QualityCheckMetrics {
             unmapped_pct: self.read_count_metrics.unmapped as f64
                 / self.read_count_metrics.total as f64
                 * 100.0,
-            gc_content_pct: (gc_content.get_gc_count() as f64
-                / (gc_content.get_gc_count()
-                    + gc_content.get_at_count()
-                    + gc_content.get_other_count()) as f64)
-                * 100.0,
-            template_length_unknown_pct: template_length_histogram.get(0) as f64
-                / self.read_count_metrics.total as f64
-                * 100.0,
-            template_length_out_of_range_pct: template_length_histogram.get_ignored_count() as f64
-                / self.read_count_metrics.total as f64
-                * 100.0,
         };
 
-        self.summary_metrics = Some(summary)
+        self.summary = Some(summary);
+
+        Ok(())
+    }
+
+    fn write(
+        &self,
+        output_prefix: String,
+        directory: &std::path::Path,
+    ) -> Result<(), std::io::Error> {
+        let metrics_filename = output_prefix + ".metrics.json";
+        let mut metrics_filepath = PathBuf::from(directory);
+        metrics_filepath.push(metrics_filename);
+
+        let mut file = File::create(metrics_filepath).unwrap();
+        let output = serde_json::to_string_pretty(&self).unwrap();
+        file.write_all(output.as_bytes())?;
+
+        Ok(())
     }
 }
+impl SummaryMetricsFacet {}

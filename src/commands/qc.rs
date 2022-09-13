@@ -1,22 +1,104 @@
 use futures::TryStreamExt;
+use noodles_sam::Header;
+use tokio::fs::File;
 
-use std::{io, path::PathBuf};
+use std::{io, path::PathBuf, time::Instant};
 
 use clap::{Arg, ArgMatches, Command};
 use noodles_bam as bam;
 use num_format::{Locale, ToFormattedString};
-use tokio::{fs::File, io::AsyncWriteExt};
-use tracing::{debug, info};
+use tracing::{debug, error, info};
 
-use crate::qc::{
-    gc_content::GCContentHistogram, metrics::QualityCheckMetrics,
-    template_length::TemplateLengthHistogram,
+use crate::{
+    common::sam::parse_header,
+    qc::{
+        features::GenomicFeaturesFacet, gc_content::GCContentFacet, metrics::SummaryMetricsFacet,
+        template_length::TemplateLengthFacet, QualityCheckFacet,
+    },
 };
 
+/// A utility struct for passing feature name arguments from the command line
+/// around more easily.
+pub struct FeatureNames {
+    pub five_prime_utr_feature_name: String,
+    pub three_prime_utr_feature_name: String,
+    pub coding_sequence_feature_name: String,
+    pub exon_feature_name: String,
+    pub gene_feature_name: String,
+}
+
+impl FeatureNames {
+    pub fn new<I>(
+        five_prime_utr_feature_name: I,
+        three_prime_utf_feature_name: I,
+        coding_sequence_feature_name: I,
+        exon_feature_name: I,
+        gene_feature_name: I,
+    ) -> Self
+    where
+        I: Into<String>,
+    {
+        FeatureNames {
+            five_prime_utr_feature_name: five_prime_utr_feature_name.into(),
+            three_prime_utr_feature_name: three_prime_utf_feature_name.into(),
+            coding_sequence_feature_name: coding_sequence_feature_name.into(),
+            exon_feature_name: exon_feature_name.into(),
+            gene_feature_name: gene_feature_name.into(),
+        }
+    }
+}
+
+/// Dynamically compiles the quality check facets that should be run for this
+/// invocation of the command line tool.
+///
+/// # Arguments
+///
+/// * `features_gff` — Optionally, the path to a GFF file (if using the Genomic
+///   Features quality check facet).
+/// * `feature_names` — Feature names passed in from the command line. Necessary
+///   for looking up the correct features from the GFF file.
+/// * `header` — The SAM header; useful for looking up the sequence names from
+///   the respective sequence ids.
+pub fn get_facets<'a>(
+    features_gff: Option<&str>,
+    feature_names: &'a FeatureNames,
+    header: &'a Header,
+) -> Vec<Box<dyn QualityCheckFacet + 'a>> {
+    // Default facets that are loaded within the qc subcommand.
+    let mut facets: Vec<Box<dyn QualityCheckFacet>> = vec![
+        Box::new(SummaryMetricsFacet::default()),
+        Box::new(TemplateLengthFacet::with_capacity(1024)),
+        Box::new(GCContentFacet::default()),
+    ];
+
+    // Optionally load the Genomic Features facet if the GFF file is provided.
+    if let Some(s) = features_gff {
+        facets.push(Box::new(GenomicFeaturesFacet::from_filepath(
+            s,
+            feature_names,
+            header,
+        )));
+    }
+
+    facets
+}
+
+/// Gets the command line arguments for the `qc` subcommand.
 pub fn get_command<'a>() -> Command<'a> {
     Command::new("qc")
         .about("Generates quality control metrics for BAM files.")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .arg(
+            Arg::new("src")
+                .help("Source BAM file to perform QC on.")
+                .required(true),
+        )
+        .arg(
+            Arg::new("features-gff")
+                .long("--features-gff")
+                .short('f')
+                .help("Features GFF file.")
+                .takes_value(true),
+        )
         .arg(
             Arg::new("output-prefix")
                 .long("--output-prefix")
@@ -41,41 +123,129 @@ pub fn get_command<'a>() -> Command<'a> {
                 .takes_value(true)
                 .required(false),
         )
+        .arg(
+            Arg::new("five-prime-utr-feature-name")
+                .long("--five-prime-utr-feature-name")
+                .help(concat!(
+                    "Name of the feature that represents a five prime",
+                    "UTR region in the GFF file. The default is to use the",
+                    "GENCODE feature name."
+                ))
+                .takes_value(true)
+                .default_value("five_prime_UTR"),
+        )
+        .arg(
+            Arg::new("three-prime-utr-feature-name")
+                .long("--three-prime-utr-feature-name")
+                .help(concat!(
+                    "Name of the feature that represents a three prime",
+                    "UTR region in the GFF file. The default is to use the",
+                    "GENCODE feature name."
+                ))
+                .takes_value(true)
+                .default_value("three_prime_UTR"),
+        )
+        .arg(
+            Arg::new("coding-sequence-feature-name")
+                .long("--coding-sequence-feature-name")
+                .help(concat!(
+                    "Name of the feature that represents a coding sequence",
+                    "region in the GFF file. The default is to use the",
+                    "GENCODE feature name."
+                ))
+                .takes_value(true)
+                .default_value("CDS"),
+        )
+        .arg(
+            Arg::new("exon-feature-name")
+                .long("--exon-feature-name")
+                .help(concat!(
+                    "Name of the feature that represents an exonic",
+                    "region in the GFF file. The default is to use the",
+                    "GENCODE feature name."
+                ))
+                .takes_value(true)
+                .default_value("exon"),
+        )
+        .arg(
+            Arg::new("gene-feature-name")
+                .long("--gene-feature-name")
+                .help(concat!(
+                    "Name of the feature that represents an gene",
+                    "region in the GFF file. The default is to use the",
+                    "GENCODE feature name."
+                ))
+                .takes_value(true)
+                .default_value("gene"),
+        )
 }
 
+/// Runs the `qc` subcommand.
+///
+/// # Arguments
+///
+/// * `src` — The filepath to the NGS file to run QC on.
+/// * `features_gff` — Optionally, the path to a GFF gene model file. Useful
+///   when you want to run the Genomic Features facet.
+/// * `output_prefix` — Output prefix for all files generated by this
+///   subcommand.
+/// * `output_directory` — Root folder to output all of the results files to.
+/// * `max_records` — Maximum number of records to process. Anything less than 0
+///   is considered infinite.
+/// * `feature_names` — Feature names for lookup within the GFF file.
 async fn app(
     src: &str,
+    features_gff: Option<&str>,
     output_prefix: &str,
     output_directory: PathBuf,
     max_records: i64,
+    feature_names: FeatureNames,
 ) -> io::Result<()> {
     let mut reader = File::open(src).await.map(bam::AsyncReader::new)?;
 
-    let mut metrics = QualityCheckMetrics::new();
-    let mut template_length_histogram = TemplateLengthHistogram::with_capacity(1024);
-    let mut gc_content_histogram = GCContentHistogram::new();
-    let mut rng = rand::thread_rng();
+    let ht = reader.read_header().await?;
+    let header = parse_header(ht);
 
-    reader.read_header().await?;
     reader.read_reference_sequences().await?;
+
+    let mut facets = get_facets(features_gff, &feature_names, &header);
+    info!("");
+    info!("Running with the following facets enabled:");
+    info!("");
+    for facet in &facets {
+        info!(" [*] {}, {:?}", facet.name(), facet.computational_load());
+    }
+    info!("");
 
     //===============================================================//
     // Processes each of the records, accumulating QC stats as we go //
     //===============================================================//
 
+    debug!("Accumulating QC stats.");
     let mut record_count = 0;
     let mut records = reader.lazy_records();
+
+    let mut timer = Instant::now();
     while let Some(record) = records.try_next().await? {
-        metrics.process(&record);
-        template_length_histogram.process(&record);
-        gc_content_histogram.process(&record, &mut rng);
+        for facet in &mut facets {
+            match facet.process(&record) {
+                Ok(_) => {}
+                Err(e) => {
+                    error!("[{}] {}", facet.name(), e.message);
+                    std::process::exit(1);
+                }
+            }
+        }
 
         record_count += 1;
         if record_count % 1_000_000 == 0 && record_count > 0 {
-            debug!(
-                "Processed {} records.",
-                record_count.to_formatted_string(&Locale::en)
+            let duration = timer.elapsed();
+            info!(
+                "Processed {} records (took {} seconds).",
+                record_count.to_formatted_string(&Locale::en),
+                duration.as_secs()
             );
+            timer = Instant::now();
         }
 
         if max_records > -1 && record_count >= max_records {
@@ -88,51 +258,64 @@ async fn app(
         record_count.to_formatted_string(&Locale::en)
     );
 
-    metrics.summarize(&template_length_histogram, &gc_content_histogram);
+    info!("Summarizing quality control facets.");
+    for facet in &mut facets {
+        facet.summarize().unwrap();
+    }
 
     //==================================//
     // Output all of the relevant files //
     //==================================//
 
-    // (1) Write main metrics file.
-    let metrics_filename = String::from(output_prefix) + ".metrics.json";
-    let mut metrics_filepath = output_directory.clone();
-    metrics_filepath.push(metrics_filename);
-
-    let mut file = File::create(metrics_filepath).await?;
-    let output = serde_json::to_string_pretty(&metrics).unwrap();
-    file.write_all(output.as_bytes()).await?;
-
-    // (2) Write the template length file.
-    let template_length_filename = String::from(output_prefix) + ".template_lengths.json";
-    let mut template_length_filepath = output_directory.clone();
-    template_length_filepath.push(template_length_filename);
-
-    let mut file = File::create(template_length_filepath).await?;
-    let output = serde_json::to_string_pretty(&template_length_histogram).unwrap();
-    file.write_all(output.as_bytes()).await?;
-
-    // (3) Write the GC content file.
-    let gc_content_filename = String::from(output_prefix) + ".gc_content.json";
-    let mut gc_content_filepath = output_directory.clone();
-    gc_content_filepath.push(gc_content_filename);
-
-    let mut file = File::create(gc_content_filepath).await?;
-    let output = serde_json::to_string_pretty(&gc_content_histogram).unwrap();
-    file.write_all(output.as_bytes()).await?;
+    for facet in facets {
+        facet
+            .write(output_prefix.to_string(), &output_directory)
+            .unwrap();
+    }
 
     Ok(())
 }
 
+/// Prepares the arguments for running the main `qc` subcommand.
 pub fn qc(matches: &ArgMatches) -> io::Result<()> {
     info!("Starting qc command...");
     let src = matches
         .value_of("src")
         .expect("Could not parse the arguments that were passed in for src.");
 
+    let features_gff = matches.value_of("features-gff");
+
     let output_prefix = matches
         .value_of("output-prefix")
         .expect("Did not receive any output prefix from args.");
+
+    let five_prime_utr_feature_name = matches
+        .value_of("five-prime-utr-feature-name")
+        .expect("Could not parse the five prime UTR feature name.");
+
+    let three_prime_utr_feature_name = matches
+        .value_of("three-prime-utr-feature-name")
+        .expect("Could not parse the three prime UTR feature name.");
+
+    let coding_sequence_feature_name = matches
+        .value_of("coding-sequence-feature-name")
+        .expect("Could not parse the coding sequence feature name.");
+
+    let exon_feature_name = matches
+        .value_of("exon-feature-name")
+        .expect("Could not parse the exon feature name.");
+
+    let gene_feature_name = matches
+        .value_of("gene-feature-name")
+        .expect("Could not parse the gene feature name.");
+
+    let feature_names = FeatureNames::new(
+        five_prime_utr_feature_name,
+        three_prime_utr_feature_name,
+        coding_sequence_feature_name,
+        exon_feature_name,
+        gene_feature_name,
+    );
 
     let output_directory = if let Some(m) = matches.value_of("output-directory") {
         PathBuf::from(m)
@@ -159,6 +342,14 @@ pub fn qc(matches: &ArgMatches) -> io::Result<()> {
         .build()
         .unwrap();
 
-    let app = app(src, output_prefix, output_directory, max_records);
+    let app = app(
+        src,
+        features_gff,
+        output_prefix,
+        output_directory,
+        max_records,
+        feature_names,
+    );
+
     rt.block_on(app)
 }

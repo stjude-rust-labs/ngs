@@ -1,5 +1,7 @@
 //! Functionality related to computing GC content and related metrics.
 
+use std::{fs::File, io::Write, path::PathBuf};
+
 use noodles_bam::lazy::Record;
 use noodles_sam as sam;
 use rand::prelude::*;
@@ -8,17 +10,12 @@ use serde::Serialize;
 
 use crate::utils::histogram::SimpleHistogram;
 
-/// Primary struct used to compile stats regarding GC content. Within this
-/// struct, the histogram represents the number of reads which have 0% GC
-/// content all the way up to 100% GC content. The other fields are for counting
-/// the number of nucleotides which are G/C, the number of nucleotides that are
-/// A/T, or the number of nucleotides that fall into other.
-#[derive(Debug, Serialize)]
-pub struct GCContentHistogram {
-    // Histogram that represents the number of reads which have 0% GC content
-    // all the way up to 100% GC content.
-    histogram: SimpleHistogram,
+use super::{ComputationalLoad, Error, QualityCheckFacet};
 
+const TRUNCATION_LENGTH: usize = 100;
+
+#[derive(Debug, Serialize)]
+pub struct NucleotideCounts {
     // Total number of nucleotides read as a 'G' or a 'C'.
     total_gc_count: usize,
 
@@ -28,7 +25,10 @@ pub struct GCContentHistogram {
     // Total number of nucleotides which were not read as an 'A', a 'C', a 'G',
     // or a 'T'.
     total_other_count: usize,
+}
 
+#[derive(Debug, Serialize)]
+pub struct RecordStatusCounts {
     // Number of records that have been processed by this struct.
     processed: usize,
 
@@ -39,45 +39,75 @@ pub struct GCContentHistogram {
     ignored_too_short: usize,
 }
 
-impl GCContentHistogram {
+/// Primary struct used to compile stats regarding GC content. Within this
+/// struct, the histogram represents the number of reads which have 0% GC
+/// content all the way up to 100% GC content. The other fields are for counting
+/// the number of nucleotides which are G/C, the number of nucleotides that are
+/// A/T, or the number of nucleotides that fall into other.
+#[derive(Debug, Serialize)]
+pub struct GCContentMetrics {
+    // Mean GC content for the given sample.
+    gc_content_pct: Option<f64>,
+
+    // Histogram that represents the number of reads which have 0% GC content
+    // all the way up to 100% GC content.
+    histogram: SimpleHistogram,
+
+    // Struct holding all of the nucleotide counts
+    pub nucleotide_counts: NucleotideCounts,
+
+    // Struct containing all of the status of processed/ignored records.
+    pub record_status_counts: RecordStatusCounts,
+}
+
+pub struct GCContentFacet {
+    pub metrics: GCContentMetrics,
+    rng: ThreadRng,
+}
+
+impl GCContentFacet {
     /// Creates a new GCContentHistogram with default values.
-    pub fn new() -> Self {
+    pub fn default() -> Self {
         Self {
-            histogram: SimpleHistogram::zero_based_with_capacity(100),
-            total_gc_count: 0,
-            total_at_count: 0,
-            total_other_count: 0,
-            processed: 0,
-            ignored_flags: 0,
-            ignored_too_short: 0,
+            metrics: GCContentMetrics {
+                gc_content_pct: None,
+                histogram: SimpleHistogram::zero_based_with_capacity(100),
+                nucleotide_counts: NucleotideCounts {
+                    total_gc_count: 0,
+                    total_at_count: 0,
+                    total_other_count: 0,
+                },
+                record_status_counts: RecordStatusCounts {
+                    processed: 0,
+                    ignored_flags: 0,
+                    ignored_too_short: 0,
+                },
+            },
+            rng: rand::thread_rng(),
         }
     }
+}
 
-    /// Gets the number of G/C nucleotides read so far by this struct.
-    pub fn get_gc_count(&self) -> usize {
-        self.total_gc_count
+impl QualityCheckFacet for GCContentFacet {
+    fn name(&self) -> &'static str {
+        "GC Content"
     }
 
-    /// Gets the number of A/T nucleotides read so far by this struct.
-    pub fn get_at_count(&self) -> usize {
-        self.total_at_count
+    fn computational_load(&self) -> ComputationalLoad {
+        ComputationalLoad::Light
     }
 
-    /// Gets the number of non-ACGT nucleotides read so far by this struct.
-    pub fn get_other_count(&self) -> usize {
-        self.total_other_count
+    fn default(&self) -> bool {
+        true
     }
 
-    /// Processes a single read and updates the struct accordingly.
-    pub fn process(&mut self, record: &Record, rng: &mut ThreadRng) {
-        const TRUNCATION_LENGTH: usize = 100;
-
+    fn process(&mut self, record: &Record) -> Result<(), super::Error> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags().unwrap();
         if flags.is_duplicate() || flags.is_secondary() || flags.is_unmapped() {
-            self.ignored_flags += 1;
-            return;
+            self.metrics.record_status_counts.ignored_flags += 1;
+            return Ok(());
         };
 
         // (2) Convert the BAM record to a SAM record so we can determine the
@@ -93,8 +123,8 @@ impl GCContentHistogram {
         // results—all records should have a fair chance to generate between 0%
         // to 100% GC content.
         if sequence_length < TRUNCATION_LENGTH {
-            self.ignored_too_short += 1;
-            return;
+            self.metrics.record_status_counts.ignored_too_short += 1;
+            return Ok(());
         }
 
         // (4) Truncate the read TRUNCATION_LENGTH (generally 100 nucleotides)
@@ -104,7 +134,7 @@ impl GCContentHistogram {
         let mut gc_this_read = 0usize;
         let offset = if TRUNCATION_LENGTH < sequence_length {
             let max_offset = sequence_length - TRUNCATION_LENGTH;
-            rng.gen_range(0..max_offset)
+            self.rng.gen_range(0..max_offset)
         } else {
             0
         };
@@ -115,10 +145,10 @@ impl GCContentHistogram {
             match nucleotide {
                 Base::C | Base::G => {
                     gc_this_read += 1;
-                    self.total_gc_count += 1;
+                    self.metrics.nucleotide_counts.total_gc_count += 1;
                 }
-                Base::A | Base::T => self.total_at_count += 1,
-                _ => self.total_other_count += 1,
+                Base::A | Base::T => self.metrics.nucleotide_counts.total_at_count += 1,
+                _ => self.metrics.nucleotide_counts.total_other_count += 1,
             }
         }
 
@@ -126,7 +156,40 @@ impl GCContentHistogram {
         // histogram accordingly.
         let gc_content_this_read_pct =
             ((gc_this_read as f64 / TRUNCATION_LENGTH as f64) * 100.0).round() as usize;
-        self.histogram.increment(gc_content_this_read_pct).unwrap();
-        self.processed += 1;
+        self.metrics
+            .histogram
+            .increment(gc_content_this_read_pct)
+            .unwrap();
+        self.metrics.record_status_counts.processed += 1;
+
+        Ok(())
+    }
+
+    fn summarize(&mut self) -> Result<(), Error> {
+        self.metrics.gc_content_pct = Some(
+            (self.metrics.nucleotide_counts.total_gc_count as f64
+                / (self.metrics.nucleotide_counts.total_gc_count
+                    + self.metrics.nucleotide_counts.total_at_count
+                    + self.metrics.nucleotide_counts.total_other_count) as f64)
+                * 100.0,
+        );
+
+        Ok(())
+    }
+
+    fn write(
+        &self,
+        output_prefix: String,
+        directory: &std::path::Path,
+    ) -> Result<(), std::io::Error> {
+        let gc_content_filename = output_prefix + ".gc_content.json";
+        let mut gc_content_filepath = PathBuf::from(directory);
+        gc_content_filepath.push(gc_content_filename);
+
+        let mut file = File::create(gc_content_filepath)?;
+        let output = serde_json::to_string_pretty(&self.metrics).unwrap();
+        file.write_all(output.as_bytes())?;
+
+        Ok(())
     }
 }

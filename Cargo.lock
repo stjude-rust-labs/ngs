@@ -474,10 +474,12 @@ dependencies = [
  "noodles-core",
  "noodles-fasta",
  "noodles-fastq",
+ "noodles-gff",
  "noodles-sam",
  "num-format",
  "rand",
  "regex",
+ "rust-lapper",
  "serde",
  "serde_json",
  "tokio",
@@ -570,6 +572,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "7e48ce8e06d20814e7efdf126e626cb94216265dcc24c3a0e8b1d4e23e56c2f0"
 
 [[package]]
+name = "noodles-gff"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "82a9bd11ae4cc76621e56feff0a964d3e4fcf2fe704b96b0be57091f08cd4dc4"
+dependencies = [
+ "noodles-core",
+ "percent-encoding",
+]
+
+[[package]]
 name = "noodles-sam"
 version = "0.18.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -594,6 +606,15 @@ checksum = "bafe4179722c2894288ee77a9f044f02811c86af699344c498b0840c698a2465"
 dependencies = [
  "arrayvec",
  "itoa 0.4.8",
+]
+
+[[package]]
+name = "num-traits"
+version = "0.2.15"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "578ede34cf02f8924ab9447f50c28075b4d3e5b269972345e7e0372b38c6cdcd"
+dependencies = [
+ "autocfg",
 ]
 
 [[package]]
@@ -632,6 +653,12 @@ name = "os_str_bytes"
 version = "6.3.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "9ff7415e9ae3fff1225851df9e0d9e4e5479f947619774677a63572e55e80eff"
+
+[[package]]
+name = "percent-encoding"
+version = "2.2.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "478c572c3d73181ff3c2539045f6eb99e5491218eae919370993b890cdbdd98e"
 
 [[package]]
 name = "pin-project-lite"
@@ -715,6 +742,15 @@ name = "regex-syntax"
 version = "0.6.27"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "a3f87b73ce11b1619a3c6332f45341e0047173771e8b8b73f87bfeefb7b56244"
+
+[[package]]
+name = "rust-lapper"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c0da7f82898b906bf29d705adb2c36a461c9cc9e33c1417041c86229d569c144"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "rustc-hash"

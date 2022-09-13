@@ -15,7 +15,7 @@ pub struct SimpleHistogram {
 }
 
 #[derive(Debug, PartialEq, Eq)]
-pub struct BinOutOfBounds;
+pub struct BinOutOfBoundsError;
 
 impl SimpleHistogram {
     /// Creates a zero-based histogram with a given capacity.
@@ -28,9 +28,9 @@ impl SimpleHistogram {
     }
 
     /// Increments a particular bin in the histogram by the specified value.
-    pub fn increment_by(&mut self, bin: usize, value: usize) -> Result<(), BinOutOfBounds> {
+    pub fn increment_by(&mut self, bin: usize, value: usize) -> Result<(), BinOutOfBoundsError> {
         if bin < self.range_start || bin > self.range_stop {
-            return Err(BinOutOfBounds);
+            return Err(BinOutOfBoundsError);
         }
 
         self.values[bin] += value;
@@ -38,7 +38,7 @@ impl SimpleHistogram {
     }
 
     /// Increments a particular bin in the histogram by one.
-    pub fn increment(&mut self, bin: usize) -> Result<(), BinOutOfBounds> {
+    pub fn increment(&mut self, bin: usize) -> Result<(), BinOutOfBoundsError> {
         self.increment_by(bin, 1)
     }
 
@@ -110,6 +110,6 @@ mod tests {
     #[test]
     pub fn test_invalid_increments() {
         let mut s = SimpleHistogram::zero_based_with_capacity(100);
-        assert_eq!(s.increment(101).unwrap_err(), BinOutOfBounds);
+        assert_eq!(s.increment(101).unwrap_err(), BinOutOfBoundsError);
     }
 }
