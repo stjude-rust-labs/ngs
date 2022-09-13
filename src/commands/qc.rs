@@ -10,11 +10,11 @@ use num_format::{Locale, ToFormattedString};
 use tracing::{debug, error, info};
 
 use crate::{
-    common::sam::parse_header,
     qc::{
         features::GenomicFeaturesFacet, gc_content::GCContentFacet, metrics::SummaryMetricsFacet,
         template_length::TemplateLengthFacet, QualityCheckFacet,
     },
+    utils::sam::parse_header,
 };
 
 /// A utility struct for passing feature name arguments from the command line
