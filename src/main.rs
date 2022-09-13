@@ -4,7 +4,7 @@ use std::io;
 mod commands;
 mod common;
 mod derive;
-mod exitcodes;
+mod errors;
 mod generate;
 mod qc;
 mod utils;

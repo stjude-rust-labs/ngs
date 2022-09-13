@@ -1,7 +1,7 @@
 use std::process;
 use tracing::error;
 
-use crate::exitcodes::NGSExitCodes;
+use crate::errors::NGSExitCodes;
 
 #[derive(Debug)]
 pub struct IlluminaReadName {
