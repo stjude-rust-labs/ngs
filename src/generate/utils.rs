@@ -85,15 +85,15 @@ pub fn reverse_compliment(seq: &[u8]) -> Option<Vec<u8>> {
     Some(result)
 }
 
+#[cfg(test)]
 mod tests {
+
+    use super::*;
 
     #[test]
     fn test_compliment_valid() {
         let input = "ACTGactg".as_bytes();
-        assert_eq!(
-            super::reverse_compliment(input),
-            Some(Vec::from("cagtCAGT"))
-        );
+        assert_eq!(reverse_compliment(input), Some(Vec::from("cagtCAGT")));
     }
 
     #[test]

@@ -5,7 +5,7 @@ use std::{
     path::PathBuf,
 };
 
-use super::utils::{PairedRead, SeqLen};
+use super::utils::{self, PairedRead, SeqLen};
 
 use noodles_core::Position;
 use noodles_fasta::{self as fasta, repository::adapters::IndexedReader};
@@ -195,8 +195,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
                             if let Some(Ok(chr)) = self.repository.get(seq) {
                                 if let Some(sequence) = chr.get(start_pos..end_pos) {
                                     let sequence_as_vec = sequence.to_vec();
-                                    reverse_sequence =
-                                        super::utils::reverse_compliment(&sequence_as_vec);
+                                    reverse_sequence = utils::reverse_compliment(&sequence_as_vec);
                                     forward_sequence = Some(sequence_as_vec);
                                 }
                             }

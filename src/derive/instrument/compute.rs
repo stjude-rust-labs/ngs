@@ -4,6 +4,8 @@ use regex::Regex;
 use serde::Serialize;
 use tracing::info;
 
+use super::{flowcells, instruments};
+
 #[derive(Debug, Serialize)]
 pub struct InstrumentDetectionResults {
     pub possible_instruments: HashSet<String>,
@@ -252,8 +254,8 @@ pub fn predict(
     instrument_names: HashSet<String>,
     flowcell_names: HashSet<String>,
 ) -> DerivedInstrumentResult {
-    let instruments = super::instruments::build_instrument_lookup_table();
-    let flowcells = super::flowcells::build_flowcell_lookup_table();
+    let instruments = instruments::build_instrument_lookup_table();
+    let flowcells = flowcells::build_flowcell_lookup_table();
 
     let iid_results = predict_instrument(instrument_names, &instruments);
     let fcid_results = predict_instrument(flowcell_names, &flowcells);
