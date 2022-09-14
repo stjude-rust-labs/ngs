@@ -8,37 +8,28 @@ use super::{flowcells, instruments};
 
 #[derive(Debug, Serialize)]
 pub struct InstrumentDetectionResults {
-    pub possible_instruments: HashSet<String>,
+    pub possible_instruments: Option<HashSet<String>>,
     pub detected_at_least_one_machine: bool,
-    pub initialized: bool,
 }
 
 impl InstrumentDetectionResults {
     pub fn new() -> Self {
         InstrumentDetectionResults {
-            possible_instruments: HashSet::new(),
+            possible_instruments: None,
             detected_at_least_one_machine: false,
-            initialized: false,
         }
     }
 
     pub fn update_instruments(&mut self, results: &HashSet<String>) {
-        if self.initialized {
+        self.possible_instruments = Some(match &self.possible_instruments {
             // An initial base set has already been established, so take the
             // intersection of the existing possible instruments set and the
             // set being passed into the update function.
-            let new_set = self
-                .possible_instruments
-                .intersection(results)
-                .cloned()
-                .collect();
-            self.possible_instruments = new_set;
-        } else {
+            Some(r) => r.intersection(results).cloned().collect(),
             // This is the first iteration, so we need to set our base set as
             // the first detected set of results.
-            self.possible_instruments = results.clone();
-            self.initialized = true;
-        }
+            None => results.clone(),
+        });
 
         // After we've updated the sets, we need to keep track of if we have
         // detected at least one machine to distinguish conflicting machines
@@ -145,7 +136,13 @@ pub fn resolve_instrument_prediction(
     iid_results: InstrumentDetectionResults,
     fcid_results: InstrumentDetectionResults,
 ) -> DerivedInstrumentResult {
-    if iid_results.possible_instruments.is_empty() && iid_results.detected_at_least_one_machine {
+    let possible_instruments_by_iid = iid_results.possible_instruments.unwrap_or_default();
+    let possible_instruments_by_fcid = fcid_results.possible_instruments.unwrap_or_default();
+
+    // (1) If the set of possible instruments as determined by the instrument id
+    // is empty _and_ we have seen at least one machine, then the only possible
+    // scenario is there are conflicting instrument ids.
+    if possible_instruments_by_iid.is_empty() && iid_results.detected_at_least_one_machine {
         return DerivedInstrumentResult::new(
             false,
             None,
@@ -157,7 +154,10 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    if fcid_results.possible_instruments.is_empty() && fcid_results.detected_at_least_one_machine {
+    // (2) If the set of possible instruments as determined by the flowcell id
+    // is empty _and_ we have seen at least one machine, then the only possible
+    // scenario is there are conflicting flowcell ids.
+    if possible_instruments_by_fcid.is_empty() && fcid_results.detected_at_least_one_machine {
         return DerivedInstrumentResult::new(
             false,
             None,
@@ -167,11 +167,9 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    // (1) if neither results turn up anything, then evaluating the results is
-    // relatively easy: you just check to see if any machine was detected at
-    // all, and that will let you know if there were multiple machines in the
-    // run or not.
-    if iid_results.possible_instruments.is_empty() && fcid_results.possible_instruments.is_empty() {
+    // (3) if neither result turns up anything, then we can simply say that the
+    // machine was not able to be detected.
+    if possible_instruments_by_iid.is_empty() && possible_instruments_by_fcid.is_empty() {
         return DerivedInstrumentResult::new(
             false,
             None,
@@ -181,15 +179,15 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    // (2) So, if both aren't None, are iid_results _is_ none, then the fcid
+    // (4) If both aren't empty and iid_results _is_ empty, then the fcid
     // results must not be empty. We can go ahead and issue a prediction based
     // on this medium to low confidence result.
-    if iid_results.possible_instruments.is_empty() {
-        let instruments = fcid_results.possible_instruments;
-        let mut confidence = "medium";
-        if instruments.len() > 1 {
-            confidence = "low";
-        }
+    if possible_instruments_by_iid.is_empty() {
+        let instruments = possible_instruments_by_fcid;
+        let confidence = match instruments.len() {
+            1 => "medium",
+            _ => "low",
+        };
 
         return DerivedInstrumentResult::new(
             true,
@@ -202,12 +200,12 @@ pub fn resolve_instrument_prediction(
 
     // (3) Same as the block above, except now we are evaluating the opposite
     // (only the iid results contained some predicted machine).
-    if fcid_results.possible_instruments.is_empty() {
-        let instruments = iid_results.possible_instruments;
-        let mut confidence = "medium";
-        if instruments.len() > 1 {
-            confidence = "low";
-        }
+    if possible_instruments_by_fcid.is_empty() {
+        let instruments = possible_instruments_by_iid;
+        let confidence = match instruments.len() {
+            1 => "medium",
+            _ => "low",
+        };
 
         return DerivedInstrumentResult::new(
             true,
@@ -218,9 +216,8 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    let overlapping_instruments: HashSet<String> = fcid_results
-        .possible_instruments
-        .intersection(&iid_results.possible_instruments)
+    let overlapping_instruments: HashSet<String> = possible_instruments_by_fcid
+        .intersection(&possible_instruments_by_iid)
         .cloned()
         .collect();
 
