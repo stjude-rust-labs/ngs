@@ -39,6 +39,12 @@ pub struct RecordMetrics {
     ignored_too_short: usize,
 }
 
+#[derive(Debug, Serialize)]
+pub struct SummaryMetrics {
+    // Mean GC content for the given sample.
+    gc_content_pct: f64,
+}
+
 /// Primary struct used to compile stats regarding GC content. Within this
 /// struct, the histogram represents the number of reads which have 0% GC
 /// content all the way up to 100% GC content. The other fields are for counting
@@ -50,14 +56,13 @@ pub struct GCContentMetrics {
     // all the way up to 100% GC content.
     histogram: SimpleHistogram,
 
+    // Struct holding all of the nucleobase metrics.
+    pub nucleobases: NucleobaseMetrics,
+
     // Struct containing all of the status of processed/ignored records.
     pub records: RecordMetrics,
 
-    // Mean GC content for the given sample.
-    gc_content_pct: Option<f64>,
-
-    // Struct holding all of the nucleobase metrics.
-    pub nucleobases: NucleobaseMetrics,
+    summary: Option<SummaryMetrics>,
 }
 
 pub struct GCContentFacet {
@@ -70,7 +75,6 @@ impl GCContentFacet {
     pub fn default() -> Self {
         Self {
             metrics: GCContentMetrics {
-                gc_content_pct: None,
                 histogram: SimpleHistogram::zero_based_with_capacity(100),
                 nucleobases: NucleobaseMetrics {
                     total_gc_count: 0,
@@ -82,6 +86,7 @@ impl GCContentFacet {
                     ignored_flags: 0,
                     ignored_too_short: 0,
                 },
+                summary: None,
             },
             rng: rand::thread_rng(),
         }
@@ -166,13 +171,13 @@ impl QualityCheckFacet for GCContentFacet {
     }
 
     fn summarize(&mut self) -> Result<(), Error> {
-        self.metrics.gc_content_pct = Some(
-            (self.metrics.nucleobases.total_gc_count as f64
+        self.metrics.summary = Some(SummaryMetrics {
+            gc_content_pct: (self.metrics.nucleobases.total_gc_count as f64
                 / (self.metrics.nucleobases.total_gc_count
                     + self.metrics.nucleobases.total_at_count
                     + self.metrics.nucleobases.total_other_count) as f64)
                 * 100.0,
-        );
+        });
 
         Ok(())
     }
