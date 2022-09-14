@@ -11,7 +11,7 @@ use tracing::{debug, error, info};
 
 use crate::{
     qc::{
-        features::GenomicFeaturesFacet, gc_content::GCContentFacet, metrics::SummaryMetricsFacet,
+        features::GenomicFeaturesFacet, gc_content::GCContentFacet, summary::SummaryMetricsFacet,
         template_length::TemplateLengthFacet, QualityCheckFacet,
     },
     utils::sam::parse_header,

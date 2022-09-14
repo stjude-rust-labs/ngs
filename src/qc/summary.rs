@@ -108,7 +108,7 @@ impl QualityCheckFacet for SummaryMetricsFacet {
         output_prefix: String,
         directory: &std::path::Path,
     ) -> Result<(), std::io::Error> {
-        let metrics_filename = output_prefix + ".metrics.json";
+        let metrics_filename = output_prefix + ".summary.json";
         let mut metrics_filepath = PathBuf::from(directory);
         metrics_filepath.push(metrics_filename);
 
