@@ -52,7 +52,7 @@ impl SummaryMetricsFacet {
 
 impl QualityCheckFacet for SummaryMetricsFacet {
     fn name(&self) -> &'static str {
-        "SummaryMetrics"
+        "Summary Metrics"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

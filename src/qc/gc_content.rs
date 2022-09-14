@@ -90,7 +90,7 @@ impl GCContentFacet {
 
 impl QualityCheckFacet for GCContentFacet {
     fn name(&self) -> &'static str {
-        "GC Content"
+        "GC Content Metrics"
     }
 
     fn computational_load(&self) -> ComputationalLoad {
