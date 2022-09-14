@@ -15,14 +15,14 @@ use super::{ComputationalLoad, Error, QualityCheckFacet};
 const TRUNCATION_LENGTH: usize = 100;
 
 #[derive(Debug, Serialize)]
-pub struct NucleotideCounts {
-    // Total number of nucleotides read as a 'G' or a 'C'.
+pub struct NucleobaseMetrics {
+    // Total number of nucleobases read as a 'G' or a 'C'.
     total_gc_count: usize,
 
-    // Total number of nucleotides read as an 'A' or a 'T'.
+    // Total number of nucleobases read as an 'A' or a 'T'.
     total_at_count: usize,
 
-    // Total number of nucleotides which were not read as an 'A', a 'C', a 'G',
+    // Total number of nucleobases which were not read as an 'A', a 'C', a 'G',
     // or a 'T'.
     total_other_count: usize,
 }
@@ -42,22 +42,22 @@ pub struct RecordMetrics {
 /// Primary struct used to compile stats regarding GC content. Within this
 /// struct, the histogram represents the number of reads which have 0% GC
 /// content all the way up to 100% GC content. The other fields are for counting
-/// the number of nucleotides which are G/C, the number of nucleotides that are
-/// A/T, or the number of nucleotides that fall into other.
+/// the number of nucleobases which are G/C, the number of nucleobases that are
+/// A/T, or the number of nucleobases that fall into other.
 #[derive(Debug, Serialize)]
 pub struct GCContentMetrics {
-    // Mean GC content for the given sample.
-    gc_content_pct: Option<f64>,
-
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
     histogram: SimpleHistogram,
 
-    // Struct holding all of the nucleotide counts
-    pub nucleotide_counts: NucleotideCounts,
-
     // Struct containing all of the status of processed/ignored records.
     pub records: RecordMetrics,
+
+    // Mean GC content for the given sample.
+    gc_content_pct: Option<f64>,
+
+    // Struct holding all of the nucleobase metrics.
+    pub nucleobases: NucleobaseMetrics,
 }
 
 pub struct GCContentFacet {
@@ -72,7 +72,7 @@ impl GCContentFacet {
             metrics: GCContentMetrics {
                 gc_content_pct: None,
                 histogram: SimpleHistogram::zero_based_with_capacity(100),
-                nucleotide_counts: NucleotideCounts {
+                nucleobases: NucleobaseMetrics {
                     total_gc_count: 0,
                     total_at_count: 0,
                     total_other_count: 0,
@@ -111,11 +111,11 @@ impl QualityCheckFacet for GCContentFacet {
         };
 
         // (2) Convert the BAM record to a SAM record so we can determine the
-        // nucleotides and count up the A's, C's, G's, and T's. TODO: this could
+        // nucleobases and count up the A's, C's, G's, and T's. TODO: this could
         // be done strictly from the BAM without parsing into SAM.
         let sam_record: sam::record::Sequence = record.sequence().try_into().unwrap();
-        let nucleotides = sam_record.as_ref();
-        let sequence_length = nucleotides.len();
+        let nucleobases = sam_record.as_ref();
+        let sequence_length = nucleobases.len();
 
         // (3) Checks whether the record is too short to check the GC bias for.
         // If the record is too short, it can only be a subset of the full range
@@ -127,7 +127,7 @@ impl QualityCheckFacet for GCContentFacet {
             return Ok(());
         }
 
-        // (4) Truncate the read TRUNCATION_LENGTH (generally 100 nucleotides)
+        // (4) Truncate the read TRUNCATION_LENGTH (generally 100 nucleobases)
         // so that we have a uniform chance of generating between 0%-100%. We
         // choose a random starting point within the record so as to not
         // introduce a bias towards the start of our record.
@@ -141,14 +141,14 @@ impl QualityCheckFacet for GCContentFacet {
 
         // (5) Count up the A's, C's, G's, and T's.
         for i in 0..TRUNCATION_LENGTH {
-            let nucleotide = nucleotides[offset + i];
-            match nucleotide {
+            let nucleobase = nucleobases[offset + i];
+            match nucleobase {
                 Base::C | Base::G => {
                     gc_this_read += 1;
-                    self.metrics.nucleotide_counts.total_gc_count += 1;
+                    self.metrics.nucleobases.total_gc_count += 1;
                 }
-                Base::A | Base::T => self.metrics.nucleotide_counts.total_at_count += 1,
-                _ => self.metrics.nucleotide_counts.total_other_count += 1,
+                Base::A | Base::T => self.metrics.nucleobases.total_at_count += 1,
+                _ => self.metrics.nucleobases.total_other_count += 1,
             }
         }
 
@@ -167,10 +167,10 @@ impl QualityCheckFacet for GCContentFacet {
 
     fn summarize(&mut self) -> Result<(), Error> {
         self.metrics.gc_content_pct = Some(
-            (self.metrics.nucleotide_counts.total_gc_count as f64
-                / (self.metrics.nucleotide_counts.total_gc_count
-                    + self.metrics.nucleotide_counts.total_at_count
-                    + self.metrics.nucleotide_counts.total_other_count) as f64)
+            (self.metrics.nucleobases.total_gc_count as f64
+                / (self.metrics.nucleobases.total_gc_count
+                    + self.metrics.nucleobases.total_at_count
+                    + self.metrics.nucleobases.total_other_count) as f64)
                 * 100.0,
         );
 
