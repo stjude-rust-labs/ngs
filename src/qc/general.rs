@@ -16,8 +16,8 @@ pub struct ReadDesignation {
 pub struct RecordMetrics {
     total: usize,
     unmapped: usize,
-    duplicates: usize,
-    designations: ReadDesignation,
+    duplicate: usize,
+    designation: ReadDesignation,
 }
 
 #[derive(Debug, Serialize)]
@@ -38,8 +38,8 @@ impl GeneralMetricsFacet {
             record_metrics: RecordMetrics {
                 total: 0,
                 unmapped: 0,
-                duplicates: 0,
-                designations: ReadDesignation {
+                duplicate: 0,
+                designation: ReadDesignation {
                     primary: 0,
                     secondary: 0,
                     supplementary: 0,
@@ -70,7 +70,7 @@ impl QualityCheckFacet for GeneralMetricsFacet {
         // (2) Compute metrics related to flags.
         if let Ok(s) = record.flags() {
             if s.is_duplicate() {
-                self.record_metrics.duplicates += 1;
+                self.record_metrics.duplicate += 1;
             }
 
             if s.is_unmapped() {
@@ -78,11 +78,11 @@ impl QualityCheckFacet for GeneralMetricsFacet {
             }
 
             if s.is_secondary() {
-                self.record_metrics.designations.secondary += 1;
+                self.record_metrics.designation.secondary += 1;
             } else if s.is_supplementary() {
-                self.record_metrics.designations.supplementary += 1;
+                self.record_metrics.designation.supplementary += 1;
             } else {
-                self.record_metrics.designations.primary += 1;
+                self.record_metrics.designation.primary += 1;
             }
         }
 
@@ -91,7 +91,7 @@ impl QualityCheckFacet for GeneralMetricsFacet {
 
     fn summarize(&mut self) -> Result<(), super::Error> {
         let summary = SummaryMetrics {
-            duplication_pct: self.record_metrics.duplicates as f64
+            duplication_pct: self.record_metrics.duplicate as f64
                 / self.record_metrics.total as f64
                 * 100.0,
             unmapped_pct: self.record_metrics.unmapped as f64 / self.record_metrics.total as f64
