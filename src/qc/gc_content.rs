@@ -43,6 +43,12 @@ pub struct RecordMetrics {
 pub struct SummaryMetrics {
     // Mean GC content for the given sample.
     gc_content_pct: f64,
+
+    // Percentage of records that were ignored because of flags.
+    ignored_flags_pct: f64,
+
+    // Percentage of records that were ignored because they were too short.
+    ignored_too_short_pct: f64,
 }
 
 /// Primary struct used to compile stats regarding GC content. Within this
@@ -176,6 +182,16 @@ impl QualityCheckFacet for GCContentFacet {
                 / (self.metrics.nucleobases.total_gc_count
                     + self.metrics.nucleobases.total_at_count
                     + self.metrics.nucleobases.total_other_count) as f64)
+                * 100.0,
+            ignored_flags_pct: (self.metrics.records.ignored_flags as f64
+                / (self.metrics.records.ignored_flags
+                    + self.metrics.records.ignored_too_short
+                    + self.metrics.records.processed) as f64)
+                * 100.0,
+            ignored_too_short_pct: (self.metrics.records.ignored_too_short as f64
+                / (self.metrics.records.ignored_flags
+                    + self.metrics.records.ignored_too_short
+                    + self.metrics.records.processed) as f64)
                 * 100.0,
         });
 
