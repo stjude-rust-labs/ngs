@@ -11,7 +11,7 @@ use tracing::{debug, error, info};
 
 use crate::{
     qc::{
-        features::GenomicFeaturesFacet, gc_content::GCContentFacet, summary::SummaryMetricsFacet,
+        features::GenomicFeaturesFacet, gc_content::GCContentFacet, general::GeneralMetricsFacet,
         template_length::TemplateLengthFacet, QualityCheckFacet,
     },
     utils::sam::parse_header,
@@ -66,7 +66,7 @@ pub fn get_facets<'a>(
 ) -> Vec<Box<dyn QualityCheckFacet + 'a>> {
     // Default facets that are loaded within the qc subcommand.
     let mut facets: Vec<Box<dyn QualityCheckFacet>> = vec![
-        Box::new(SummaryMetricsFacet::default()),
+        Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),
     ];

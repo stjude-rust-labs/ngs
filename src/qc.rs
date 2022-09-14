@@ -5,7 +5,7 @@ use noodles_bam::lazy::Record;
 
 pub mod features;
 pub mod gc_content;
-pub mod summary;
+pub mod general;
 pub mod template_length;
 
 #[derive(Debug)]

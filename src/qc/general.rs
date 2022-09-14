@@ -27,14 +27,14 @@ pub struct SummaryMetrics {
 }
 
 #[derive(Debug, Serialize)]
-pub struct SummaryMetricsFacet {
+pub struct GeneralMetricsFacet {
     record_metrics: RecordMetrics,
     summary: Option<SummaryMetrics>,
 }
 
-impl SummaryMetricsFacet {
+impl GeneralMetricsFacet {
     pub fn default() -> Self {
-        SummaryMetricsFacet {
+        GeneralMetricsFacet {
             record_metrics: RecordMetrics {
                 total: 0,
                 unmapped: 0,
@@ -50,9 +50,9 @@ impl SummaryMetricsFacet {
     }
 }
 
-impl QualityCheckFacet for SummaryMetricsFacet {
+impl QualityCheckFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
-        "Summary Metrics"
+        "General Metrics"
     }
 
     fn computational_load(&self) -> ComputationalLoad {
@@ -119,4 +119,4 @@ impl QualityCheckFacet for SummaryMetricsFacet {
         Ok(())
     }
 }
-impl SummaryMetricsFacet {}
+impl GeneralMetricsFacet {}
