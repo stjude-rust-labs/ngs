@@ -13,7 +13,7 @@ pub struct ReadDesignation {
 }
 
 #[derive(Debug, Serialize)]
-pub struct ReadCountMetrics {
+pub struct RecordMetrics {
     total: usize,
     unmapped: usize,
     duplicates: usize,
@@ -28,14 +28,14 @@ pub struct SummaryMetrics {
 
 #[derive(Debug, Serialize)]
 pub struct SummaryMetricsFacet {
-    record_metrics: ReadCountMetrics,
+    record_metrics: RecordMetrics,
     summary: Option<SummaryMetrics>,
 }
 
 impl SummaryMetricsFacet {
     pub fn default() -> Self {
         SummaryMetricsFacet {
-            record_metrics: ReadCountMetrics {
+            record_metrics: RecordMetrics {
                 total: 0,
                 unmapped: 0,
                 duplicates: 0,
