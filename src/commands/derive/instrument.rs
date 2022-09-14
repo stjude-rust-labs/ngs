@@ -1,71 +1,65 @@
 use futures::TryStreamExt;
-use std::{collections::HashSet, io};
-
-use crate::{
-    derive::instrument::{compute, reads::IlluminaReadName},
-    errors::{exit, ExitCode},
+use std::{
+    collections::HashSet,
+    io::{self, Error},
+    path::PathBuf,
+    thread,
 };
 
-use clap::{Arg, ArgMatches, Command};
+use crate::derive::instrument::{compute, reads::IlluminaReadName};
+
+use clap::{value_parser, Arg, ArgMatches, Command};
 use noodles_bam as bam;
 use tokio::fs::File;
-use tracing::{error, info};
+use tracing::info;
 
 pub fn get_command<'a>() -> Command<'a> {
     Command::new("instrument")
         .about("Derives the instrument used to produce the file. Only Illumina instruments are supported at present.")
-        .arg(Arg::new("src").help("Source file. Only BAM files are supported at present.").index(1).required(true))
         .arg(
+            Arg::new("src")
+                .index(1)
+                .help("Source file. Only BAM files are supported at present.")
+                .value_parser(value_parser!(PathBuf))
+                .required(true),
+         ).arg(
             Arg::new("first-n-reads")
                 .short('n')
                 .long("first-n-reads")
                 .takes_value(true)
-                .help("Only consider the first n reads in the file."),
+                .help("Only consider the first n reads in the file.")
+                .value_parser(value_parser!(usize))
+        ).arg(
+            Arg::new("threads")
+                .short('t')
+                .long("threads")
+                .help("Use a specific number of threads.")
+                .value_parser(value_parser!(usize))
         )
 }
 
-/// Main function. This sets up an single-threaded, asynchronous runtime via
-/// tokio and then runs the `app()` method (which contains the bulk of this
-/// subcommand).
 pub fn derive(matches: &ArgMatches) -> io::Result<()> {
-    let src = matches.value_of("src").unwrap_or_else(|| {
-        exit(
-            "Could not parse the arguments that were passed in for src.",
-            ExitCode::InvalidInputData,
-        )
-    });
+    let src: &PathBuf = matches.get_one("src").unwrap();
 
-    let first_n_reads = matches.value_of("first-n-reads").map(|s| {
-        let num = s.parse::<usize>().unwrap_or_else(|_| {
-            exit(
-                "--first-n-reads must be specified as a parsable, non-negative integer.",
-                ExitCode::InvalidInputData,
-            )
-        });
+    let first_n_reads: Option<usize> = matches.get_one("first-n-reads").copied();
+    let threads = match matches.get_one("threads") {
+        Some(t) => *t,
+        None => thread::available_parallelism().map(usize::from)?,
+    };
 
-        if num == 0 {
-            exit(
-                "--first-n-reads must be greater than zero!",
-                ExitCode::InvalidInputData,
-            );
-        }
+    info!(
+        "Starting derive instrument subcommand with {} threads.",
+        threads
+    );
 
-        num
-    });
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .worker_threads(threads)
+        .build()?;
 
-    info!("Starting derive instrument subcommand.");
-
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    let app = app(src, first_n_reads);
-    rt.block_on(app)
+    rt.block_on(app(src, first_n_reads))
 }
 
-/// Runs the bulk of the derive instrument subcommand in an `async` context.
-async fn app(src: &str, first_n_reads: Option<usize>) -> io::Result<()> {
+async fn app(src: &PathBuf, first_n_reads: Option<usize>) -> io::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 
@@ -95,18 +89,13 @@ async fn app(src: &str, first_n_reads: Option<usize>) -> io::Result<()> {
                     }
                 }
                 Err(_) => {
-                    error!(
-                        "Could not parse Illumina-formatted query names for read: {}.",
-                        name
-                    );
-
-                    exit(
-                        "Illumina-formatted reads are expected to be colon (:) delimited with \
-either five or seven fields. Please see the Wikipedia page on \
-FASTQ files (https://en.wikipedia.org/wiki/FASTQ_format#Illumina_sequence_identifiers) \
-for more details.",
-                        ExitCode::InvalidInputData,
-                    );
+                    return Err(Error::new(
+                        io::ErrorKind::InvalidInput,
+                        format!(
+                            "Could not parse Illumina-formatted query names for read: {}.",
+                            name
+                        ),
+                    ))
                 }
             }
         }
@@ -126,7 +115,7 @@ for more details.",
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&result).unwrap();
-    println!("{}", output);
+    print!("{}", output);
 
     Ok(())
 }
