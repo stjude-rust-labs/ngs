@@ -101,7 +101,7 @@ impl QualityCheckFacet for TemplateLengthFacet {
         output_prefix: String,
         directory: &std::path::Path,
     ) -> Result<(), std::io::Error> {
-        let filename = output_prefix + ".template_lengths.json";
+        let filename = output_prefix + ".template_length.json";
         let mut filepath = PathBuf::from(directory);
         filepath.push(filename);
 
