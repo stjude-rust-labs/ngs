@@ -24,6 +24,46 @@ pub fn get_command<'a>() -> Command<'a> {
         )
 }
 
+/// Main function. This sets up an single-threaded, asynchronous runtime via
+/// tokio and then runs the `app()` method (which contains the bulk of this
+/// subcommand).
+pub fn derive(matches: &ArgMatches) -> io::Result<()> {
+    let src = matches.value_of("src").unwrap_or_else(|| {
+        exit(
+            "Could not parse the arguments that were passed in for src.",
+            ExitCode::InvalidInputData,
+        )
+    });
+
+    let first_n_reads = matches.value_of("first-n-reads").map(|s| {
+        let num = s.parse::<usize>().unwrap_or_else(|_| {
+            exit(
+                "--first-n-reads must be specified as a parsable, non-negative integer.",
+                ExitCode::InvalidInputData,
+            )
+        });
+
+        if num == 0 {
+            exit(
+                "--first-n-reads must be greater than zero!",
+                ExitCode::InvalidInputData,
+            );
+        }
+
+        num
+    });
+
+    info!("Starting derive instrument subcommand.");
+
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    let app = app(src, first_n_reads);
+    rt.block_on(app)
+}
+
 /// Runs the bulk of the derive instrument subcommand in an `async` context.
 async fn app(src: &str, first_n_reads: Option<usize>) -> io::Result<()> {
     let mut instrument_names = HashSet::new();
@@ -89,44 +129,4 @@ for more details.",
     println!("{}", output);
 
     Ok(())
-}
-
-/// Main function. This sets up an single-threaded, asynchronous runtime via
-/// tokio and then runs the `app()` method (which contains the bulk of this
-/// subcommand).
-pub fn derive(matches: &ArgMatches) -> io::Result<()> {
-    let src = matches.value_of("src").unwrap_or_else(|| {
-        exit(
-            "Could not parse the arguments that were passed in for src.",
-            ExitCode::InvalidInputData,
-        )
-    });
-
-    let first_n_reads = matches.value_of("first-n-reads").map(|s| {
-        let num = s.parse::<usize>().unwrap_or_else(|_| {
-            exit(
-                "--first-n-reads must be specified as a parsable, non-negative integer.",
-                ExitCode::InvalidInputData,
-            )
-        });
-
-        if num == 0 {
-            exit(
-                "--first-n-reads must be greater than zero!",
-                ExitCode::InvalidInputData,
-            );
-        }
-
-        num
-    });
-
-    info!("Starting derive instrument subcommand.");
-
-    let rt = tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    let app = app(src, first_n_reads);
-    rt.block_on(app)
 }

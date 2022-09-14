@@ -180,6 +180,84 @@ pub fn get_command<'a>() -> Command<'a> {
         )
 }
 
+/// Prepares the arguments for running the main `qc` subcommand.
+pub fn qc(matches: &ArgMatches) -> io::Result<()> {
+    info!("Starting qc command...");
+    let src = matches
+        .value_of("src")
+        .expect("Could not parse the arguments that were passed in for src.");
+
+    let features_gff = matches.value_of("features-gff");
+
+    let output_prefix = matches
+        .value_of("output-prefix")
+        .expect("Did not receive any output prefix from args.");
+
+    let five_prime_utr_feature_name = matches
+        .value_of("five-prime-utr-feature-name")
+        .expect("Could not parse the five prime UTR feature name.");
+
+    let three_prime_utr_feature_name = matches
+        .value_of("three-prime-utr-feature-name")
+        .expect("Could not parse the three prime UTR feature name.");
+
+    let coding_sequence_feature_name = matches
+        .value_of("coding-sequence-feature-name")
+        .expect("Could not parse the coding sequence feature name.");
+
+    let exon_feature_name = matches
+        .value_of("exon-feature-name")
+        .expect("Could not parse the exon feature name.");
+
+    let gene_feature_name = matches
+        .value_of("gene-feature-name")
+        .expect("Could not parse the gene feature name.");
+
+    let feature_names = FeatureNames::new(
+        five_prime_utr_feature_name,
+        three_prime_utr_feature_name,
+        coding_sequence_feature_name,
+        exon_feature_name,
+        gene_feature_name,
+    );
+
+    let output_directory = if let Some(m) = matches.value_of("output-directory") {
+        PathBuf::from(m)
+    } else {
+        std::env::current_dir().expect("Could not retrieve the current working directory.")
+    };
+
+    let max_records = if let Some(m) = matches.value_of("max-records") {
+        let res = m.parse::<i64>().unwrap();
+        debug!("Reading a maximum of {} records.", res);
+        res
+    } else {
+        debug!("Reading all available records.");
+        -1
+    };
+
+    if !output_directory.exists() {
+        std::fs::create_dir_all(output_directory.clone())
+            .expect("Could not create output directory.");
+    }
+
+    let rt = tokio::runtime::Builder::new_multi_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    let app = app(
+        src,
+        features_gff,
+        output_prefix,
+        output_directory,
+        max_records,
+        feature_names,
+    );
+
+    rt.block_on(app)
+}
+
 /// Runs the `qc` subcommand.
 ///
 /// # Arguments
@@ -274,82 +352,4 @@ async fn app(
     }
 
     Ok(())
-}
-
-/// Prepares the arguments for running the main `qc` subcommand.
-pub fn qc(matches: &ArgMatches) -> io::Result<()> {
-    info!("Starting qc command...");
-    let src = matches
-        .value_of("src")
-        .expect("Could not parse the arguments that were passed in for src.");
-
-    let features_gff = matches.value_of("features-gff");
-
-    let output_prefix = matches
-        .value_of("output-prefix")
-        .expect("Did not receive any output prefix from args.");
-
-    let five_prime_utr_feature_name = matches
-        .value_of("five-prime-utr-feature-name")
-        .expect("Could not parse the five prime UTR feature name.");
-
-    let three_prime_utr_feature_name = matches
-        .value_of("three-prime-utr-feature-name")
-        .expect("Could not parse the three prime UTR feature name.");
-
-    let coding_sequence_feature_name = matches
-        .value_of("coding-sequence-feature-name")
-        .expect("Could not parse the coding sequence feature name.");
-
-    let exon_feature_name = matches
-        .value_of("exon-feature-name")
-        .expect("Could not parse the exon feature name.");
-
-    let gene_feature_name = matches
-        .value_of("gene-feature-name")
-        .expect("Could not parse the gene feature name.");
-
-    let feature_names = FeatureNames::new(
-        five_prime_utr_feature_name,
-        three_prime_utr_feature_name,
-        coding_sequence_feature_name,
-        exon_feature_name,
-        gene_feature_name,
-    );
-
-    let output_directory = if let Some(m) = matches.value_of("output-directory") {
-        PathBuf::from(m)
-    } else {
-        std::env::current_dir().expect("Could not retrieve the current working directory.")
-    };
-
-    let max_records = if let Some(m) = matches.value_of("max-records") {
-        let res = m.parse::<i64>().unwrap();
-        debug!("Reading a maximum of {} records.", res);
-        res
-    } else {
-        debug!("Reading all available records.");
-        -1
-    };
-
-    if !output_directory.exists() {
-        std::fs::create_dir_all(output_directory.clone())
-            .expect("Could not create output directory.");
-    }
-
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .enable_all()
-        .build()
-        .unwrap();
-
-    let app = app(
-        src,
-        features_gff,
-        output_prefix,
-        output_directory,
-        max_records,
-        feature_names,
-    );
-
-    rt.block_on(app)
 }
