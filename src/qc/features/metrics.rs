@@ -2,50 +2,37 @@ use serde::Serialize;
 
 #[derive(Serialize)]
 pub struct ExonicTranslationRegionMetrics {
-    utr_five_prime_count: usize,
-    utr_three_prime_count: usize,
-    coding_sequence_count: usize,
-}
-
-impl ExonicTranslationRegionMetrics {
-    pub fn inc_utr_five_prime_count(&mut self) {
-        self.utr_five_prime_count += 1;
-    }
-
-    pub fn inc_utr_three_prime_count(&mut self) {
-        self.utr_three_prime_count += 1;
-    }
-
-    pub fn inc_coding_sequence_count(&mut self) {
-        self.coding_sequence_count += 1;
-    }
+    pub utr_five_prime_count: usize,
+    pub utr_three_prime_count: usize,
+    pub coding_sequence_count: usize,
 }
 
 #[derive(Serialize)]
 pub struct GeneRegionMetrics {
-    intergenic_count: usize,
-    exonic_count: usize,
-    intronic_count: usize,
+    pub intergenic_count: usize,
+    pub exonic_count: usize,
+    pub intronic_count: usize,
 }
 
-impl GeneRegionMetrics {
-    pub fn inc_intergenic_count(&mut self) {
-        self.intergenic_count += 1;
-    }
+#[derive(Debug, Serialize)]
+pub struct RecordMetrics {
+    pub processed: usize,
+    pub ignored_flags: usize,
+    pub ignored_nonprimary_chromosome: usize,
+}
 
-    pub fn inc_exonic_count(&mut self) {
-        self.exonic_count += 1;
-    }
-
-    pub fn inc_intronic_count(&mut self) {
-        self.intronic_count += 1;
-    }
+#[derive(Debug, Serialize)]
+pub struct SummaryMetrics {
+    pub ignored_flags_pct: f64,
+    pub ignored_nonprimary_chromosome_pct: f64,
 }
 
 #[derive(Serialize)]
 pub struct Metrics {
     pub exonic_translation_regions: ExonicTranslationRegionMetrics,
     pub gene_regions: GeneRegionMetrics,
+    pub records: RecordMetrics,
+    pub summary: Option<SummaryMetrics>,
 }
 
 impl Metrics {
@@ -61,6 +48,12 @@ impl Metrics {
                 exonic_count: 0,
                 intronic_count: 0,
             },
+            records: RecordMetrics {
+                processed: 0,
+                ignored_flags: 0,
+                ignored_nonprimary_chromosome: 0,
+            },
+            summary: None,
         }
     }
 }

@@ -14,7 +14,10 @@ use tracing::debug;
 
 use crate::{commands::qc::FeatureNames, utils::genome::PRIMARY_CHROMOSOMES};
 
-use self::{metrics::Metrics, name_strand::FeatureNameStrand};
+use self::{
+    metrics::{Metrics, SummaryMetrics},
+    name_strand::FeatureNameStrand,
+};
 
 use super::{ComputationalLoad, Error, QualityCheckFacet};
 
@@ -62,6 +65,7 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
 
         // (3) If the read is unmapped, just return—no need to throw an error.
         if flags.is_unmapped() {
+            self.metrics.records.ignored_flags += 1;
             return Ok(());
         }
 
@@ -92,6 +96,11 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
             }
         };
 
+        if !PRIMARY_CHROMOSOMES.contains(&seq_name) {
+            self.metrics.records.ignored_nonprimary_chromosome += 1;
+            return Ok(());
+        }
+
         // (6) Calculate the start and end position of this read. This will
         // later be used for lookup within our feature map.
         let start = match record.alignment_start() {
@@ -118,23 +127,21 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
                     && f.name() == self.feature_names.five_prime_utr_feature_name
                 {
                     counted_as_five_prime_utr = true;
-                    self.metrics
-                        .exonic_translation_regions
-                        .inc_utr_five_prime_count();
+                    self.metrics.exonic_translation_regions.utr_five_prime_count += 1;
                 } else if !counted_as_three_prime_utr
                     && f.name() == self.feature_names.three_prime_utr_feature_name
                 {
                     counted_as_three_prime_utr = true;
                     self.metrics
                         .exonic_translation_regions
-                        .inc_utr_three_prime_count();
+                        .utr_three_prime_count += 1;
                 } else if !counted_as_coding_sequence
                     && f.name() == self.feature_names.coding_sequence_feature_name
                 {
                     counted_as_coding_sequence = true;
                     self.metrics
                         .exonic_translation_regions
-                        .inc_coding_sequence_count();
+                        .coding_sequence_count += 1;
                 }
             }
         }
@@ -159,19 +166,34 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
 
             if has_gene {
                 if has_exon {
-                    self.metrics.gene_regions.inc_exonic_count();
+                    self.metrics.gene_regions.exonic_count += 1;
                 } else {
-                    self.metrics.gene_regions.inc_intronic_count();
+                    self.metrics.gene_regions.intronic_count += 1;
                 }
             } else {
-                self.metrics.gene_regions.inc_intergenic_count();
+                self.metrics.gene_regions.intergenic_count += 1;
             }
         }
 
+        self.metrics.records.processed += 1;
         Ok(())
     }
 
     fn summarize(&mut self) -> Result<(), Error> {
+        self.metrics.summary = Some(SummaryMetrics {
+            ignored_flags_pct: (self.metrics.records.ignored_flags as f64
+                / (self.metrics.records.ignored_flags
+                    + self.metrics.records.ignored_nonprimary_chromosome
+                    + self.metrics.records.processed) as f64)
+                * 100.0,
+            ignored_nonprimary_chromosome_pct: (self.metrics.records.ignored_nonprimary_chromosome
+                as f64
+                / (self.metrics.records.ignored_flags
+                    + self.metrics.records.ignored_nonprimary_chromosome
+                    + self.metrics.records.processed) as f64)
+                * 100.0,
+        });
+
         Ok(())
     }
 
