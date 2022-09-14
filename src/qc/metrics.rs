@@ -28,14 +28,14 @@ pub struct SummaryMetrics {
 
 #[derive(Debug, Serialize)]
 pub struct SummaryMetricsFacet {
-    read_count_metrics: ReadCountMetrics,
+    record_metrics: ReadCountMetrics,
     summary: Option<SummaryMetrics>,
 }
 
 impl SummaryMetricsFacet {
     pub fn default() -> Self {
         SummaryMetricsFacet {
-            read_count_metrics: ReadCountMetrics {
+            record_metrics: ReadCountMetrics {
                 total: 0,
                 unmapped: 0,
                 duplicates: 0,
@@ -65,24 +65,24 @@ impl QualityCheckFacet for SummaryMetricsFacet {
 
     fn process(&mut self, record: &Record) -> Result<(), Error> {
         // (1) Count the number of reads in the file.
-        self.read_count_metrics.total += 1;
+        self.record_metrics.total += 1;
 
         // (2) Compute metrics related to flags.
         if let Ok(s) = record.flags() {
             if s.is_duplicate() {
-                self.read_count_metrics.duplicates += 1;
+                self.record_metrics.duplicates += 1;
             }
 
             if s.is_unmapped() {
-                self.read_count_metrics.unmapped += 1;
+                self.record_metrics.unmapped += 1;
             }
 
             if s.is_secondary() {
-                self.read_count_metrics.designations.secondary += 1;
+                self.record_metrics.designations.secondary += 1;
             } else if s.is_supplementary() {
-                self.read_count_metrics.designations.supplementary += 1;
+                self.record_metrics.designations.supplementary += 1;
             } else {
-                self.read_count_metrics.designations.primary += 1;
+                self.record_metrics.designations.primary += 1;
             }
         }
 
@@ -91,11 +91,10 @@ impl QualityCheckFacet for SummaryMetricsFacet {
 
     fn summarize(&mut self) -> Result<(), super::Error> {
         let summary = SummaryMetrics {
-            duplication_pct: self.read_count_metrics.duplicates as f64
-                / self.read_count_metrics.total as f64
+            duplication_pct: self.record_metrics.duplicates as f64
+                / self.record_metrics.total as f64
                 * 100.0,
-            unmapped_pct: self.read_count_metrics.unmapped as f64
-                / self.read_count_metrics.total as f64
+            unmapped_pct: self.record_metrics.unmapped as f64 / self.record_metrics.total as f64
                 * 100.0,
         };
 
