@@ -22,7 +22,7 @@ pub mod metrics;
 pub mod name_strand;
 
 pub struct GenomicFeaturesFacet<'a> {
-    exonic_translations: HashMap<String, Lapper<usize, FeatureNameStrand>>,
+    exonic_translation_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
     gene_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
@@ -115,7 +115,7 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
         let mut counted_as_coding_sequence = false;
 
         // (7a) Tally up exonic translations.
-        if let Some(utrs) = self.exonic_translations.get(seq_name) {
+        if let Some(utrs) = self.exonic_translation_regions.get(seq_name) {
             for utr in utrs.find(start, end + 1) {
                 let f = &utr.val;
 
@@ -260,7 +260,7 @@ impl<'a> GenomicFeaturesFacet<'a> {
         debug!("Finalizing GFF features lookup.");
 
         Self {
-            exonic_translations,
+            exonic_translation_regions: exonic_translations,
             gene_regions,
             feature_names,
             header,
