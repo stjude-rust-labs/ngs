@@ -36,7 +36,7 @@ pub struct TemplateLengthFacet {
     // Histogram that represents the number of records that have a given
     // template length (up to the specified threshold).
     histogram: SimpleHistogram,
-    record_metrics: RecordMetrics,
+    records: RecordMetrics,
     summary: Option<SummaryMetrics>,
 }
 
@@ -45,7 +45,7 @@ impl TemplateLengthFacet {
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             histogram: SimpleHistogram::zero_based_with_capacity(capacity),
-            record_metrics: RecordMetrics {
+            records: RecordMetrics {
                 processed: 0,
                 ignored: 0,
             },
@@ -62,13 +62,13 @@ impl TemplateLengthFacet {
     #[allow(dead_code)]
     /// Gets the number of processed records.
     pub fn get_processed_count(&self) -> usize {
-        self.record_metrics.processed
+        self.records.processed
     }
 
     /// Gets the number of ignored records.
     #[allow(dead_code)]
     pub fn get_ignored_count(&self) -> usize {
-        self.record_metrics.ignored
+        self.records.ignored
     }
 }
 
@@ -88,8 +88,8 @@ impl QualityCheckFacet for TemplateLengthFacet {
     fn process(&mut self, record: &Record) -> Result<(), Error> {
         let template_len = record.template_length() as usize;
         match self.histogram.increment(template_len) {
-            Ok(()) => self.record_metrics.processed += 1,
-            Err(BinOutOfBoundsError) => self.record_metrics.ignored += 1,
+            Ok(()) => self.records.processed += 1,
+            Err(BinOutOfBoundsError) => self.records.ignored += 1,
         }
 
         Ok(())
@@ -98,10 +98,10 @@ impl QualityCheckFacet for TemplateLengthFacet {
     fn summarize(&mut self) -> Result<(), Error> {
         self.summary = Some(SummaryMetrics {
             template_length_unknown_pct: (self.histogram.get(0) as f64
-                / (self.record_metrics.processed as f64 + self.record_metrics.ignored as f64))
+                / (self.records.processed as f64 + self.records.ignored as f64))
                 * 100.0,
-            template_length_out_of_range_pct: (self.record_metrics.ignored as f64
-                / (self.record_metrics.processed as f64 + self.record_metrics.ignored as f64))
+            template_length_out_of_range_pct: (self.records.ignored as f64
+                / (self.records.processed as f64 + self.records.ignored as f64))
                 * 100.0,
         });
 
