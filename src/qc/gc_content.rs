@@ -28,7 +28,7 @@ pub struct NucleotideCounts {
 }
 
 #[derive(Debug, Serialize)]
-pub struct RecordStatusCounts {
+pub struct RecordMetrics {
     // Number of records that have been processed by this struct.
     processed: usize,
 
@@ -57,7 +57,7 @@ pub struct GCContentMetrics {
     pub nucleotide_counts: NucleotideCounts,
 
     // Struct containing all of the status of processed/ignored records.
-    pub record_status_counts: RecordStatusCounts,
+    pub records: RecordMetrics,
 }
 
 pub struct GCContentFacet {
@@ -77,7 +77,7 @@ impl GCContentFacet {
                     total_at_count: 0,
                     total_other_count: 0,
                 },
-                record_status_counts: RecordStatusCounts {
+                records: RecordMetrics {
                     processed: 0,
                     ignored_flags: 0,
                     ignored_too_short: 0,
@@ -106,7 +106,7 @@ impl QualityCheckFacet for GCContentFacet {
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags().unwrap();
         if flags.is_duplicate() || flags.is_secondary() || flags.is_unmapped() {
-            self.metrics.record_status_counts.ignored_flags += 1;
+            self.metrics.records.ignored_flags += 1;
             return Ok(());
         };
 
@@ -123,7 +123,7 @@ impl QualityCheckFacet for GCContentFacet {
         // results—all records should have a fair chance to generate between 0%
         // to 100% GC content.
         if sequence_length < TRUNCATION_LENGTH {
-            self.metrics.record_status_counts.ignored_too_short += 1;
+            self.metrics.records.ignored_too_short += 1;
             return Ok(());
         }
 
@@ -160,7 +160,7 @@ impl QualityCheckFacet for GCContentFacet {
             .histogram
             .increment(gc_content_this_read_pct)
             .unwrap();
-        self.metrics.record_status_counts.processed += 1;
+        self.metrics.records.processed += 1;
 
         Ok(())
     }
