@@ -1,4 +1,4 @@
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use std::{collections::HashSet, io};
 
 use crate::{
@@ -13,17 +13,14 @@ use tracing::{error, info};
 
 pub fn get_command<'a>() -> Command<'a> {
     Command::new("instrument")
-        .about("Derives the instrument used to produce the file (only Illumina is supported)")
-        .arg(Arg::new("src").help("Source file.").index(1).required(true))
+        .about("Derives the instrument used to produce the file. Only Illumina instruments are supported at present.")
+        .arg(Arg::new("src").help("Source file. Only BAM files are supported at present.").index(1).required(true))
         .arg(
             Arg::new("first-n-reads")
                 .short('n')
                 .long("first-n-reads")
                 .takes_value(true)
-                .help(
-                    "Only consider the first n reads in the file. If less \
-                      than or equal to zero, the whole file will be read.",
-                ),
+                .help("Only consider the first n reads in the file."),
         )
 }
 
@@ -108,14 +105,14 @@ pub fn derive(matches: &ArgMatches) -> io::Result<()> {
     let first_n_reads = matches.value_of("first-n-reads").map(|s| {
         let num = s.parse::<usize>().unwrap_or_else(|_| {
             exit(
-                "--first-n-reads must be specified as a parsable, positive integer.",
+                "--first-n-reads must be specified as a parsable, non-negative integer.",
                 ExitCode::InvalidInputData,
             )
         });
 
         if num == 0 {
             exit(
-                "--first-n-reads must be greater than 0!",
+                "--first-n-reads must be greater than zero!",
                 ExitCode::InvalidInputData,
             );
         }
