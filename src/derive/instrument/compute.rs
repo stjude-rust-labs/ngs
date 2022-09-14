@@ -59,7 +59,7 @@ pub struct DerivedInstrumentResult {
 }
 
 impl DerivedInstrumentResult {
-    pub fn from(
+    pub fn new(
         succeeded: bool,
         instruments: Option<HashSet<String>>,
         confidence: String,
@@ -146,7 +146,7 @@ pub fn resolve_instrument_prediction(
     fcid_results: InstrumentDetectionResults,
 ) -> DerivedInstrumentResult {
     if iid_results.possible_instruments.is_empty() && iid_results.detected_at_least_one_machine {
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             false,
             None,
             "unknown".to_string(),
@@ -158,7 +158,7 @@ pub fn resolve_instrument_prediction(
     }
 
     if fcid_results.possible_instruments.is_empty() && fcid_results.detected_at_least_one_machine {
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             false,
             None,
             "unknown".to_string(),
@@ -172,7 +172,7 @@ pub fn resolve_instrument_prediction(
     // all, and that will let you know if there were multiple machines in the
     // run or not.
     if iid_results.possible_instruments.is_empty() && fcid_results.possible_instruments.is_empty() {
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             false,
             None,
             "unknown".to_string(),
@@ -191,7 +191,7 @@ pub fn resolve_instrument_prediction(
             confidence = "low";
         }
 
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             true,
             Some(instruments),
             confidence.to_string(),
@@ -209,7 +209,7 @@ pub fn resolve_instrument_prediction(
             confidence = "low";
         }
 
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             true,
             Some(instruments),
             confidence.to_string(),
@@ -225,7 +225,7 @@ pub fn resolve_instrument_prediction(
         .collect();
 
     if overlapping_instruments.is_empty() {
-        return DerivedInstrumentResult::from(
+        return DerivedInstrumentResult::new(
             false,
             None,
             "high".to_string(),
@@ -238,7 +238,7 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    DerivedInstrumentResult::from(
+    DerivedInstrumentResult::new(
         true,
         Some(overlapping_instruments),
         "high".to_string(),
