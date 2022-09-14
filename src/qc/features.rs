@@ -102,12 +102,7 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
         let cigar = sam::record::Cigar::try_from(record.cigar())
             .expect("Could not parse BAM's CIGAR string.");
 
-        let mut read_len = 0;
-        for c in cigar.iter() {
-            read_len += c.len();
-        }
-
-        let end = start + read_len;
+        let end = start + cigar.alignment_span();
 
         // (7) Tally up which features this record contributes to.
         let mut counted_as_five_prime_utr = false;
