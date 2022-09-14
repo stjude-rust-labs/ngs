@@ -1,13 +1,13 @@
 use serde::Serialize;
 
 #[derive(Serialize)]
-pub struct ExonicTranslationMetrics {
+pub struct ExonicTranslationRegionMetrics {
     utr_five_prime_count: usize,
     utr_three_prime_count: usize,
     coding_sequence_count: usize,
 }
 
-impl ExonicTranslationMetrics {
+impl ExonicTranslationRegionMetrics {
     pub fn inc_utr_five_prime_count(&mut self) {
         self.utr_five_prime_count += 1;
     }
@@ -44,14 +44,14 @@ impl GeneRegionMetrics {
 
 #[derive(Serialize)]
 pub struct Metrics {
-    pub exonic_translations: ExonicTranslationMetrics,
+    pub exonic_translation_regions: ExonicTranslationRegionMetrics,
     pub gene_regions: GeneRegionMetrics,
 }
 
 impl Metrics {
     pub fn new() -> Self {
         Metrics {
-            exonic_translations: ExonicTranslationMetrics {
+            exonic_translation_regions: ExonicTranslationRegionMetrics {
                 utr_five_prime_count: 0,
                 utr_three_prime_count: 0,
                 coding_sequence_count: 0,

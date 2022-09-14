@@ -123,17 +123,23 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
                     && f.name() == self.feature_names.five_prime_utr_feature_name
                 {
                     counted_as_five_prime_utr = true;
-                    self.metrics.exonic_translations.inc_utr_five_prime_count();
+                    self.metrics
+                        .exonic_translation_regions
+                        .inc_utr_five_prime_count();
                 } else if !counted_as_three_prime_utr
                     && f.name() == self.feature_names.three_prime_utr_feature_name
                 {
                     counted_as_three_prime_utr = true;
-                    self.metrics.exonic_translations.inc_utr_three_prime_count();
+                    self.metrics
+                        .exonic_translation_regions
+                        .inc_utr_three_prime_count();
                 } else if !counted_as_coding_sequence
                     && f.name() == self.feature_names.coding_sequence_feature_name
                 {
                     counted_as_coding_sequence = true;
-                    self.metrics.exonic_translations.inc_coding_sequence_count();
+                    self.metrics
+                        .exonic_translation_regions
+                        .inc_coding_sequence_count();
                 }
             }
         }
