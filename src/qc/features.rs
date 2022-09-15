@@ -1,18 +1,17 @@
 use std::{
     collections::HashMap,
     fs::File,
-    io::{self, BufReader, Write},
+    io::{self, Write},
     path::{Path, PathBuf},
 };
 
 use noodles_bam::lazy::Record;
-use noodles_gff as gff;
 use noodles_sam as sam;
 use rust_lapper::{Interval, Lapper};
 use sam::Header;
 use tracing::debug;
 
-use crate::{commands::qc::FeatureNames, utils::genome::PRIMARY_CHROMOSOMES};
+use crate::{commands::qc::FeatureNames, formats, utils::genome::PRIMARY_CHROMOSOMES};
 
 use self::{
     metrics::{Metrics, SummaryMetrics},
@@ -215,11 +214,12 @@ impl<'a> GenomicFeaturesFacet<'a> {
         &self.metrics
     }
 
-    pub fn from_filepath(src: &str, feature_names: &'a FeatureNames, header: &'a Header) -> Self {
-        let mut gff = File::open(src)
-            .map(BufReader::new)
-            .map(gff::Reader::new)
-            .expect("Could not open GFF file.");
+    pub fn try_from(
+        src: &str,
+        feature_names: &'a FeatureNames,
+        header: &'a Header,
+    ) -> io::Result<Self> {
+        let mut gff = formats::gff::open(src)?;
 
         let mut exonic_translations = HashMap::new();
         let mut gene_regions = HashMap::new();
@@ -282,12 +282,12 @@ impl<'a> GenomicFeaturesFacet<'a> {
 
         debug!("Finalizing GFF features lookup.");
 
-        Self {
+        Ok(Self {
             exonic_translation_regions: exonic_translations,
             gene_regions,
             feature_names,
             header,
             metrics: Metrics::new(),
-        }
+        })
     }
 }

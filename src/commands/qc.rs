@@ -63,7 +63,7 @@ pub fn get_facets<'a>(
     features_gff: Option<&str>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
-) -> Vec<Box<dyn QualityCheckFacet + 'a>> {
+) -> io::Result<Vec<Box<dyn QualityCheckFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
     let mut facets: Vec<Box<dyn QualityCheckFacet>> = vec![
         Box::new(GeneralMetricsFacet::default()),
@@ -73,14 +73,14 @@ pub fn get_facets<'a>(
 
     // Optionally load the Genomic Features facet if the GFF file is provided.
     if let Some(s) = features_gff {
-        facets.push(Box::new(GenomicFeaturesFacet::from_filepath(
+        facets.push(Box::new(GenomicFeaturesFacet::try_from(
             s,
             feature_names,
             header,
-        )));
+        )?));
     }
 
-    facets
+    Ok(facets)
 }
 
 /// Gets the command line arguments for the `qc` subcommand.
@@ -286,7 +286,7 @@ async fn app(
 
     reader.read_reference_sequences().await?;
 
-    let mut facets = get_facets(features_gff, &feature_names, &header);
+    let mut facets = get_facets(features_gff, &feature_names, &header)?;
     info!("");
     info!("Running with the following facets enabled:");
     info!("");
