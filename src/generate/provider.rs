@@ -1,9 +1,10 @@
 use std::{
-    fs::File,
-    io::{self, BufReader, ErrorKind},
+    io::{self, ErrorKind},
     ops::Range,
     path::PathBuf,
 };
+
+use crate::formats;
 
 use super::utils::{self, PairedRead, SeqLen};
 
@@ -62,42 +63,36 @@ impl ReferenceGenomeSequenceProvider {
         inner_distance: Range<i64>,
         error_freq: usize,
     ) -> io::Result<Self> {
-        // (1) Parses the extension for the reference file.
-        let extension = path
-            .extension()
-            .expect("Could not parse extension from reference file.")
-            .to_str()
-            .expect("Could not convert extension to string.");
+        // (1) Instantiates a reader that is appropriate based on the reference
+        // file's type.
+        let mut reader = formats::fasta::open(&path)?;
 
-        // (2) Instantiates a reader that is appropriate based on the reference
-        // file's type. For the moment, we only parse uncompressed FASTA files,
-        // but we may expand this in the future (thus, the match statement).
-        let mut reader = match extension {
-            "fa" | "fna" | "fasta" => File::open(&path)
-                .map(BufReader::new)
-                .map(fasta::Reader::new)?,
-            ext => {
+        // (2) Identify and load in the associated index file for our reference
+        // file.
+        let fai_ext = match path.extension() {
+            Some(s) => s.to_string_lossy() + ".fai",
+            None => {
                 return Err(io::Error::new(
-                    ErrorKind::InvalidInput,
-                    format!("Could not parse reference genome with extension {}. Supported extension types are: fa, fna, fasta.", ext),
+                    io::ErrorKind::InvalidInput,
+                    "FASTA must have extension.",
                 ))
             }
         };
 
-        // (3) Identify and load in the associated index file for our reference
-        // file.
-        let fai_ext = format!("{}.fai", extension);
-        let index = match fasta::fai::read(path.with_extension(fai_ext)) {
+        let mut fai = path.clone();
+        fai.set_extension(fai_ext.to_string());
+
+        let index = match fasta::fai::read(fai) {
             Ok(i) => Ok(i),
             _ => Err(io::Error::new(
                 ErrorKind::InvalidInput,
-                "Could not find or read associated \
-            index file for the reference file. Please use `samtools faidx` on \
-            the reference fasta to generate one.",
+                "Could not find or read the index for the FASTA file. \
+                       Please use `samtools faidx` on the reference FASTA to \
+                       generate one.",
             )),
         }?;
 
-        // (4) Load all of the sequences and their lengths into a cache for
+        // (3) Load all of the sequences and their lengths into a cache for
         // later use.
         let mut sequence_names = Vec::new();
 
@@ -121,7 +116,7 @@ impl ReferenceGenomeSequenceProvider {
 
         let sequence_dist = WeightedIndex::new(&sequence_lengths).unwrap();
 
-        // (5) Finally, return the initialized object.
+        // (4) Finally, return the initialized object.
         Ok(ReferenceGenomeSequenceProvider {
             error_freq,
             inner_distance_dist: Uniform::from(inner_distance),
