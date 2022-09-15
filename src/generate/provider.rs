@@ -8,6 +8,7 @@ use crate::formats;
 
 use super::utils::{self, PairedRead, SeqLen};
 
+use anyhow::bail;
 use noodles_core::Position;
 use noodles_fasta::{self as fasta, repository::adapters::IndexedReader};
 use noodles_fastq as fastq;
@@ -62,7 +63,7 @@ impl ReferenceGenomeSequenceProvider {
         read_length: usize,
         inner_distance: Range<i64>,
         error_freq: usize,
-    ) -> io::Result<Self> {
+    ) -> anyhow::Result<Self> {
         // (1) Instantiates a reader that is appropriate based on the reference
         // file's type.
         let mut reader = formats::fasta::open(&path)?;
@@ -71,12 +72,7 @@ impl ReferenceGenomeSequenceProvider {
         // file.
         let fai_ext = match path.extension() {
             Some(s) => s.to_string_lossy() + ".fai",
-            None => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    "FASTA must have extension.",
-                ))
-            }
+            None => bail!("FASTA must have extension."),
         };
 
         let mut fai = path.clone();

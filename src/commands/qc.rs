@@ -2,7 +2,7 @@ use futures::TryStreamExt;
 use noodles_sam::Header;
 use tokio::fs::File;
 
-use std::{io, path::PathBuf, time::Instant};
+use std::{path::PathBuf, time::Instant};
 
 use clap::{Arg, ArgMatches, Command};
 use noodles_bam as bam;
@@ -64,7 +64,7 @@ pub fn get_facets<'a>(
     features_gff: Option<&str>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
-) -> io::Result<Vec<Box<dyn QualityCheckFacet + 'a>>> {
+) -> anyhow::Result<Vec<Box<dyn QualityCheckFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
     let mut facets: Vec<Box<dyn QualityCheckFacet>> = vec![
         Box::new(GeneralMetricsFacet::default()),
@@ -182,7 +182,7 @@ pub fn get_command<'a>() -> Command<'a> {
 }
 
 /// Prepares the arguments for running the main `qc` subcommand.
-pub fn qc(matches: &ArgMatches) -> io::Result<()> {
+pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     info!("Starting qc command...");
     let src = matches
         .value_of("src")
@@ -279,7 +279,7 @@ async fn app(
     output_directory: PathBuf,
     max_records: i64,
     feature_names: FeatureNames,
-) -> io::Result<()> {
+) -> anyhow::Result<()> {
     let mut reader = File::open(src).await.map(bam::AsyncReader::new)?;
 
     let ht = reader.read_header().await?;

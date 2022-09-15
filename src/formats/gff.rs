@@ -1,12 +1,13 @@
+use anyhow::bail;
 use flate2::read::MultiGzDecoder;
 use noodles_gff as gff;
 use std::{
     fs::File,
-    io::{self, BufRead, BufReader},
+    io::{BufRead, BufReader},
     path::Path,
 };
 
-pub fn open<P>(src: P) -> io::Result<gff::Reader<Box<dyn BufRead>>>
+pub fn open<P>(src: P) -> anyhow::Result<gff::Reader<Box<dyn BufRead>>>
 where
     P: AsRef<Path>,
 {
@@ -21,9 +22,6 @@ where
             let reader = file.map(BufReader::new)?;
             Ok(gff::Reader::new(Box::new(reader)))
         }
-        _ => Err(io::Error::new(
-            io::ErrorKind::InvalidInput,
-            "Unknown extension for GFF file.",
-        )),
+        _ => bail!("Unknown extension for GFF file."),
     }
 }

@@ -5,6 +5,7 @@ use std::{
     path::{Path, PathBuf},
 };
 
+use anyhow::Context;
 use noodles_bam::lazy::Record;
 use noodles_sam as sam;
 use rust_lapper::{Interval, Lapper};
@@ -214,8 +215,9 @@ impl<'a> GenomicFeaturesFacet<'a> {
         src: &str,
         feature_names: &'a FeatureNames,
         header: &'a Header,
-    ) -> io::Result<Self> {
-        let mut gff = formats::gff::open(src)?;
+    ) -> anyhow::Result<Self> {
+        let mut gff =
+            formats::gff::open(src).with_context(|| format!("Could not open GFF: {}", src))?;
 
         let mut exonic_translations = HashMap::new();
         let mut gene_regions = HashMap::new();

@@ -1,10 +1,6 @@
+use anyhow::bail;
 use futures::TryStreamExt;
-use std::{
-    collections::HashSet,
-    io::{self, Error},
-    path::PathBuf,
-    thread,
-};
+use std::{collections::HashSet, path::PathBuf, thread};
 
 use crate::derive::instrument::{compute, reads::IlluminaReadName};
 
@@ -22,7 +18,7 @@ pub fn get_command<'a>() -> Command<'a> {
                 .help("Source file. Only BAM files are supported at present.")
                 .value_parser(value_parser!(PathBuf))
                 .required(true),
-         ).arg(
+        ).arg(
             Arg::new("first-n-reads")
                 .short('n')
                 .long("first-n-reads")
@@ -38,7 +34,7 @@ pub fn get_command<'a>() -> Command<'a> {
         )
 }
 
-pub fn derive(matches: &ArgMatches) -> io::Result<()> {
+pub fn derive(matches: &ArgMatches) -> anyhow::Result<()> {
     let src: &PathBuf = matches.get_one("src").unwrap();
 
     let first_n_reads: Option<usize> = matches.get_one("first-n-reads").copied();
@@ -59,7 +55,7 @@ pub fn derive(matches: &ArgMatches) -> io::Result<()> {
     rt.block_on(app(src, first_n_reads))
 }
 
-async fn app(src: &PathBuf, first_n_reads: Option<usize>) -> io::Result<()> {
+async fn app(src: &PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 
@@ -89,13 +85,10 @@ async fn app(src: &PathBuf, first_n_reads: Option<usize>) -> io::Result<()> {
                     }
                 }
                 Err(_) => {
-                    return Err(Error::new(
-                        io::ErrorKind::InvalidInput,
-                        format!(
-                            "Could not parse Illumina-formatted query names for read: {}.",
-                            name
-                        ),
-                    ))
+                    bail!(
+                        "Could not parse Illumina-formatted query names for read: {}",
+                        name
+                    );
                 }
             }
         }

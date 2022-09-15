@@ -1,4 +1,4 @@
-use std::{fs::File, io, path::PathBuf};
+use std::{fs::File, path::PathBuf};
 
 use crate::generate::provider::ReferenceGenomeSequenceProvider;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
@@ -64,7 +64,7 @@ pub fn get_command<'a>() -> Command<'a> {
                 .required(true),
         )
 }
-pub fn generate(matches: &ArgMatches) -> io::Result<()> {
+pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
     let reference = matches
         .value_of("reference")

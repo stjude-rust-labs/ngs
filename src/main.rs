@@ -1,5 +1,5 @@
+use anyhow::bail;
 use clap::{arg, Command};
-use std::io;
 
 mod commands;
 mod derive;
@@ -26,7 +26,7 @@ fn add_verbosity_args(subcommand: Command) -> Command {
         )
 }
 
-fn main() -> io::Result<()> {
+fn main() -> anyhow::Result<()> {
     let version = render_testament!(TESTAMENT);
 
     let derive_cmd = commands::derive::get_command();
@@ -67,10 +67,7 @@ fn main() -> io::Result<()> {
             "generate" => return commands::generate(subcommand),
             "qc" => return commands::qc(subcommand),
             s => {
-                return Err(io::Error::new(
-                    io::ErrorKind::InvalidInput,
-                    format!("Unknown subcommand: {}", s),
-                ))
+                bail!("Unknown subcommand: {}", s);
             }
         }
     }
