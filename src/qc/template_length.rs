@@ -81,10 +81,6 @@ impl QualityCheckFacet for TemplateLengthFacet {
         ComputationalLoad::Light
     }
 
-    fn default(&self) -> bool {
-        true
-    }
-
     fn process(&mut self, record: &Record) -> Result<(), Error> {
         let template_len = record.template_length() as usize;
         match self.histogram.increment(template_len) {

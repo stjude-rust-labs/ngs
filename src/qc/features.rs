@@ -40,10 +40,6 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
         ComputationalLoad::Moderate
     }
 
-    fn default(&self) -> bool {
-        true
-    }
-
     fn process(&mut self, record: &Record) -> Result<(), super::Error> {
         // (1) Parse the read name.
         let read_name = match record.read_name() {

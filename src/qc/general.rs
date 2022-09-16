@@ -1,54 +1,12 @@
 use std::{fs::File, io::Write, path::PathBuf};
 
 use noodles_bam::lazy::Record;
-use serde::Serialize;
+
+use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
 use super::{ComputationalLoad, Error, QualityCheckFacet};
 
-#[derive(Debug, Serialize)]
-pub struct ReadDesignation {
-    primary: usize,
-    secondary: usize,
-    supplementary: usize,
-}
-
-#[derive(Debug, Serialize)]
-pub struct RecordMetrics {
-    total: usize,
-    unmapped: usize,
-    duplicate: usize,
-    designation: ReadDesignation,
-}
-
-#[derive(Debug, Serialize)]
-pub struct SummaryMetrics {
-    duplication_pct: f64,
-    unmapped_pct: f64,
-}
-
-#[derive(Debug, Serialize)]
-pub struct GeneralMetricsFacet {
-    records: RecordMetrics,
-    summary: Option<SummaryMetrics>,
-}
-
-impl GeneralMetricsFacet {
-    pub fn default() -> Self {
-        GeneralMetricsFacet {
-            records: RecordMetrics {
-                total: 0,
-                unmapped: 0,
-                duplicate: 0,
-                designation: ReadDesignation {
-                    primary: 0,
-                    secondary: 0,
-                    supplementary: 0,
-                },
-            },
-            summary: None,
-        }
-    }
-}
+pub mod metrics;
 
 impl QualityCheckFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
@@ -57,10 +15,6 @@ impl QualityCheckFacet for GeneralMetricsFacet {
 
     fn computational_load(&self) -> ComputationalLoad {
         ComputationalLoad::Light
-    }
-
-    fn default(&self) -> bool {
-        true
     }
 
     fn process(&mut self, record: &Record) -> Result<(), Error> {
@@ -116,4 +70,3 @@ impl QualityCheckFacet for GeneralMetricsFacet {
         Ok(())
     }
 }
-impl GeneralMetricsFacet {}

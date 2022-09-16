@@ -108,10 +108,6 @@ impl QualityCheckFacet for GCContentFacet {
         ComputationalLoad::Light
     }
 
-    fn default(&self) -> bool {
-        true
-    }
-
     fn process(&mut self, record: &Record) -> Result<(), super::Error> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.

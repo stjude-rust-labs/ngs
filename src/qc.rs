@@ -41,7 +41,6 @@ pub enum ComputationalLoad {
 pub trait QualityCheckFacet {
     fn name(&self) -> &'static str;
     fn computational_load(&self) -> ComputationalLoad;
-    fn default(&self) -> bool;
     fn process(&mut self, record: &Record) -> Result<(), Error>;
     fn summarize(&mut self) -> Result<(), Error>;
     fn write(&self, output_prefix: String, directory: &Path) -> Result<(), io::Error>;
