@@ -2,7 +2,7 @@ use futures::TryStreamExt;
 use noodles_sam::Header;
 use tokio::fs::File;
 
-use std::{path::PathBuf, time::Instant};
+use std::path::PathBuf;
 
 use clap::{Arg, ArgMatches, Command};
 use noodles_bam as bam;
@@ -304,7 +304,6 @@ async fn app(
     let mut record_count = 0;
     let mut records = reader.lazy_records();
 
-    let mut timer = Instant::now();
     while let Some(record) = records.try_next().await? {
         for facet in &mut facets {
             match facet.process(&record) {
@@ -318,13 +317,10 @@ async fn app(
 
         record_count += 1;
         if record_count % 1_000_000 == 0 && record_count > 0 {
-            let duration = timer.elapsed();
             info!(
-                "Processed {} records (took {} seconds).",
+                "Processed {} records.",
                 record_count.to_formatted_string(&Locale::en),
-                duration.as_secs()
             );
-            timer = Instant::now();
         }
 
         if max_records > -1 && record_count >= max_records {
