@@ -3,7 +3,6 @@ use std::io;
 
 mod commands;
 mod derive;
-mod errors;
 mod formats;
 mod generate;
 mod qc;
