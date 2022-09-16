@@ -1,12 +1,11 @@
-use std::{fs::File, path::PathBuf};
+use std::{path::PathBuf};
 
-use crate::generate::provider::ReferenceGenomeSequenceProvider;
+use crate::{generate::provider::ReferenceGenomeSequenceProvider, formats};
+use anyhow::Context;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
-use flate2::{write::GzEncoder, Compression};
 use generate::provider::SequenceProvider;
 use indicatif::{ProgressBar, ProgressStyle};
-use noodles_fastq as fastq;
-use tracing::{debug, info};
+use tracing::{info};
 
 use crate::generate;
 
@@ -64,6 +63,7 @@ pub fn get_command<'a>() -> Command<'a> {
                 .required(true),
         )
 }
+
 pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
     let reference = matches
@@ -89,15 +89,8 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     let error_freq = (1.0 / error_rate) as usize;
 
     info!("Starting generate command...");
-    debug!("Opening read one file at {:?}", reads_one_file);
-    let mut writer_read_one = File::create(reads_one_file)
-        .map(|x| GzEncoder::new(x, Compression::default()))
-        .map(fastq::Writer::new)?;
-
-    debug!("Opening read two file at {:?}", reads_two_file);
-    let mut writer_read_two = File::create(reads_two_file)
-        .map(|x| GzEncoder::new(x, Compression::default()))
-        .map(fastq::Writer::new)?;
+    let mut writer_read_one = formats::fastq::writer(&reads_one_file).with_context(|| format!("Could not open reads one file: {}.", reads_one_file.display()))?;
+    let mut writer_read_two = formats::fastq::writer(&reads_two_file).with_context(|| format!("Could not open reads two file: {}.", reads_two_file.display()))?;
 
     // (1) Read in all sequences in reference FASTA and then precache all of the
     // results before showing the progress bar.
