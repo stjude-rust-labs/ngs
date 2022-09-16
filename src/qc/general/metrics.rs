@@ -13,6 +13,18 @@ pub struct RecordMetrics {
     pub unmapped: usize,
     pub duplicate: usize,
     pub designation: ReadDesignation,
+
+    /**
+     * Other Flagstat Metrics
+     */
+    pub primary_mapped: usize,
+    pub primary_duplicate: usize,
+    pub paired: usize,
+    pub read_1: usize,
+    pub read_2: usize,
+    pub proper_pair: usize,
+    pub singleton: usize,
+    pub mate_mapped: usize,
 }
 
 #[derive(Debug, Default, Serialize)]
