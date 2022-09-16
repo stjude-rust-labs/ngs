@@ -14,7 +14,7 @@ use super::{ComputationalLoad, Error, QualityCheckFacet};
 
 const TRUNCATION_LENGTH: usize = 100;
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct NucleobaseMetrics {
     // Total number of nucleobases read as a 'G' or a 'C'.
     total_gc_count: usize,
@@ -27,7 +27,7 @@ pub struct NucleobaseMetrics {
     total_other_count: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct RecordMetrics {
     // Number of records that have been processed by this struct.
     processed: usize,
@@ -56,7 +56,7 @@ pub struct SummaryMetrics {
 /// content all the way up to 100% GC content. The other fields are for counting
 /// the number of nucleobases which are G/C, the number of nucleobases that are
 /// A/T, or the number of nucleobases that fall into other.
-#[derive(Debug, Serialize)]
+#[derive(Debug, Default, Serialize)]
 pub struct GCContentMetrics {
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
@@ -71,32 +71,10 @@ pub struct GCContentMetrics {
     summary: Option<SummaryMetrics>,
 }
 
+#[derive(Default)]
 pub struct GCContentFacet {
     pub metrics: GCContentMetrics,
     rng: ThreadRng,
-}
-
-impl GCContentFacet {
-    /// Creates a new GCContentHistogram with default values.
-    pub fn default() -> Self {
-        Self {
-            metrics: GCContentMetrics {
-                histogram: SimpleHistogram::zero_based_with_capacity(100),
-                nucleobases: NucleobaseMetrics {
-                    total_gc_count: 0,
-                    total_at_count: 0,
-                    total_other_count: 0,
-                },
-                records: RecordMetrics {
-                    processed: 0,
-                    ignored_flags: 0,
-                    ignored_too_short: 0,
-                },
-                summary: None,
-            },
-            rng: rand::thread_rng(),
-        }
-    }
 }
 
 impl QualityCheckFacet for GCContentFacet {

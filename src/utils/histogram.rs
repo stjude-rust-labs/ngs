@@ -80,6 +80,12 @@ impl SimpleHistogram {
     }
 }
 
+impl Default for SimpleHistogram {
+    fn default() -> Self {
+        Self::zero_based_with_capacity(100)
+    }
+}
+
 #[cfg(test)]
 mod tests {
 
@@ -111,5 +117,17 @@ mod tests {
     pub fn test_invalid_increments() {
         let mut s = SimpleHistogram::zero_based_with_capacity(100);
         assert_eq!(s.increment(101).unwrap_err(), BinOutOfBoundsError);
+    }
+
+    #[test]
+    pub fn test_default_is_one_hundred_zero_based() {
+        // The "general" QC facet initializes a SimpleHistogram::default() for
+        // its metric collection. As such, it depends on the defaults being
+        // from 0 to 100. If you wish to change the default, be sure to update
+        // that QC facet accordingly.
+        let default = SimpleHistogram::default();
+        assert_eq!(default.get_range_start(), 0);
+        assert_eq!(default.get_range_stop(), 100);
+        assert_eq!(default.len(), 101);
     }
 }
