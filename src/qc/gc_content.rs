@@ -90,7 +90,7 @@ impl QualityCheckFacet for GCContentFacet {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags().unwrap();
-        if flags.is_duplicate() || flags.is_secondary() || flags.is_unmapped() {
+        if flags.is_duplicate() || flags.is_secondary() {
             self.metrics.records.ignored_flags += 1;
             return Ok(());
         };
