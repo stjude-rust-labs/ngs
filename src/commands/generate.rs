@@ -1,11 +1,12 @@
-use std::{path::PathBuf};
+use std::path::PathBuf;
 
-use crate::{generate::provider::ReferenceGenomeSequenceProvider, formats};
+use crate::{formats, generate::providers::reference_provider::ReferenceGenomeSequenceProvider};
 use anyhow::Context;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
-use generate::provider::SequenceProvider;
+use generate::providers::SequenceProvider;
 use indicatif::{ProgressBar, ProgressStyle};
-use tracing::{info};
+use rand::prelude::*;
+use tracing::info;
 
 use crate::generate;
 
@@ -27,10 +28,11 @@ pub fn get_command<'a>() -> Command<'a> {
                 .required(true),
         )
         .arg(
-            Arg::new("reference")
-                .long("--reference-fasta")
+            Arg::new("reference-providers")
+                .long("--reference-provider")
                 .takes_value(true)
-                .help("Reference FASTA to generate the data based off of.")
+                .multiple_values(true)
+                .help("One or more reference FASTAs to generate the data based off of.")
                 .required(true),
         )
         .arg(Arg::new("error-rate")
@@ -66,10 +68,11 @@ pub fn get_command<'a>() -> Command<'a> {
 
 pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
-    let reference = matches
-        .value_of("reference")
-        .map(PathBuf::from)
-        .expect("missing reference");
+    let reference_providers: Vec<_> = matches
+        .values_of("reference-providers")
+        .expect("missing reference providers")
+        .map(|rp| rp.parse::<ReferenceGenomeSequenceProvider>().unwrap())
+        .collect();
 
     let reads_one_file = matches
         .value_of("reads-one-file")
@@ -81,21 +84,19 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
         .map(PathBuf::from)
         .expect("missing reads two file");
 
-    let error_rate = matches
-        .value_of("error-rate")
-        .map(|x| x.parse::<f64>())
-        .expect("missing error rate")
-        .expect("Could not parse error rate as a float.");
-    let error_freq = (1.0 / error_rate) as usize;
-
     info!("Starting generate command...");
-    let mut writer_read_one = formats::fastq::writer(&reads_one_file).with_context(|| format!("Could not open reads one file: {}.", reads_one_file.display()))?;
-    let mut writer_read_two = formats::fastq::writer(&reads_two_file).with_context(|| format!("Could not open reads two file: {}.", reads_two_file.display()))?;
-
-    // (1) Read in all sequences in reference FASTA and then precache all of the
-    // results before showing the progress bar.
-    info!("Loading reference genome...");
-    let mut human = ReferenceGenomeSequenceProvider::new(reference, 150, -150..150, error_freq)?;
+    let mut writer_read_one = formats::fastq::writer(&reads_one_file).with_context(|| {
+        format!(
+            "Could not open reads one file: {}.",
+            reads_one_file.display()
+        )
+    })?;
+    let mut writer_read_two = formats::fastq::writer(&reads_two_file).with_context(|| {
+        format!(
+            "Could not open reads two file: {}.",
+            reads_two_file.display()
+        )
+    })?;
 
     let mut total_reads: usize = 0;
     if let Some(num_reads) = matches.value_of("num-reads") {
@@ -106,14 +107,13 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
         let cov: usize = coverage
             .parse()
             .expect("Could not parse coverage as size from command line args.");
-        total_reads = human.reads_needed_for_coverage(cov);
+        total_reads = reference_providers[0].reads_needed_for_coverage(cov);
     }
 
     // (2) Set up the output writers.
     info!("Generating {} reads...", total_reads);
 
     // (3) Set up the progress bar.
-    // let total_reads = 10;
     let pb = ProgressBar::new(total_reads as u64);
     pb.set_style(
         ProgressStyle::default_bar()
@@ -123,15 +123,21 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     pb.set_prefix("Generating");
 
     // (4) Generate the reads and write them to their respective files.
+    let mut rng = ThreadRng::default();
+
     let mut i = 0;
     while i <= total_reads {
-        let read_pair = human.generate_read_pair(format!("ngs:{}", i + 1));
+        let selected_genome = reference_providers
+            .choose_weighted(&mut rng, |x| x.weight())
+            .unwrap();
+        let read_pair =
+            selected_genome.generate_read_pair(format!("ngs:{}:{}", selected_genome.name(), i + 1));
         writer_read_one
             .write_record(read_pair.get_forward_read())
-            .expect("Could not write record to read one file.");
+            .with_context(|| "Could not write record to read one file.")?;
         writer_read_two
             .write_record(read_pair.get_reverse_read())
-            .expect("Could not write record to read two file.");
+            .with_context(|| "Could not write record to read two file.")?;
 
         if i > 0 && i % 5_000 == 0 {
             pb.inc(5000);

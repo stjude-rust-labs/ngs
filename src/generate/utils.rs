@@ -1,4 +1,5 @@
 use noodles_fastq as fastq;
+use rand_distr::Normal;
 
 /// Simple utility struct used for passing around a sequence name and its
 /// associated length. This is useful for, say, generating a random chromosome
@@ -15,6 +16,35 @@ impl SeqLen {
     /// Gets the length of the sequence
     pub fn get_seq_len(&self) -> usize {
         self.1
+    }
+}
+
+#[derive(Debug)]
+pub struct NormalDistributionParams(f64, f64);
+
+impl NormalDistributionParams {
+    pub fn new(mu: f64, sigma: f64) -> Self {
+        NormalDistributionParams(mu, sigma)
+    }
+
+    pub fn get_mu(&self) -> f64 {
+        self.0
+    }
+
+    pub fn get_sigma(&self) -> f64 {
+        self.1
+    }
+}
+
+impl From<NormalDistributionParams> for Normal<f64> {
+    fn from(params: NormalDistributionParams) -> Self {
+        Normal::new(params.get_mu(), params.get_sigma()).expect(
+            format!(
+                "Could not create normal distribution from parameters: {:?}",
+                params
+            )
+            .as_str(),
+        )
     }
 }
 
