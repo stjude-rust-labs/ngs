@@ -306,8 +306,22 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
             // at most, read to the end of the chromosome.
             let max_start = len - (self.read_length * 2);
             let start = rng.gen_range(min_start..max_start);
-            let inner_distance_offset =
+            let mut inner_distance_offset =
                 self.inner_distance_distribution.sample(&mut rng).round() as i64;
+
+            // Clamp inner distances so that it can never be less than (mean - 3
+            // * std) and never be more than (mean + 3 * std).
+            let lower_bound = (self.inner_distance_distribution.mean()
+                - (3.0 * self.inner_distance_distribution.std_dev()).floor())
+                as i64;
+            let upper_bound = (self.inner_distance_distribution.mean()
+                + (3.0 * self.inner_distance_distribution.std_dev()).ceil())
+                as i64;
+            if inner_distance_offset < lower_bound {
+                inner_distance_offset = lower_bound;
+            } else if inner_distance_offset > upper_bound {
+                inner_distance_offset = upper_bound;
+            }
 
             if let Ok(start_pos) = Position::try_from(start as usize) {
                 if let Ok(end_as_isize) = i64::try_from(start + (self.read_length * 2)) {
@@ -332,9 +346,29 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
         read_name_two.push_str("/2");
 
         let mut fwd_vec = forward_sequence.unwrap();
-        let fwd = fwd_vec.get(0..self.read_length as usize).unwrap();
+        let fwd = fwd_vec
+            .get(0..self.read_length as usize)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Forward read fragment is too short for the specified read \
+             length. This usually means you need to increase the specified \
+             inner distance or reduce the standard deviation for genome {} \
+             such that fragments this short cannot be generated.",
+                    self.name()
+                )
+            });
         let mut rev_vec = reverse_sequence.unwrap();
-        let rev = rev_vec.get(0..self.read_length as usize).unwrap();
+        let rev = rev_vec
+            .get(0..self.read_length as usize)
+            .unwrap_or_else(|| {
+                panic!(
+                    "Reverse read fragment is too short for the specified read \
+             length. This usually means you need to increase the specified \
+             inner distance or reduce the standard deviation for genome {} \
+             such that fragments this short cannot be generated.",
+                    self.name()
+                )
+            });
 
         fwd_vec = simulate_errors(fwd, self.error_frequency, &mut rng);
         rev_vec = simulate_errors(rev, self.error_frequency, &mut rng);
