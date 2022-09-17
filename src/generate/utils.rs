@@ -38,13 +38,12 @@ impl NormalDistributionParams {
 
 impl From<NormalDistributionParams> for Normal<f64> {
     fn from(params: NormalDistributionParams) -> Self {
-        Normal::new(params.get_mu(), params.get_sigma()).expect(
-            format!(
+        Normal::new(params.get_mu(), params.get_sigma()).unwrap_or_else(|_| {
+            panic!(
                 "Could not create normal distribution from parameters: {:?}",
                 params
             )
-            .as_str(),
-        )
+        })
     }
 }
 
