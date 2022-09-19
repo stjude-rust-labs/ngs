@@ -339,8 +339,8 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
 
                                     selected_sequence = Some(seq.clone());
                                     forward_start_position = Some(start_pos);
-                                    let l = usize::from(end_pos) - self.read_length;
-                                    reverse_start_position = Position::new(l);
+                                    reverse_start_position =
+                                        Position::new(usize::from(end_pos) - self.read_length);
                                 }
                             }
                         }
