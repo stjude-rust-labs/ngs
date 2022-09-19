@@ -15,7 +15,7 @@ use crate::{
         general::metrics::GeneralMetricsFacet, template_length::TemplateLengthFacet,
         QualityCheckFacet,
     },
-    utils::sam::parse_header,
+    utils::formats::sam::parse_header,
 };
 
 /// A utility struct for passing feature name arguments from the command line

@@ -12,7 +12,10 @@ use rust_lapper::{Interval, Lapper};
 use sam::Header;
 use tracing::debug;
 
-use crate::{commands::qc::FeatureNames, formats, utils::genome::PRIMARY_CHROMOSOMES};
+use crate::{
+    commands::qc::FeatureNames,
+    utils::{formats, genome::PRIMARY_CHROMOSOMES},
+};
 
 use self::{
     metrics::{Metrics, SummaryMetrics},

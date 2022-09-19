@@ -3,7 +3,6 @@ use clap::{arg, Command};
 
 mod commands;
 mod derive;
-mod formats;
 mod generate;
 mod qc;
 mod utils;

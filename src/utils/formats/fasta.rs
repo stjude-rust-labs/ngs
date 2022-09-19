@@ -1,7 +1,9 @@
-use anyhow::bail;
-use noodles_fasta as fasta;
 use std::{fs::File, io::BufReader, path::Path};
 
+use anyhow::bail;
+use noodles_fasta as fasta;
+
+/// Attempts to open a FASTA file from a given source.
 pub fn open<P>(src: P) -> anyhow::Result<fasta::Reader<BufReader<File>>>
 where
     P: AsRef<Path>,
@@ -11,8 +13,8 @@ where
 
     match path.extension().and_then(|x| x.to_str()) {
         Some("gz") => bail!(
-            "This command does not yet support gzipped FASTA files. \
-                       Please unzip your FASTA file and try again."
+            "This command does not yet support gzipped FASTA \
+            files. Please unzip your FASTA file and try again."
         ),
         Some("fa") | Some("fna") | Some("fasta") => {
             let reader = file.map(BufReader::new)?;

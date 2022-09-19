@@ -1,6 +1,8 @@
 use std::path::PathBuf;
 
-use crate::{formats, generate::providers::reference_provider::ReferenceGenomeSequenceProvider};
+use crate::{
+    generate::providers::reference_provider::ReferenceGenomeSequenceProvider, utils::formats,
+};
 use anyhow::Context;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
 use generate::providers::SequenceProvider;
