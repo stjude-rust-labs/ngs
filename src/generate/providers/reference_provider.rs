@@ -286,10 +286,14 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
     ///
     /// * `read_prefix` — The prefixed name to assign to the read (reads are automatically
     ///   interleaved for convenience).
-    fn generate_read_pair(&self, read_prefix: String) -> PairedRead {
+    fn generate_read_pair(&self, read_prefix: String, read_number: String) -> PairedRead {
         let mut rng = ThreadRng::default();
         let mut forward_sequence: Option<Vec<u8>> = None;
         let mut reverse_sequence: Option<Vec<u8>> = None;
+
+        let mut selected_sequence: Option<String> = None;
+        let mut forward_start_position: Option<Position> = None;
+        let mut reverse_start_position: Option<Position> = None;
 
         // Generating a read pair can run into a variety of issues. Thus, we loop here
         // until a proper read pair is generated and allow any errors to just reset the
@@ -332,6 +336,11 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
                                     let sequence_as_vec = sequence.to_vec();
                                     reverse_sequence = utils::reverse_compliment(&sequence_as_vec);
                                     forward_sequence = Some(sequence_as_vec);
+
+                                    selected_sequence = Some(seq.clone());
+                                    forward_start_position = Some(start_pos);
+                                    let l = usize::from(end_pos) - self.read_length;
+                                    reverse_start_position = Position::new(l);
                                 }
                             }
                         }
@@ -340,10 +349,20 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
             }
         }
 
-        let mut read_name_one = read_prefix.clone();
-        let mut read_name_two = read_prefix;
-        read_name_one.push_str("/1");
-        read_name_two.push_str("/2");
+        let read_name_one = format!(
+            "{}:{}:{}:{}/1",
+            &read_prefix,
+            selected_sequence.clone().unwrap(),
+            forward_start_position.unwrap(),
+            &read_number
+        );
+        let read_name_two = format!(
+            "{}:{}:{}:{}/2",
+            &read_prefix,
+            selected_sequence.unwrap(),
+            reverse_start_position.unwrap(),
+            &read_number
+        );
 
         let mut fwd_vec = forward_sequence.unwrap();
         let fwd = fwd_vec

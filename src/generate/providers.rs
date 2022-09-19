@@ -10,7 +10,7 @@ pub mod reference_provider;
 /// simulates reads read from that genome. Other sequence providers could be
 /// contaminates from various sources.
 pub trait SequenceProvider {
-    fn generate_read_pair(&self, read_prefix: String) -> PairedRead;
+    fn generate_read_pair(&self, read_prefix: String, read_number: String) -> PairedRead;
 }
 
 /// Simulates sequencing errors in a very naive way.

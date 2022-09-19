@@ -130,8 +130,10 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
         let selected_genome = reference_providers
             .choose_weighted(&mut rng, |x| x.weight())
             .unwrap();
-        let read_pair =
-            selected_genome.generate_read_pair(format!("ngs:{}:{}", selected_genome.name(), i + 1));
+        let read_pair = selected_genome.generate_read_pair(
+            format!("ngs:{}", selected_genome.name()),
+            (i + 1).to_string(),
+        );
         writer_read_one
             .write_record(read_pair.get_forward_read())
             .with_context(|| "Could not write record to read one file.")?;
