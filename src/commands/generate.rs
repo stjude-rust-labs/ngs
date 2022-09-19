@@ -126,7 +126,7 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     let mut rng = ThreadRng::default();
 
     let mut i = 0;
-    while i <= total_reads {
+    while i < total_reads {
         let selected_genome = reference_providers
             .choose_weighted(&mut rng, |x| x.weight())
             .unwrap();
