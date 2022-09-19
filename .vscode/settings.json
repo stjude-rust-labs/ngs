@@ -1,3 +1,13 @@
 {
+  "cSpell.enabledLanguageIds": [
+    "json",
+    "latex",
+    "markdown",
+    "plaintext",
+    "restructuredtext",
+    "text",
+    "yaml",
+    "yml"
+  ],
   "rust-analyzer.checkOnSave.command": "clippy"
 }
