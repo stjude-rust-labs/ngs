@@ -3,6 +3,8 @@ use std::{fs::File, io::BufReader, path::Path};
 use anyhow::bail;
 use noodles_fasta as fasta;
 
+mod phred;
+
 /// Attempts to open a FASTA file from a given source.
 pub fn open<P>(src: P) -> anyhow::Result<fasta::Reader<BufReader<File>>>
 where
