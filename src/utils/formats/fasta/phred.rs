@@ -1,4 +1,4 @@
-use std::{error, fmt};
+use std::{convert::TryFrom, error, fmt};
 
 //========================//
 // Phred Conversion Error //
@@ -80,9 +80,11 @@ impl From<Illumina1Point8Score> for char {
     }
 }
 
-impl From<char> for Illumina1Point8Score {
-    fn from(c: char) -> Self {
-        Illumina1Point8Score(c as usize - Self::ASCII_OFFSET)
+impl TryFrom<char> for Illumina1Point8Score {
+    type Error = PhredConversionError;
+
+    fn try_from(c: char) -> Result<Self, Self::Error> {
+        Illumina1Point8Score::try_from(c as usize - Self::ASCII_OFFSET)
     }
 }
 
@@ -119,11 +121,23 @@ mod tests {
 
     #[test]
     fn it_correctly_converts_from_chars() {
-        let min_char = Illumina1Point8Score::from('!');
+        let result = Illumina1Point8Score::try_from('!');
+        assert!(result.is_ok());
+
+        let min_char = result.unwrap();
         assert_eq!(min_char.score(), 0);
 
-        let max_char: Illumina1Point8Score = 'J'.into();
+        let result = Illumina1Point8Score::try_from('J');
+        assert!(result.is_ok());
+
+        let max_char = result.unwrap();
         assert_eq!(max_char.score(), 41);
+
+        let result = Illumina1Point8Score::try_from('K');
+        assert!(result.is_err());
+
+        let PhredConversionError { reason } = result.unwrap_err();
+        assert_eq!(reason, "score must be at most 41");
     }
 
     #[test]
