@@ -88,9 +88,7 @@ impl From<char> for Illumina1Point8Score {
 
 #[cfg(test)]
 mod tests {
-    use crate::utils::formats::fasta::phred::PhredConversionError;
-
-    use super::Illumina1Point8Score;
+    use super::{Illumina1Point8Score, PhredConversionError};
 
     #[test]
     fn it_is_valid_from_a_zero_score() {
