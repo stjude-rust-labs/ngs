@@ -2,11 +2,11 @@ use noodles_bam::lazy::Record;
 
 pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
-use super::{results, ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 pub mod metrics;
 
-impl QualityCheckFacet for GeneralMetricsFacet {
+impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
         "General Metrics"
     }

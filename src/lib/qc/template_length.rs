@@ -5,7 +5,7 @@ use serde::Serialize;
 
 use crate::lib::utils::histogram::SimpleHistogram;
 
-use super::{results, ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct SummaryMetrics {
@@ -70,7 +70,7 @@ impl TemplateLengthFacet {
     }
 }
 
-impl QualityCheckFacet for TemplateLengthFacet {
+impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
     fn name(&self) -> &'static str {
         "Template Length Metrics"
     }

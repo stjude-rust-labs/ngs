@@ -38,7 +38,7 @@ pub enum ComputationalLoad {
     Heavy,
 }
 
-pub trait QualityCheckFacet {
+pub trait RecordBasedQualityCheckFacet {
     fn name(&self) -> &'static str;
     fn computational_load(&self) -> ComputationalLoad;
     fn process(&mut self, record: &Record) -> Result<(), Error>;

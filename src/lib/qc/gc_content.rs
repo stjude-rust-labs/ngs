@@ -8,7 +8,7 @@ use serde::Serialize;
 
 use crate::lib::utils::histogram::SimpleHistogram;
 
-use super::{results, ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 const TRUNCATION_LENGTH: usize = 100;
 
@@ -75,7 +75,7 @@ pub struct GCContentFacet {
     rng: ThreadRng,
 }
 
-impl QualityCheckFacet for GCContentFacet {
+impl RecordBasedQualityCheckFacet for GCContentFacet {
     fn name(&self) -> &'static str {
         "GC Content Metrics"
     }

@@ -13,7 +13,7 @@ use crate::lib::{
     qc::{
         features::GenomicFeaturesFacet, gc_content::GCContentFacet,
         general::metrics::GeneralMetricsFacet, results::Results,
-        template_length::TemplateLengthFacet, QualityCheckFacet,
+        template_length::TemplateLengthFacet, RecordBasedQualityCheckFacet,
     },
     utils::formats::sam::parse_header,
 };
@@ -64,9 +64,9 @@ pub fn get_facets<'a>(
     features_gff: Option<&str>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
-) -> anyhow::Result<Vec<Box<dyn QualityCheckFacet + 'a>>> {
+) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityCheckFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn QualityCheckFacet>> = vec![
+    let mut facets: Vec<Box<dyn RecordBasedQualityCheckFacet>> = vec![
         Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),

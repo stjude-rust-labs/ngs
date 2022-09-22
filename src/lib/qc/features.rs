@@ -17,7 +17,7 @@ pub use self::{
     name_strand::FeatureNameStrand,
 };
 
-use super::{results, ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 pub mod metrics;
 pub mod name_strand;
@@ -30,7 +30,7 @@ pub struct GenomicFeaturesFacet<'a> {
     metrics: Metrics,
 }
 
-impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
+impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
     fn name(&self) -> &'static str {
         "Genomic Features Metrics"
     }
