@@ -1,21 +1,19 @@
 //! Functionality related to computing template lenght and related metrics.
 
-use std::{fs::File, io::Write, path::PathBuf};
-
 use noodles_bam::lazy::Record;
 use serde::Serialize;
 
 use crate::utils::histogram::{BinOutOfBoundsError, SimpleHistogram};
 
-use super::{ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SummaryMetrics {
     template_length_unknown_pct: f64,
     template_length_out_of_range_pct: f64,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct RecordMetrics {
     // Number of records that were processed (and, as such, had template lengths
     // that fell within our histogram's range).
@@ -31,7 +29,7 @@ pub struct RecordMetrics {
 /// template length up to a certain threshold. Any records that fall outside of
 /// that range are ignored (as tallied in the `ignored` field). Similarly,
 /// records that are processed are tallied in the `processed` field.
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TemplateLengthFacet {
     // Histogram that represents the number of records that have a given
     // template length (up to the specified threshold).
@@ -104,18 +102,7 @@ impl QualityCheckFacet for TemplateLengthFacet {
         Ok(())
     }
 
-    fn write(
-        &self,
-        output_prefix: String,
-        directory: &std::path::Path,
-    ) -> Result<(), std::io::Error> {
-        let filename = output_prefix + ".template_length.json";
-        let mut filepath = PathBuf::from(directory);
-        filepath.push(filename);
-
-        let mut file = File::create(filepath)?;
-        let output = serde_json::to_string_pretty(&self).unwrap();
-        file.write_all(output.as_bytes())?;
-        Ok(())
+    fn aggregate_results(&self, results: &mut results::Results) {
+        results.set_template_length(self.clone());
     }
 }

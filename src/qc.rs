@@ -1,11 +1,11 @@
 use core::fmt;
-use std::{io, path::Path};
 
 use noodles_bam::lazy::Record;
 
 pub mod features;
 pub mod gc_content;
 pub mod general;
+pub mod results;
 pub mod template_length;
 
 #[derive(Debug)]
@@ -43,5 +43,5 @@ pub trait QualityCheckFacet {
     fn computational_load(&self) -> ComputationalLoad;
     fn process(&mut self, record: &Record) -> Result<(), Error>;
     fn summarize(&mut self) -> Result<(), Error>;
-    fn write(&self, output_prefix: String, directory: &Path) -> Result<(), io::Error>;
+    fn aggregate_results(&self, results: &mut results::Results);
 }

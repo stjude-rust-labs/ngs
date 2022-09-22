@@ -12,8 +12,8 @@ use tracing::{debug, error, info};
 use crate::{
     qc::{
         features::GenomicFeaturesFacet, gc_content::GCContentFacet,
-        general::metrics::GeneralMetricsFacet, template_length::TemplateLengthFacet,
-        QualityCheckFacet,
+        general::metrics::GeneralMetricsFacet, results::Results,
+        template_length::TemplateLengthFacet, QualityCheckFacet,
     },
     utils::formats::sam::parse_header,
 };
@@ -338,15 +338,13 @@ async fn app(
         facet.summarize().unwrap();
     }
 
-    //==================================//
-    // Output all of the relevant files //
-    //==================================//
+    let mut results = Results::default();
 
-    for facet in facets {
-        facet
-            .write(output_prefix.to_string(), &output_directory)
-            .unwrap();
+    for facet in &facets {
+        facet.aggregate_results(&mut results);
     }
+
+    results.write(String::from(output_prefix), &output_directory)?;
 
     Ok(())
 }

@@ -1,10 +1,8 @@
-use std::{fs::File, io::Write, path::PathBuf};
-
 use noodles_bam::lazy::Record;
 
-use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
+pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
-use super::{ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 
 pub mod metrics;
 
@@ -86,19 +84,7 @@ impl QualityCheckFacet for GeneralMetricsFacet {
         Ok(())
     }
 
-    fn write(
-        &self,
-        output_prefix: String,
-        directory: &std::path::Path,
-    ) -> Result<(), std::io::Error> {
-        let metrics_filename = output_prefix + ".summary.json";
-        let mut metrics_filepath = PathBuf::from(directory);
-        metrics_filepath.push(metrics_filename);
-
-        let mut file = File::create(metrics_filepath).unwrap();
-        let output = serde_json::to_string_pretty(&self).unwrap();
-        file.write_all(output.as_bytes())?;
-
-        Ok(())
+    fn aggregate_results(&self, results: &mut results::Results) {
+        results.set_general(self.clone())
     }
 }

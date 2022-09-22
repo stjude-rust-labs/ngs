@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 use serde::Serialize;
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SimpleHistogram {
     // Vec-backed value store for the histogram.
     values: Vec<usize>,

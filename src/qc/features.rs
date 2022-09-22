@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    fs::File,
-    io::{self, Write},
-    path::{Path, PathBuf},
-};
+use std::collections::HashMap;
 
 use anyhow::Context;
 use noodles_bam::lazy::Record;
@@ -17,12 +12,12 @@ use crate::{
     utils::{formats, genome::PRIMARY_CHROMOSOMES},
 };
 
-use self::{
+pub use self::{
     metrics::{Metrics, SummaryMetrics},
     name_strand::FeatureNameStrand,
 };
 
-use super::{ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 
 pub mod metrics;
 pub mod name_strand;
@@ -196,24 +191,12 @@ impl<'a> QualityCheckFacet for GenomicFeaturesFacet<'a> {
         Ok(())
     }
 
-    fn write(&self, output_prefix: String, directory: &Path) -> Result<(), io::Error> {
-        let features_filename = output_prefix + ".features.json";
-        let mut features_filepath = PathBuf::from(directory);
-        features_filepath.push(features_filename);
-
-        let mut file = File::create(features_filepath)?;
-        let output = serde_json::to_string_pretty(&self.get_metrics()).unwrap();
-        file.write_all(output.as_bytes())?;
-
-        Ok(())
+    fn aggregate_results(&self, results: &mut results::Results) {
+        results.set_features(self.metrics.clone())
     }
 }
 
 impl<'a> GenomicFeaturesFacet<'a> {
-    pub fn get_metrics(&self) -> &Metrics {
-        &self.metrics
-    }
-
     pub fn try_from(
         src: &str,
         feature_names: &'a FeatureNames,

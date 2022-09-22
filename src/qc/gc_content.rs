@@ -1,7 +1,5 @@
 //! Functionality related to computing GC content and related metrics.
 
-use std::{fs::File, io::Write, path::PathBuf};
-
 use noodles_bam::lazy::Record;
 use noodles_sam as sam;
 use rand::prelude::*;
@@ -10,11 +8,11 @@ use serde::Serialize;
 
 use crate::utils::histogram::SimpleHistogram;
 
-use super::{ComputationalLoad, Error, QualityCheckFacet};
+use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 
 const TRUNCATION_LENGTH: usize = 100;
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct NucleobaseMetrics {
     // Total number of nucleobases read as a 'G' or a 'C'.
     total_gc_count: usize,
@@ -27,7 +25,7 @@ pub struct NucleobaseMetrics {
     total_other_count: usize,
 }
 
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct RecordMetrics {
     // Number of records that have been processed by this struct.
     processed: usize,
@@ -39,7 +37,7 @@ pub struct RecordMetrics {
     ignored_too_short: usize,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct SummaryMetrics {
     // Mean GC content for the given sample.
     gc_content_pct: f64,
@@ -56,7 +54,7 @@ pub struct SummaryMetrics {
 /// content all the way up to 100% GC content. The other fields are for counting
 /// the number of nucleobases which are G/C, the number of nucleobases that are
 /// A/T, or the number of nucleobases that fall into other.
-#[derive(Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct GCContentMetrics {
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
@@ -172,19 +170,7 @@ impl QualityCheckFacet for GCContentFacet {
         Ok(())
     }
 
-    fn write(
-        &self,
-        output_prefix: String,
-        directory: &std::path::Path,
-    ) -> Result<(), std::io::Error> {
-        let gc_content_filename = output_prefix + ".gc_content.json";
-        let mut gc_content_filepath = PathBuf::from(directory);
-        gc_content_filepath.push(gc_content_filename);
-
-        let mut file = File::create(gc_content_filepath)?;
-        let output = serde_json::to_string_pretty(&self.metrics).unwrap();
-        file.write_all(output.as_bytes())?;
-
-        Ok(())
+    fn aggregate_results(&self, results: &mut results::Results) {
+        results.set_gc_content(self.metrics.clone());
     }
 }
