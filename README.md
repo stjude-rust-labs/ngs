@@ -43,6 +43,11 @@
 * **[`ngs generate`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-generate).** Tool to generate next-generation sequencing files.
 * **[`ngs qc`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-qc).** Provides tools for checking the quality of next-generation sequencing files.
 
+## Guiding Principles
+
+* **Modern, reliable foundation for everyday bioinformatics analysis—written in Rust.** `ngs` aims to package together a fairly comprehensive set of analysis tools and utilities for everyday work in bioinformatics. It is built with modern, multi-core systems in mind and written in Rust. Though we are not there today, we plan to work towards this goal in the future.
+* **Runs on readily available hardware/software.** We aim for every subcommand within `ngs` to run within most computing environments without the need for special hardware or software. Practically, this means we've designed `ngs` to run in any UNIX-like environment that has at least four (4) cores and sixteen (16) GB of RAM. Often, tools will run with fewer resources. This design decision is important and sometimes means that `ngs` runs slower than it otherwise could.
+
 ## 📚 Getting Started
 
 ### Installation
