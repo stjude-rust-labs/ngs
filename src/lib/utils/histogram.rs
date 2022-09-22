@@ -57,12 +57,19 @@ impl SimpleHistogram {
         self.range_stop
     }
 
+    /// Gives the stopping position for the open range of the histogram.
+    pub fn in_range(&self, value: usize) -> bool {
+        self.range_start <= value && value <= self.range_stop
+    }
+
     /// Gets a value for a bin within a histogram.
     pub fn get(&self, bin: usize) -> usize {
-        *self
-            .values
-            .get(bin)
-            .expect("Could not lookup value for template length histogram bin.")
+        *self.values.get(bin).unwrap_or_else(|| {
+            panic!(
+                "Could not lookup value for template length histogram bin: {}.",
+                bin
+            )
+        })
     }
 
     /// Computes the mean of all values within the histogram.
@@ -77,6 +84,59 @@ impl SimpleHistogram {
         }
 
         sum / denominator
+    }
+
+    /// Computes the median of all values within the histogram.
+    pub fn median(&self) -> Option<f64> {
+        let mut sum: i64 = 0;
+        // fp => Front pointer
+        // bp => Back pointer
+        let mut fp = self.range_start as i64 - 1;
+        let mut bp = self.range_stop as i64 + 1;
+        let mut last_known_nonzero_front: Option<i64> = None;
+        let mut last_known_nonzero_back: Option<i64> = None;
+
+        while fp != bp {
+            if sum < 0 {
+                fp += 1;
+
+                if !self.in_range(fp as usize) {
+                    break;
+                }
+
+                let val = self.get(fp as usize);
+                if val != 0 && fp != bp {
+                    last_known_nonzero_front = Some(fp);
+                    sum += val as i64;
+                }
+            } else {
+                bp -= 1;
+
+                if !self.in_range(bp as usize) {
+                    break;
+                }
+
+                let val = self.get(bp as usize);
+                if val != 0 && fp != bp {
+                    last_known_nonzero_back = Some(bp);
+                    sum -= val as i64;
+                }
+            }
+        }
+
+        if sum == 0 {
+            if let Some(nonzero_front) = last_known_nonzero_front {
+                if let Some(nonzero_back) = last_known_nonzero_back {
+                    return Some(
+                        (nonzero_back - nonzero_front) as f64 / 2.0 + nonzero_front as f64,
+                    );
+                }
+            }
+
+            None
+        } else {
+            Some(fp as f64)
+        }
     }
 }
 
@@ -100,7 +160,7 @@ mod tests {
     }
 
     #[test]
-    pub fn test_valid_incremements_and_mean() {
+    pub fn test_valid_incremements_and_mean_median() {
         let mut s = SimpleHistogram::zero_based_with_capacity(100);
         s.increment(25).unwrap();
         s.increment(50).unwrap();
@@ -111,6 +171,39 @@ mod tests {
         assert_eq!(s.get(75), 3);
 
         assert_eq!(s.mean(), 60.0);
+        assert_eq!(s.median().unwrap(), 75.0);
+    }
+
+    #[test]
+    pub fn test_median_on_empty_histogram() {
+        let s = SimpleHistogram::zero_based_with_capacity(5000);
+        assert!(s.median().is_none());
+    }
+
+    #[test]
+    pub fn test_median_extensively() {
+        let mut s = SimpleHistogram::zero_based_with_capacity(5000);
+
+        // Start to add in values
+        s.increment_by(0, 2500).unwrap();
+        s.increment_by(10, 2500).unwrap();
+        s.increment_by(100, 2500).unwrap();
+        s.increment_by(5000, 5000).unwrap();
+        let median = s.median();
+        assert!(median.is_some());
+        assert_eq!(median.unwrap(), 100.0);
+
+        // If there is a tie, take the value in between the two middle values
+        s.increment_by(200, 2500).unwrap();
+        let median = s.median();
+        assert!(median.is_some());
+        assert_eq!(median.unwrap(), 150.0);
+
+        // If we add one more to sway the vote, should shift the median
+        s.increment(200).unwrap();
+        let median = s.median();
+        assert!(median.is_some());
+        assert_eq!(median.unwrap(), 200.0);
     }
 
     #[test]
