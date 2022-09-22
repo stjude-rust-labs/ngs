@@ -28,6 +28,10 @@ impl fmt::Display for PhredConversionError {
 
 impl error::Error for PhredConversionError {}
 
+//======================//
+// Phred Encoding Macro //
+//======================//
+
 macro_rules! phred_encoding {
     ($name:ident,$min_score:literal,$max_score:literal,$offset:literal) => {
         #[derive(Debug, Eq, Ord, PartialEq, PartialOrd)]
@@ -85,6 +89,10 @@ macro_rules! phred_encoding {
         }
     };
 }
+
+//===========================//
+// Supported Phred Encodings //
+//===========================//
 
 phred_encoding!(Illumina1Point3PhredScore, 0, 40, 64);
 phred_encoding!(Illumina1Point8PhredScore, 0, 41, 33);
