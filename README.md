@@ -74,6 +74,10 @@ cargo test
 cargo clippy
 ```
 
+## Minimum Supported Rust Version (MSRV)
+
+The minimum supported Rust version for this project is 1.64.0.
+
 ## 🤝 Contributing
 
 Contributions, issues and feature requests are welcome! Feel free to check
