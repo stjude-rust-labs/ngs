@@ -2,7 +2,7 @@ use anyhow::bail;
 use futures::TryStreamExt;
 use std::{collections::HashSet, path::PathBuf, thread};
 
-use crate::derive::instrument::{compute, reads::IlluminaReadName};
+use crate::lib::derive::instrument::{compute, reads::IlluminaReadName};
 
 use clap::{value_parser, Arg, ArgMatches, Command};
 use noodles_bam as bam;

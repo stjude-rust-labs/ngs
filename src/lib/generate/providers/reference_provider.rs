@@ -17,7 +17,7 @@ use noodles_fastq::{self as fastq};
 use rand::{rngs::ThreadRng, Rng};
 use rand_distr::{Distribution, Normal, WeightedIndex};
 
-use crate::{
+use crate::lib::{
     generate::utils::{self, NormalDistributionParams, PairedRead, SeqLen},
     utils::formats,
 };

@@ -2,10 +2,7 @@ use anyhow::bail;
 use clap::{arg, Command};
 
 mod commands;
-mod derive;
-mod generate;
-mod qc;
-mod utils;
+mod lib;
 
 use git_testament::{git_testament, render_testament};
 

@@ -9,7 +9,7 @@ use noodles_bam as bam;
 use num_format::{Locale, ToFormattedString};
 use tracing::{debug, error, info};
 
-use crate::{
+use crate::lib::{
     qc::{
         features::GenomicFeaturesFacet, gc_content::GCContentFacet,
         general::metrics::GeneralMetricsFacet, results::Results,

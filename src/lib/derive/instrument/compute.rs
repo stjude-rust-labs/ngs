@@ -262,7 +262,7 @@ pub fn predict(
 
 #[cfg(test)]
 mod tests {
-    use crate::derive::instrument::{flowcells, instruments};
+    use crate::lib::derive::instrument::{flowcells, instruments};
 
     use super::*;
 

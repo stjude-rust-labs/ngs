@@ -1,16 +1,14 @@
 use std::path::PathBuf;
 
-use crate::{
-    generate::providers::reference_provider::ReferenceGenomeSequenceProvider, utils::formats,
+use crate::lib::{
+    generate::providers::{reference_provider::ReferenceGenomeSequenceProvider, SequenceProvider},
+    utils::formats,
 };
 use anyhow::Context;
 use clap::{Arg, ArgGroup, ArgMatches, Command};
-use generate::providers::SequenceProvider;
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::prelude::*;
 use tracing::info;
-
-use crate::generate;
 
 pub fn get_command<'a>() -> Command<'a> {
     Command::new("generate")

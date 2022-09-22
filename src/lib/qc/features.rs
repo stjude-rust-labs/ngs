@@ -9,7 +9,7 @@ use tracing::debug;
 
 use crate::{
     commands::qc::FeatureNames,
-    utils::{formats, genome::PRIMARY_CHROMOSOMES},
+    lib::utils::{formats, genome::PRIMARY_CHROMOSOMES},
 };
 
 pub use self::{

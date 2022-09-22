@@ -6,7 +6,7 @@ use rand::prelude::*;
 use sam::record::sequence::Base;
 use serde::Serialize;
 
-use crate::utils::histogram::SimpleHistogram;
+use crate::lib::utils::histogram::SimpleHistogram;
 
 use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 

@@ -3,7 +3,7 @@
 use noodles_bam::lazy::Record;
 use serde::Serialize;
 
-use crate::utils::histogram::{BinOutOfBoundsError, SimpleHistogram};
+use crate::lib::utils::histogram::SimpleHistogram;
 
 use super::{results, ComputationalLoad, Error, QualityCheckFacet};
 
@@ -83,7 +83,7 @@ impl QualityCheckFacet for TemplateLengthFacet {
         let template_len = record.template_length() as usize;
         match self.histogram.increment(template_len) {
             Ok(()) => self.records.processed += 1,
-            Err(BinOutOfBoundsError) => self.records.ignored += 1,
+            Err(_) => self.records.ignored += 1,
         }
 
         Ok(())
