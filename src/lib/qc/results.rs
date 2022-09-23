@@ -6,7 +6,7 @@ use std::{
 
 use serde::Serialize;
 
-use super::{features, gc_content, general, template_length};
+use super::{coverage, features, gc_content, general, template_length};
 
 #[derive(Default, Serialize)]
 pub struct Results {
@@ -14,6 +14,7 @@ pub struct Results {
     features: Option<features::Metrics>,
     gc_content: Option<gc_content::GCContentMetrics>,
     template_length: Option<template_length::TemplateLengthFacet>,
+    coverage: Option<coverage::CoverageMetrics>,
 }
 
 impl Results {
@@ -43,5 +44,9 @@ impl Results {
 
     pub fn set_features(&mut self, features: features::Metrics) {
         self.features = Some(features);
+    }
+
+    pub fn set_coverage(&mut self, coverage: coverage::CoverageMetrics) {
+        self.coverage = Some(coverage);
     }
 }

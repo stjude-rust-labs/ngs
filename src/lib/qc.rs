@@ -2,6 +2,10 @@ use core::fmt;
 
 use noodles_bam::lazy::Record;
 
+use noodles_sam as sam;
+use sam::header::ReferenceSequence;
+
+pub mod coverage;
 pub mod features;
 pub mod gc_content;
 pub mod general;
@@ -43,5 +47,20 @@ pub trait RecordBasedQualityCheckFacet {
     fn computational_load(&self) -> ComputationalLoad;
     fn process(&mut self, record: &Record) -> Result<(), Error>;
     fn summarize(&mut self) -> Result<(), Error>;
+    fn aggregate_results(&self, results: &mut results::Results);
+}
+
+pub trait SequenceBasedQualityCheckFacet<'a> {
+    fn name(&self) -> &'static str;
+    fn computational_load(&self) -> ComputationalLoad;
+    fn supports_sequence_name(&self, name: &str) -> bool;
+    fn process<'b>(
+        &mut self,
+        seq: &'b ReferenceSequence,
+        record: &sam::alignment::Record,
+    ) -> Result<(), Error>
+    where
+        'b: 'a;
+    fn summarize_seq(&mut self, seq: &ReferenceSequence) -> Result<(), Error>;
     fn aggregate_results(&self, results: &mut results::Results);
 }
