@@ -1,4 +1,5 @@
 use noodles_bam::lazy::Record;
+use noodles_sam as sam;
 
 pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
@@ -64,12 +65,49 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
                             self.records.singleton += 1;
                         } else {
                             self.records.mate_mapped += 1;
+
+                            let reference_sequence_id =
+                                record.reference_sequence_id().unwrap().unwrap();
+                            let mate_reference_sequence_id =
+                                record.mate_reference_sequence_id().unwrap().unwrap();
+
+                            if reference_sequence_id != mate_reference_sequence_id {
+                                self.records.mate_reference_sequence_id_mismatch += 1;
+
+                                let mapq = record
+                                    .mapping_quality()
+                                    .map(|x| x.unwrap())
+                                    .map(u8::from)
+                                    .unwrap_or(sam::record::mapping_quality::MISSING);
+
+                                if mapq >= 5 {
+                                    self.records.mate_reference_sequence_id_mismatch_hq += 1;
+                                }
+                            }
                         }
                     }
                 }
             }
         }
 
+        // (3) Compute CIGAR accumulations
+        let cigar: sam::record::Cigar = record.cigar().try_into().unwrap();
+        let read_one = record.flags().unwrap().is_first_segment();
+        for op in cigar.iter() {
+            if read_one {
+                *self
+                    .records
+                    .read_one_cigar_ops
+                    .entry(op.kind().to_string())
+                    .or_insert(0) += 1
+            } else {
+                *self
+                    .records
+                    .read_two_cigar_ops
+                    .entry(op.kind().to_string())
+                    .or_insert(0) += 1
+            }
+        }
         Ok(())
     }
 
@@ -77,6 +115,18 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
         let summary = SummaryMetrics {
             duplication_pct: self.records.duplicate as f64 / self.records.total as f64 * 100.0,
             unmapped_pct: self.records.unmapped as f64 / self.records.total as f64 * 100.0,
+            mate_reference_sequence_id_mismatch_pct: self
+                .records
+                .mate_reference_sequence_id_mismatch
+                as f64
+                / self.records.total as f64
+                * 100.0,
+            mate_reference_sequence_id_mismatch_hq_pct: self
+                .records
+                .mate_reference_sequence_id_mismatch_hq
+                as f64
+                / self.records.total as f64
+                * 100.0,
         };
 
         self.summary = Some(summary);
