@@ -79,6 +79,9 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         let median = coverages.median().unwrap();
         let median_over_mean = median / mean;
 
+        // Removed to save memory.
+        self.by_position.storage.remove(seq.name().as_str());
+
         // Saved for reporting.
         self.metrics
             .mean_coverage
@@ -94,8 +97,6 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
             .insert(seq.name().to_string(), coverages);
         self.metrics.ignored.insert(seq.name().to_string(), ignored);
 
-        // Removed to save memory.
-        self.by_position.storage.remove(seq.name().as_str());
         Ok(())
     }
 
