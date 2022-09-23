@@ -66,7 +66,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
 
     fn summarize_seq(&mut self, seq: &ReferenceSequence) -> Result<(), super::Error> {
         let positions = self.by_position.storage.get(seq.name().as_str()).unwrap();
-        let mut coverages = SimpleHistogram::zero_based_with_capacity(512);
+        let mut coverages = SimpleHistogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
         for i in positions.get_range_start()..=positions.get_range_stop() {
