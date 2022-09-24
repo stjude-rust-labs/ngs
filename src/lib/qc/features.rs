@@ -1,10 +1,9 @@
 use std::collections::HashMap;
 
 use anyhow::Context;
-use noodles_bam::lazy::Record;
 use noodles_sam as sam;
 use rust_lapper::{Interval, Lapper};
-use sam::Header;
+use sam::{alignment::Record, Header};
 use tracing::debug;
 
 use crate::{
@@ -42,20 +41,12 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
     fn process(&mut self, record: &Record) -> Result<(), super::Error> {
         // (1) Parse the read name.
         let read_name = match record.read_name() {
-            Ok(Some(name)) => name,
+            Some(name) => name,
             _ => return Err(Error::new("Could not parse read name")),
         };
 
         // (2) Parse the flags so we can see if the read is mapped.
-        let flags = match record.flags() {
-            Ok(flags) => flags,
-            Err(_) => {
-                return Err(Error::new(format!(
-                    "Could not parse flags for read: {}",
-                    read_name
-                )))
-            }
-        };
+        let flags = record.flags();
 
         // (3) If the read is unmapped, just return—no need to throw an error.
         if flags.is_unmapped() {
@@ -65,7 +56,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
         // (4) Parse the reference sequence id from the record.
         let id = match record.reference_sequence_id() {
-            Ok(Some(id)) => id,
+            Some(id) => id,
             _ => {
                 return Err(Error::new(format!(
                     "Could not parse reference sequence id for read: {}",
@@ -84,7 +75,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
             Some(Some(name)) => name,
             _ => {
                 return Err(Error::new(format!(
-                    "Could map reference sequence id to header for read: {}",
+                    "Could not map reference sequence id to header for read: {}",
                     read_name
                 )))
             }
@@ -98,12 +89,11 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
         // (6) Calculate the start and end position of this read. This will
         // later be used for lookup within our feature map.
         let start = match record.alignment_start() {
-            Ok(Some(s)) => usize::from(s),
+            Some(s) => usize::from(s),
             _ => return Err(Error::new("Could not parse record's start position.")),
         };
 
-        let cigar = sam::record::Cigar::try_from(record.cigar())
-            .expect("Could not parse BAM's CIGAR string.");
+        let cigar = record.cigar();
 
         let end = start + cigar.alignment_span();
 

@@ -1,9 +1,8 @@
 //! Functionality related to computing GC content and related metrics.
 
-use noodles_bam::lazy::Record;
 use noodles_sam as sam;
 use rand::prelude::*;
-use sam::record::sequence::Base;
+use sam::{alignment::Record, record::sequence::Base};
 use serde::Serialize;
 
 use crate::lib::utils::histogram::SimpleHistogram;
@@ -87,7 +86,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
     fn process(&mut self, record: &Record) -> Result<(), super::Error> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
-        let flags = record.flags().unwrap();
+        let flags = record.flags();
         if flags.is_duplicate() || flags.is_secondary() {
             self.metrics.records.ignored_flags += 1;
             return Ok(());
@@ -96,8 +95,8 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         // (2) Convert the BAM record to a SAM record so we can determine the
         // nucleobases and count up the A's, C's, G's, and T's. TODO: this could
         // be done strictly from the BAM without parsing into SAM.
-        let sam_record: sam::record::Sequence = record.sequence().try_into().unwrap();
-        let nucleobases = sam_record.as_ref();
+        let sequence = record.sequence();
+        let nucleobases = sequence.as_ref();
         let sequence_length = nucleobases.len();
 
         // (3) Checks whether the record is too short to check the GC bias for.

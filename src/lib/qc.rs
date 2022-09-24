@@ -1,11 +1,10 @@
 use core::fmt;
 
-use noodles_bam::lazy::Record;
-
 use noodles_sam as sam;
-use sam::header::ReferenceSequence;
+use sam::{alignment::Record, header::ReferenceSequence};
 
 pub mod coverage;
+pub mod edits;
 pub mod features;
 pub mod gc_content;
 pub mod general;
@@ -54,13 +53,14 @@ pub trait SequenceBasedQualityCheckFacet<'a> {
     fn name(&self) -> &'static str;
     fn computational_load(&self) -> ComputationalLoad;
     fn supports_sequence_name(&self, name: &str) -> bool;
-    fn process<'b>(
+    fn setup_sequence(&mut self, seq: &ReferenceSequence) -> anyhow::Result<()>;
+    fn process_record<'b>(
         &mut self,
         seq: &'b ReferenceSequence,
         record: &sam::alignment::Record,
-    ) -> Result<(), Error>
+    ) -> anyhow::Result<()>
     where
         'b: 'a;
-    fn summarize_seq(&mut self, seq: &ReferenceSequence) -> Result<(), Error>;
-    fn aggregate_results(&self, results: &mut results::Results);
+    fn teardown_sequence(&mut self, seq: &ReferenceSequence) -> anyhow::Result<()>;
+    fn aggregate_results(&mut self, results: &mut results::Results);
 }

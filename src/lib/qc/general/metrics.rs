@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use noodles_fasta::record::Sequence;
 use serde::Serialize;
 
 #[derive(Clone, Debug, Default, Serialize)]
@@ -26,8 +27,11 @@ pub struct RecordMetrics {
     pub mate_mapped: usize,
     pub mate_reference_sequence_id_mismatch: usize,
     pub mate_reference_sequence_id_mismatch_hq: usize,
+}
 
-    //
+#[derive(Clone, Debug, Default, Serialize)]
+pub struct CigarMetrics {
+    // Cigar operation pileups
     pub read_one_cigar_ops: HashMap<String, usize>,
     pub read_two_cigar_ops: HashMap<String, usize>,
 }
@@ -41,7 +45,14 @@ pub struct SummaryMetrics {
 }
 
 #[derive(Clone, Debug, Default, Serialize)]
-pub struct GeneralMetricsFacet {
+pub struct GeneralMetrics {
     pub records: RecordMetrics,
+    pub cigar: CigarMetrics,
     pub summary: Option<SummaryMetrics>,
+}
+
+#[derive(Clone, Debug, Default)]
+pub struct GeneralMetricsFacet {
+    pub metrics: GeneralMetrics,
+    pub reference_sequences: HashMap<String, Sequence>,
 }

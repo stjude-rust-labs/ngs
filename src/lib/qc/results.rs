@@ -6,15 +6,16 @@ use std::{
 
 use serde::Serialize;
 
-use super::{coverage, features, gc_content, general, template_length};
+use super::{coverage, edits, features, gc_content, general, template_length};
 
 #[derive(Default, Serialize)]
 pub struct Results {
-    general: Option<general::GeneralMetricsFacet>,
+    general: Option<general::metrics::GeneralMetrics>,
     features: Option<features::Metrics>,
     gc_content: Option<gc_content::GCContentMetrics>,
     template_length: Option<template_length::TemplateLengthFacet>,
     coverage: Option<coverage::CoverageMetrics>,
+    edits: Option<edits::EditMetrics>,
 }
 
 impl Results {
@@ -39,7 +40,7 @@ impl Results {
     }
 
     pub fn set_general(&mut self, general: general::GeneralMetricsFacet) {
-        self.general = Some(general);
+        self.general = Some(general.metrics);
     }
 
     pub fn set_features(&mut self, features: features::Metrics) {
@@ -48,5 +49,9 @@ impl Results {
 
     pub fn set_coverage(&mut self, coverage: coverage::CoverageMetrics) {
         self.coverage = Some(coverage);
+    }
+
+    pub fn set_edits(&mut self, edits: edits::EditMetrics) {
+        self.edits = Some(edits);
     }
 }

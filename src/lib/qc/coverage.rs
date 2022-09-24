@@ -33,18 +33,22 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
     }
 
     fn computational_load(&self) -> super::ComputationalLoad {
-        super::ComputationalLoad::Heavy
+        super::ComputationalLoad::Moderate
     }
 
     fn supports_sequence_name(&self, name: &str) -> bool {
         PRIMARY_CHROMOSOMES.contains(&name)
     }
 
-    fn process<'b>(
+    fn setup_sequence(&mut self, _: &ReferenceSequence) -> anyhow::Result<()> {
+        Ok(())
+    }
+
+    fn process_record<'b>(
         &mut self,
         seq: &'b ReferenceSequence,
         record: &noodles_sam::alignment::Record,
-    ) -> Result<(), super::Error>
+    ) -> anyhow::Result<()>
     where
         'b: 'a,
     {
@@ -64,7 +68,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         Ok(())
     }
 
-    fn summarize_seq(&mut self, seq: &ReferenceSequence) -> Result<(), super::Error> {
+    fn teardown_sequence(&mut self, seq: &ReferenceSequence) -> anyhow::Result<()> {
         let positions = self.by_position.storage.get(seq.name().as_str()).unwrap();
         let mut coverages = SimpleHistogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
@@ -100,7 +104,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         Ok(())
     }
 
-    fn aggregate_results(&self, results: &mut super::results::Results) {
+    fn aggregate_results(&mut self, results: &mut super::results::Results) {
         results.set_coverage(self.metrics.clone());
     }
 }

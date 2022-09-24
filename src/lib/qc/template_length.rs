@@ -1,6 +1,6 @@
 //! Functionality related to computing template lenght and related metrics.
 
-use noodles_bam::lazy::Record;
+use noodles_sam::alignment::Record;
 use serde::Serialize;
 
 use crate::lib::utils::histogram::SimpleHistogram;
