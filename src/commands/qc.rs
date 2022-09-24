@@ -141,8 +141,8 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("five-prime-utr-feature-name")
                 .long("--five-prime-utr-feature-name")
                 .help(concat!(
-                    "Name of the feature that represents a five prime",
-                    "UTR region in the GFF file. The default is to use the",
+                    "Name of the feature that represents a five prime ",
+                    "UTR region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
                 .takes_value(true)
@@ -152,8 +152,8 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("three-prime-utr-feature-name")
                 .long("--three-prime-utr-feature-name")
                 .help(concat!(
-                    "Name of the feature that represents a three prime",
-                    "UTR region in the GFF file. The default is to use the",
+                    "Name of the feature that represents a three prime ",
+                    "UTR region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
                 .takes_value(true)
@@ -163,8 +163,8 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("coding-sequence-feature-name")
                 .long("--coding-sequence-feature-name")
                 .help(concat!(
-                    "Name of the feature that represents a coding sequence",
-                    "region in the GFF file. The default is to use the",
+                    "Name of the feature that represents a coding sequence ",
+                    "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
                 .takes_value(true)
@@ -174,8 +174,8 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("exon-feature-name")
                 .long("--exon-feature-name")
                 .help(concat!(
-                    "Name of the feature that represents an exonic",
-                    "region in the GFF file. The default is to use the",
+                    "Name of the feature that represents an exonic ",
+                    "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
                 .takes_value(true)
@@ -185,8 +185,8 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("gene-feature-name")
                 .long("--gene-feature-name")
                 .help(concat!(
-                    "Name of the feature that represents an gene",
-                    "region in the GFF file. The default is to use the",
+                    "Name of the feature that represents an gene ",
+                    "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
                 .takes_value(true)
