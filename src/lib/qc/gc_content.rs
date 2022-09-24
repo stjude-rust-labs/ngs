@@ -11,7 +11,7 @@ use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 const TRUNCATION_LENGTH: usize = 100;
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Default, Debug, Serialize)]
 pub struct NucleobaseMetrics {
     // Total number of nucleobases read as a 'G' or a 'C'.
     total_gc_count: usize,
@@ -53,7 +53,7 @@ pub struct SummaryMetrics {
 /// content all the way up to 100% GC content. The other fields are for counting
 /// the number of nucleobases which are G/C, the number of nucleobases that are
 /// A/T, or the number of nucleobases that fall into other.
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub struct GCContentMetrics {
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
@@ -171,5 +171,30 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
 
     fn aggregate_results(&self, results: &mut results::Results) {
         results.set_gc_content(self.metrics.clone());
+    }
+}
+
+impl Default for GCContentMetrics {
+    fn default() -> Self {
+        Self {
+            histogram: SimpleHistogram::zero_based_with_capacity(100),
+            nucleobases: Default::default(),
+            records: Default::default(),
+            summary: Default::default(),
+        }
+    }
+}
+
+#[cfg(test)]
+
+mod tests {
+    use super::*;
+
+    #[test]
+    pub fn it_defaults_with_zero_based_100_capacity_histogram() {
+        let default = GCContentFacet::default();
+        assert_eq!(default.metrics.histogram.get_range_start(), 0);
+        assert_eq!(default.metrics.histogram.get_range_stop(), 100);
+        assert_eq!(default.metrics.histogram.len(), 101);
     }
 }

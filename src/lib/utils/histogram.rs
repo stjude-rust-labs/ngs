@@ -142,7 +142,7 @@ impl SimpleHistogram {
 
 impl Default for SimpleHistogram {
     fn default() -> Self {
-        Self::zero_based_with_capacity(100)
+        Self::zero_based_with_capacity(512)
     }
 }
 
@@ -220,7 +220,7 @@ mod tests {
         // that QC facet accordingly.
         let default = SimpleHistogram::default();
         assert_eq!(default.get_range_start(), 0);
-        assert_eq!(default.get_range_stop(), 100);
-        assert_eq!(default.len(), 101);
+        assert_eq!(default.get_range_stop(), 512);
+        assert_eq!(default.len(), 513);
     }
 }
