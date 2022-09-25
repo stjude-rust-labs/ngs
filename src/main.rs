@@ -1,3 +1,8 @@
+#![warn(missing_docs)]
+//! `ngs` is a command line tool written to facilitate the analysis of
+//! next-generation sequencing analysis. To learn more, visit the
+//! [wiki](https://github.com/stjude-rust-labs/ngs/wiki).
+
 use anyhow::bail;
 use clap::{arg, Command};
 
