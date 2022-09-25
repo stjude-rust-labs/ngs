@@ -1,5 +1,6 @@
 #![warn(missing_docs)]
 #![warn(rust_2018_idioms)]
+#![warn(rust_2021_compatibility)]
 //! `ngs` is a command line tool written to facilitate the analysis of
 //! next-generation sequencing analysis. To learn more, visit the
 //! [wiki](https://github.com/stjude-rust-labs/ngs/wiki).
