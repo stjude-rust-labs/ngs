@@ -1,4 +1,5 @@
 #![warn(missing_docs)]
+#![warn(rust_2018_idioms)]
 //! `ngs` is a command line tool written to facilitate the analysis of
 //! next-generation sequencing analysis. To learn more, visit the
 //! [wiki](https://github.com/stjude-rust-labs/ngs/wiki).
@@ -18,7 +19,7 @@ git_testament!(TESTAMENT);
 /// # Arguments
 ///
 /// * `subcommand` — The Clap subcommand to add these arguments to.
-fn add_verbosity_args(subcommand: Command) -> Command {
+fn add_verbosity_args(subcommand: Command<'_>) -> Command<'_> {
     subcommand
         .arg(arg!(-q --quiet "Only errors are printed to the stderr stream."))
         .arg(

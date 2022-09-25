@@ -8,7 +8,7 @@ pub fn correct_common_header_mistakes(header: String) -> String {
     // uppercase. This is especially important for data that contains 'illumina'
     // instead of the correct 'ILLUMINA'.
     let pattern = Regex::new("(\tPL:)(.+)").unwrap();
-    let replaced = pattern.replace_all(&header, |c: &Captures| {
+    let replaced = pattern.replace_all(&header, |c: &Captures<'_>| {
         format!("{}{}", &c[1], c[2].to_uppercase())
     });
 

@@ -92,7 +92,7 @@ pub fn get_sequence_based_qc_facets<'a>(
     header: &'a Header,
 ) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet<'a> + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet>> =
+    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet<'_>>> =
         vec![Box::new(CoverageFacet::default())];
 
     if let Some(fasta) = reference_fasta {
