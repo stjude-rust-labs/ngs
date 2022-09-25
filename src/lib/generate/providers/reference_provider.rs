@@ -324,7 +324,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
                 + (3.0 * self.inner_distance_distribution.std_dev()).ceil())
                 as i64;
 
-            inner_distance_offset = num::clamp(inner_distance_offset, lower_bound, upper_bound);
+            inner_distance_offset = i64::clamp(inner_distance_offset, lower_bound, upper_bound);
 
             if let Ok(start_pos) = Position::try_from(start as usize) {
                 if let Ok(end_as_isize) = i64::try_from(start + (self.read_length * 2)) {
