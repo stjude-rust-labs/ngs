@@ -7,7 +7,7 @@ use noodles_sam::Header;
 use serde::Serialize;
 
 use crate::lib::utils::{
-    alignment::ReferenceRecordStrepthrough, formats, histogram::SimpleHistogram,
+    alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram,
 };
 
 use super::SequenceBasedQualityCheckFacet;
@@ -144,7 +144,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
             let record_seq_sequence = record.sequence();
             let record_seq = record_seq_sequence.as_ref();
 
-            let rrs = ReferenceRecordStrepthrough::new(reference_seq, record_seq, cigar.clone());
+            let rrs = ReferenceRecordStepThrough::new(reference_seq, record_seq, cigar.clone());
             let edits = rrs.edits();
 
             if record.flags().is_first_segment() {

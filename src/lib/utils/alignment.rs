@@ -2,7 +2,7 @@ use noodles_sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
 use super::cigar::{consumes_reference, consumes_sequence};
 
-pub struct ReferenceRecordStrepthrough<'a> {
+pub struct ReferenceRecordStepThrough<'a> {
     reference_seq: &'a [u8],
     record_seq: &'a [Base],
     cigar: Vec<Kind>,
@@ -22,7 +22,7 @@ pub fn flatten(cigar: Cigar) -> Vec<Kind> {
     result
 }
 
-impl<'a> ReferenceRecordStrepthrough<'a> {
+impl<'a> ReferenceRecordStepThrough<'a> {
     pub fn new(reference_seq: &'a [u8], record_seq: &'a [Base], cigar: Cigar) -> Self {
         Self {
             reference_seq,
