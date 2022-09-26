@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 
-use noodles_sam as sam;
 use serde::Serialize;
 
 use crate::lib::utils::histogram::SimpleHistogram;
