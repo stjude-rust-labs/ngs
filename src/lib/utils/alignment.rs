@@ -2,12 +2,10 @@ use noodles_sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
 use super::cigar::{consumes_reference, consumes_sequence};
 
-pub struct ReferenceRecordStepThrough<'a> {
-    reference_seq: &'a [u8],
-    record_seq: &'a [Base],
-    cigar: Vec<Kind>,
-}
-
+/// Turns a condensed Cigar representation into a flattened representation. For
+/// example, 10M will become a Vec of length 10 comprised completely of
+/// Kind::MATCH. This utility is useful for generating a representation of a
+/// Cigar string that we can step through alongside a sequence.
 pub fn flatten(cigar: Cigar) -> Vec<Kind> {
     let mut result = Vec::new();
 
@@ -20,6 +18,12 @@ pub fn flatten(cigar: Cigar) -> Vec<Kind> {
     }
 
     result
+}
+
+pub struct ReferenceRecordStepThrough<'a> {
+    reference_seq: &'a [u8],
+    record_seq: &'a [Base],
+    cigar: Vec<Kind>,
 }
 
 impl<'a> ReferenceRecordStepThrough<'a> {
