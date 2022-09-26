@@ -6,7 +6,7 @@ use std::{
 
 use serde::Serialize;
 
-use super::{coverage, edits, features, gc_content, general, template_length};
+use super::{coverage, edits, features, gc_content, general, quality_scores, template_length};
 
 #[derive(Default, Serialize)]
 pub struct Results {
@@ -16,6 +16,7 @@ pub struct Results {
     template_length: Option<template_length::TemplateLengthFacet>,
     coverage: Option<coverage::CoverageMetrics>,
     edits: Option<edits::EditMetrics>,
+    quality_scores: Option<quality_scores::QualityScoreFacet>,
 }
 
 impl Results {
@@ -53,5 +54,9 @@ impl Results {
 
     pub fn set_edits(&mut self, edits: edits::EditMetrics) {
         self.edits = Some(edits);
+    }
+
+    pub fn set_quality_scores(&mut self, quality_scores: quality_scores::QualityScoreFacet) {
+        self.quality_scores = Some(quality_scores);
     }
 }

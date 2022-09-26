@@ -14,9 +14,9 @@ use tracing::{debug, info};
 use crate::lib::{
     qc::{
         coverage::CoverageFacet, edits::EditsFacet, features::GenomicFeaturesFacet,
-        gc_content::GCContentFacet, general::metrics::GeneralMetricsFacet, results::Results,
-        template_length::TemplateLengthFacet, RecordBasedQualityCheckFacet,
-        SequenceBasedQualityCheckFacet,
+        gc_content::GCContentFacet, general::metrics::GeneralMetricsFacet,
+        quality_scores::QualityScoreFacet, results::Results, template_length::TemplateLengthFacet,
+        RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
     },
     utils::formats::sam::parse_header,
 };
@@ -73,6 +73,7 @@ pub fn get_record_based_qc_facets<'a>(
         Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),
+        Box::new(QualityScoreFacet::default()),
     ];
 
     // Optionally load the Genomic Features facet if the GFF file is provided.
