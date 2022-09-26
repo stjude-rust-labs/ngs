@@ -5,6 +5,7 @@ use tokio::fs::File;
 
 use std::path::PathBuf;
 
+use anyhow::Context;
 use clap::{value_parser, Arg, ArgMatches, Command};
 use noodles_bam as bam;
 use noodles_core::{Position, Region};
@@ -400,7 +401,9 @@ async fn app(
     //===================================================//
 
     let mut reader = File::open(src).await.map(bam::AsyncReader::new)?;
-    let index = bai::r#async::read(src.with_extension("bam.bai")).await?;
+    let index = bai::r#async::read(src.with_extension("bam.bai"))
+        .await
+        .with_context(|| "bam index")?;
 
     for (name, seq) in header.reference_sequences() {
         let start = Position::MIN;
