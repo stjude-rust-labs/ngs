@@ -13,9 +13,9 @@ pub fn flatten(cigar: Cigar) -> Vec<Kind> {
 
     for op in cigar.iter() {
         let len = op.len();
-        let c: Kind = op.kind();
+        let kind = op.kind();
         for _ in 1..=len {
-            result.push(c)
+            result.push(kind)
         }
     }
 
