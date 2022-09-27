@@ -56,17 +56,8 @@ impl FeatureNames {
     }
 }
 
-/// Dynamically compiles the quality check facets that should be run for this
+/// Dynamically compiles the record-based quality check facets that should be run for this
 /// invocation of the command line tool.
-///
-/// # Arguments
-///
-/// * `features_gff` — Optionally, the path to a GFF file (if using the Genomic
-///   Features quality check facet).
-/// * `feature_names` — Feature names passed in from the command line. Necessary
-///   for looking up the correct features from the GFF file.
-/// * `header` — The SAM header; useful for looking up the sequence names from
-///   the respective sequence ids.
 pub fn get_record_based_qc_facets<'a>(
     features_gff: Option<&str>,
     feature_names: &'a FeatureNames,
@@ -94,6 +85,8 @@ pub fn get_record_based_qc_facets<'a>(
     Ok(facets)
 }
 
+/// Dynamically compiles the sequence-based quality check facets that should be run for this
+/// invocation of the command line tool.
 pub fn get_sequence_based_qc_facets<'a>(
     reference_fasta: Option<&PathBuf>,
     header: &'a Header,
@@ -103,6 +96,7 @@ pub fn get_sequence_based_qc_facets<'a>(
     let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet<'_>>> =
         vec![Box::new(CoverageFacet::new(reference_genome))];
 
+    // Optionally load the Edits facet if a reference FASTA is provided.
     if let Some(fasta) = reference_fasta {
         facets.push(Box::new(EditsFacet::try_from(fasta, header)?))
     }
