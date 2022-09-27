@@ -20,6 +20,8 @@ pub fn flatten(cigar: Cigar) -> Vec<Kind> {
     result
 }
 
+/// Utility struct for stepping through a reference sequence, and record
+/// sequence, and a Cigar string in unison.
 pub struct ReferenceRecordStepThrough<'a> {
     reference_seq: &'a [u8],
     record_seq: &'a [Base],
