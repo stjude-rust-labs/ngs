@@ -43,11 +43,11 @@ pub fn get_command<'a>() -> Command<'a> {
                  .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
         )
         .arg(
-            Arg::new("num-reads")
+            Arg::new("num-records")
                 .short('n')
-                .long("--num-reads")
+                .long("--num-records")
                 .takes_value(true)
-                .help("Specifies the exact number of read pairs to generate.")
+                .help("Specifies the number of records to generate.")
                 .conflicts_with("coverage"),
         )
         .arg(

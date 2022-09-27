@@ -19,11 +19,11 @@ pub fn get_command<'a>() -> Command<'a> {
                 .value_parser(value_parser!(PathBuf))
                 .required(true),
         ).arg(
-            Arg::new("first-n-reads")
+            Arg::new("num-records")
                 .short('n')
-                .long("first-n-reads")
+                .long("--num-records")
                 .takes_value(true)
-                .help("Only consider the first n reads in the file.")
+                .help("Only consider the first n records in the file.")
                 .value_parser(value_parser!(usize))
         ).arg(
             Arg::new("threads")
