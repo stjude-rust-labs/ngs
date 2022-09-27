@@ -238,14 +238,10 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     let reference_genome = match get_reference_genome(provided_reference_genome) {
         Some(s) => Rc::new(s),
         None => bail!(
-            "reference genome is not supported: {}.  List of supported reference \
-            genomes is: {}.",
+            "reference genome is not supported: {}. \
+            Did you set the correct reference genome?. \
+            Use the `list reference-genomes` subcommand to see supported reference genomes.",
             provided_reference_genome,
-            get_all_reference_genomes()
-                .iter()
-                .map(|s| s.name())
-                .collect::<Vec<&str>>()
-                .join(", ")
         ),
     };
 
@@ -366,7 +362,11 @@ fn app(
             .map(|s| s.name())
             .any(|x| x == sequence)
         {
-            bail!("Sequence \"{}\" not found in specified reference genome. Did you set the right reference genome?", sequence);
+            bail!(
+                "Sequence \"{}\" not found in specified reference genome. \
+                Did you set the correct reference genome?",
+                sequence
+            );
         }
     }
 
