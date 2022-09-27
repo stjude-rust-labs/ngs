@@ -1,12 +1,10 @@
-use bam::bai;
-use noodles_sam::Header;
-
 use std::{fs::File, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
 use clap::{value_parser, Arg, ArgMatches, Command};
-use noodles_bam as bam;
+use noodles_bam::{self as bam, bai};
 use noodles_core::{Position, Region};
+use noodles_sam::Header;
 use num_format::{Locale, ToFormattedString};
 use tracing::{debug, info};
 
