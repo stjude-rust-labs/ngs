@@ -119,7 +119,6 @@ pub fn get_command<'a>() -> Command<'a> {
                 .long("--output-prefix")
                 .short('p')
                 .help("Output prefix for the files that will be created.")
-                .required(true)
                 .takes_value(true),
         )
         .arg(
@@ -202,10 +201,20 @@ pub fn get_command<'a>() -> Command<'a> {
 /// Prepares the arguments for running the main `qc` subcommand.
 pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     info!("Starting qc command...");
+    debug!("Arguments:");
+
+    //=============//
+    // Source Path //
+    //=============//
 
     let src: &PathBuf = matches
         .get_one("src")
         .expect("Could not parse the arguments that were passed in for src.");
+    debug!("  [*] Source: {}", src.display());
+
+    //==================//
+    // Reference Genome //
+    //==================//
 
     let provided_reference_genome = matches
         .get_one::<String>("reference-genome")
@@ -220,13 +229,35 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
             provided_reference_genome,
         ),
     };
+    debug!("  [*] Reference genome: {}", provided_reference_genome);
+
+    //=================//
+    // Reference FASTA //
+    //=================//
 
     let reference_fasta = matches.get_one("reference-fasta");
-    let features_gff = matches.value_of("features-gff");
+    debug!("  [*] Reference FASTA: {:?}", reference_fasta);
 
+    //==============//
+    // Features GFF //
+    //==============//
+
+    let features_gff = matches.value_of("features-gff");
+    debug!("  [*] Features GFF : {:?}", features_gff);
+
+    //===============//
+    // Output Prefix //
+    //===============//
+
+    // Default is the name of the file.
     let output_prefix = matches
         .value_of("output-prefix")
-        .expect("Did not receive any output prefix from args.");
+        .unwrap_or_else(|| src.file_name().unwrap().to_str().unwrap());
+    debug!("  [*] Output prefix: {}", output_prefix);
+
+    //==========================//
+    // Feature GFF Column Names //
+    //==========================//
 
     let five_prime_utr_feature_name = matches
         .value_of("five-prime-utr-feature-name")
@@ -256,11 +287,20 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
         gene_feature_name,
     );
 
+    //==================//
+    // Output Directory //
+    //==================//
+
     let output_directory = if let Some(m) = matches.value_of("output-directory") {
         PathBuf::from(m)
     } else {
         std::env::current_dir().expect("Could not retrieve the current working directory.")
     };
+    debug!("  [*] Output directory: {:?}", output_directory);
+
+    //===================//
+    // Number of Records //
+    //===================//
 
     let num_records = if let Some(m) = matches.value_of("num-records") {
         let res = m.parse::<i64>().unwrap();
@@ -270,11 +310,6 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
         debug!("Reading all available records in the first pass.");
         -1
     };
-
-    if !output_directory.exists() {
-        std::fs::create_dir_all(output_directory.clone())
-            .expect("Could not create output directory.");
-    }
 
     app(
         src,
@@ -315,6 +350,11 @@ fn app(
 
     let reference_sequences = reader.read_reference_sequences()?;
 
+    if !output_directory.exists() {
+        std::fs::create_dir_all(output_directory.clone())
+            .expect("Could not create output directory.");
+    }
+
     //=====================================================//
     // Preprocessing: reference sequence concordance check //
     //=====================================================//
@@ -345,13 +385,10 @@ fn app(
         &header,
         Rc::clone(&reference_genome),
     )?;
-    info!("");
     info!("First pass with the following facets enabled:");
-    info!("");
     for facet in &record_facets {
-        info!(" [*] {}, {:?}", facet.name(), facet.computational_load());
+        info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
     }
-    info!("");
 
     //====================================================================//
     // First pass: processes every record, accumulating QC stats as we go //
@@ -405,13 +442,10 @@ fn app(
 
     let mut sequence_facets =
         get_sequence_based_qc_facets(reference_fasta, &header, Rc::clone(&reference_genome))?;
-    info!("");
     info!("Second pass with the following facets enabled:");
-    info!("");
     for facet in &sequence_facets {
-        info!(" [*] {}, {:?}", facet.name(), facet.computational_load());
+        info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
     }
-    info!("");
 
     //===================================================//
     // Second pass: set up file handles and prepare file //
