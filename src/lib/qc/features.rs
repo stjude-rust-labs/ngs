@@ -1,4 +1,4 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use anyhow::Context;
 use noodles_sam as sam;
@@ -8,7 +8,10 @@ use tracing::debug;
 
 use crate::{
     commands::qc::FeatureNames,
-    lib::utils::{formats, genome::PRIMARY_CHROMOSOMES},
+    lib::utils::{
+        formats,
+        genome::{get_primary_assembly, ReferenceGenome},
+    },
 };
 
 pub use self::{
@@ -27,6 +30,7 @@ pub struct GenomicFeaturesFacet<'a> {
     feature_names: &'a FeatureNames,
     header: &'a Header,
     metrics: Metrics,
+    primary_chromosome_names: Vec<String>,
 }
 
 impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
@@ -81,7 +85,11 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
             }
         };
 
-        if !PRIMARY_CHROMOSOMES.contains(&seq_name) {
+        if !self
+            .primary_chromosome_names
+            .iter()
+            .any(|s: &String| s == seq_name)
+        {
             self.metrics.records.ignored_nonprimary_chromosome += 1;
             return Ok(());
         }
@@ -191,6 +199,7 @@ impl<'a> GenomicFeaturesFacet<'a> {
         src: &str,
         feature_names: &'a FeatureNames,
         header: &'a Header,
+        reference_genome: Rc<Box<dyn ReferenceGenome>>,
     ) -> anyhow::Result<Self> {
         let mut gff =
             formats::gff::open(src).with_context(|| format!("Could not open GFF: {}", src))?;
@@ -206,7 +215,12 @@ impl<'a> GenomicFeaturesFacet<'a> {
         }
 
         debug!("Tabulating GFF features.");
-        for parent_seq_name in PRIMARY_CHROMOSOMES {
+        let primary_assembly_sequence_names: Vec<String> = get_primary_assembly(reference_genome)
+            .iter()
+            .map(|s| String::from(s.name()))
+            .collect();
+
+        for parent_seq_name in primary_assembly_sequence_names.iter() {
             let mut utr_features: Vec<Interval<usize, FeatureNameStrand>> = Vec::new();
             let mut gene_region_features: Vec<Interval<usize, FeatureNameStrand>> = Vec::new();
 
@@ -262,6 +276,7 @@ impl<'a> GenomicFeaturesFacet<'a> {
             feature_names,
             header,
             metrics: Metrics::new(),
+            primary_chromosome_names: primary_assembly_sequence_names,
         })
     }
 }

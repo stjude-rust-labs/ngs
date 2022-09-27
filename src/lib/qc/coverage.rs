@@ -1,18 +1,28 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, rc::Rc};
 
 use noodles_sam::header::ReferenceSequence;
 use serde::Serialize;
+use tracing::error;
 
-use crate::lib::utils::{genome::PRIMARY_CHROMOSOMES, histogram::SimpleHistogram};
+use crate::lib::utils::{
+    genome::{get_primary_assembly, ReferenceGenome, Sequence},
+    histogram::SimpleHistogram,
+};
 
 use super::SequenceBasedQualityCheckFacet;
+
+#[derive(Clone, Default, Serialize)]
+pub struct IgnoredMetrics {
+    nonsensical_records: usize,
+    pileup_too_large_positions: HashMap<String, usize>,
+}
 
 #[derive(Clone, Default, Serialize)]
 pub struct CoverageMetrics {
     mean_coverage: HashMap<String, f64>,
     median_coverage: HashMap<String, f64>,
     median_over_mean_coverage: HashMap<String, f64>,
-    ignored: HashMap<String, usize>,
+    ignored: IgnoredMetrics,
     histograms: HashMap<String, SimpleHistogram>,
 }
 
@@ -21,10 +31,20 @@ pub struct CoverageHistograms<'a> {
     storage: HashMap<&'a str, SimpleHistogram>,
 }
 
-#[derive(Default)]
 pub struct CoverageFacet<'a> {
     by_position: CoverageHistograms<'a>,
     metrics: CoverageMetrics,
+    primary_assembly: Vec<Sequence>,
+}
+
+impl<'a> CoverageFacet<'a> {
+    pub fn new(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Self {
+        Self {
+            by_position: CoverageHistograms::default(),
+            metrics: CoverageMetrics::default(),
+            primary_assembly: get_primary_assembly(reference_genome),
+        }
+    }
 }
 
 impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
@@ -37,7 +57,10 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
     }
 
     fn supports_sequence_name(&self, name: &str) -> bool {
-        PRIMARY_CHROMOSOMES.contains(&name)
+        self.primary_assembly
+            .iter()
+            .map(|s| s.name())
+            .any(|x| x == name)
     }
 
     fn setup_sequence(&mut self, _: &ReferenceSequence) -> anyhow::Result<()> {
@@ -62,7 +85,20 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         let record_end = usize::from(record.alignment_end().unwrap());
 
         for i in record_start..=record_end {
-            h.increment(i).unwrap();
+            if h.increment(i).is_err() {
+                error!(
+                    "Record crosses the sequence boundaries in an expected way. \
+                    This usually means that the record is malformed. Please examine \
+                    the record closely to ensure it fits within the sequence. \
+                    Ignoring record. Read name: {}, Start Alignment: {}, End \
+                    Alignment: {}, Cigar: {}",
+                    record.read_name().unwrap(),
+                    record.alignment_start().unwrap(),
+                    record.alignment_end().unwrap(),
+                    record.cigar()
+                );
+                self.metrics.ignored.nonsensical_records += 1;
+            }
         }
 
         Ok(())
@@ -99,7 +135,10 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         self.metrics
             .histograms
             .insert(seq.name().to_string(), coverages);
-        self.metrics.ignored.insert(seq.name().to_string(), ignored);
+        self.metrics
+            .ignored
+            .pileup_too_large_positions
+            .insert(seq.name().to_string(), ignored);
 
         Ok(())
     }
