@@ -1,6 +1,7 @@
 pub mod ncbi;
 pub mod one_thousand_genomes;
 
+use std::fmt;
 use std::{fmt::Debug, rc::Rc, str::FromStr};
 
 use self::ncbi::grch38_no_alt::GRCh38NoAlt;
@@ -145,12 +146,35 @@ macro_rules! sequence {
     };
 }
 
+//==============//
+// Genome Basis //
+//==============//
+
+#[derive(Debug)]
+pub enum GenomeBasis {
+    GRCh37,
+    GRCh38,
+}
+
+impl fmt::Display for GenomeBasis {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::GRCh37 => write!(f, "GRCh37"),
+            Self::GRCh38 => write!(f, "GRCh38"),
+        }
+    }
+}
+
 //===================//
 // Reference Genomes //
 //===================//
 
 pub trait ReferenceGenome: Debug {
     fn name(&self) -> &'static str;
+    fn source(&self) -> &'static str;
+    fn basis(&self) -> GenomeBasis;
+    fn url(&self) -> &'static str;
+
     fn autosomes(&self) -> Option<Vec<Sequence>>;
     fn sex_chromosomes(&self) -> Option<Vec<Sequence>>;
     fn mitochondrion_chromosome(&self) -> Option<Sequence>;

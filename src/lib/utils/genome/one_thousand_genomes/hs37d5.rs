@@ -24,6 +24,18 @@ impl ReferenceGenome for HS37D5 {
         "hs37d5"
     }
 
+    fn source(&self) -> &'static str {
+        "1000 Genomes Project"
+    }
+
+    fn basis(&self) -> crate::lib::utils::genome::GenomeBasis {
+        crate::lib::utils::genome::GenomeBasis::GRCh37
+    }
+
+    fn url(&self) -> &'static str {
+        "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz"
+    }
+
     fn autosomes(&self) -> Option<Vec<Sequence>> {
         Some(vec![
             sequence!("1", "chromosome"),
