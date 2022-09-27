@@ -10,9 +10,14 @@ use tracing::{debug, info};
 
 use crate::lib::{
     qc::{
-        coverage::CoverageFacet, edits::EditsFacet, features::GenomicFeaturesFacet,
-        gc_content::GCContentFacet, general::metrics::GeneralMetricsFacet,
-        quality_scores::QualityScoreFacet, results::Results, template_length::TemplateLengthFacet,
+        coverage::CoverageFacet,
+        edits::EditsFacet,
+        features::{FeatureNames, GenomicFeaturesFacet},
+        gc_content::GCContentFacet,
+        general::metrics::GeneralMetricsFacet,
+        quality_scores::QualityScoreFacet,
+        results::Results,
+        template_length::TemplateLengthFacet,
         RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
     },
     utils::{
@@ -21,36 +26,9 @@ use crate::lib::{
     },
 };
 
-/// A utility struct for passing feature name arguments from the command line
-/// around more easily.
-pub struct FeatureNames {
-    pub five_prime_utr_feature_name: String,
-    pub three_prime_utr_feature_name: String,
-    pub coding_sequence_feature_name: String,
-    pub exon_feature_name: String,
-    pub gene_feature_name: String,
-}
-
-impl FeatureNames {
-    pub fn new<I>(
-        five_prime_utr_feature_name: I,
-        three_prime_utf_feature_name: I,
-        coding_sequence_feature_name: I,
-        exon_feature_name: I,
-        gene_feature_name: I,
-    ) -> Self
-    where
-        I: Into<String>,
-    {
-        FeatureNames {
-            five_prime_utr_feature_name: five_prime_utr_feature_name.into(),
-            three_prime_utr_feature_name: three_prime_utf_feature_name.into(),
-            coding_sequence_feature_name: coding_sequence_feature_name.into(),
-            exon_feature_name: exon_feature_name.into(),
-            gene_feature_name: gene_feature_name.into(),
-        }
-    }
-}
+//============================================//
+// Dynamic allocation of quality check facets //
+//============================================//
 
 /// Dynamically compiles the record-based quality check facets that should be run for this
 /// invocation of the command line tool.
@@ -99,6 +77,10 @@ pub fn get_sequence_based_qc_facets<'a>(
 
     Ok(facets)
 }
+
+//========================//
+// Command line arguments //
+//========================//
 
 /// Gets the command line arguments for the `qc` subcommand.
 pub fn get_command<'a>() -> Command<'a> {
@@ -213,6 +195,10 @@ pub fn get_command<'a>() -> Command<'a> {
         )
 }
 
+//==============================//
+// Prepares the `qc` subcommand //
+//==============================//
+
 /// Prepares the arguments for running the main `qc` subcommand.
 pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     info!("Starting qc command...");
@@ -301,6 +287,10 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
         feature_names,
     )
 }
+
+//==============//
+// Main program //
+//==============//
 
 /// Runs the main program for the `qc` subcommand.
 #[allow(clippy::too_many_arguments)]

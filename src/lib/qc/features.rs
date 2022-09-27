@@ -6,12 +6,9 @@ use rust_lapper::{Interval, Lapper};
 use sam::{alignment::Record, Header};
 use tracing::debug;
 
-use crate::{
-    commands::qc::FeatureNames,
-    lib::utils::{
-        formats,
-        genome::{get_primary_assembly, ReferenceGenome},
-    },
+use crate::lib::utils::{
+    formats,
+    genome::{get_primary_assembly, ReferenceGenome},
 };
 
 pub use self::{
@@ -23,6 +20,45 @@ use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
 pub mod metrics;
 pub mod name_strand;
+
+//=================//
+// Utility structs //
+//=================//
+
+/// A utility struct for passing feature name arguments from the command line
+/// around more easily.
+pub struct FeatureNames {
+    pub five_prime_utr_feature_name: String,
+    pub three_prime_utr_feature_name: String,
+    pub coding_sequence_feature_name: String,
+    pub exon_feature_name: String,
+    pub gene_feature_name: String,
+}
+
+impl FeatureNames {
+    pub fn new<I>(
+        five_prime_utr_feature_name: I,
+        three_prime_utf_feature_name: I,
+        coding_sequence_feature_name: I,
+        exon_feature_name: I,
+        gene_feature_name: I,
+    ) -> Self
+    where
+        I: Into<String>,
+    {
+        FeatureNames {
+            five_prime_utr_feature_name: five_prime_utr_feature_name.into(),
+            three_prime_utr_feature_name: three_prime_utf_feature_name.into(),
+            coding_sequence_feature_name: coding_sequence_feature_name.into(),
+            exon_feature_name: exon_feature_name.into(),
+            gene_feature_name: gene_feature_name.into(),
+        }
+    }
+}
+
+//========================//
+// Genomic Features Facet //
+//========================//
 
 pub struct GenomicFeaturesFacet<'a> {
     exonic_translation_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
