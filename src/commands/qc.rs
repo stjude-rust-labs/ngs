@@ -19,9 +19,7 @@ use crate::lib::{
     },
     utils::{
         formats::sam::parse_header,
-        genome::{
-            get_all_reference_genomes, get_all_sequences, get_reference_genome, ReferenceGenome,
-        },
+        genome::{get_all_sequences, get_reference_genome, ReferenceGenome},
     },
 };
 
