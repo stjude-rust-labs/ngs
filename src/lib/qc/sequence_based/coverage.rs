@@ -4,12 +4,13 @@ use noodles_sam::header::ReferenceSequence;
 use serde::Serialize;
 use tracing::error;
 
-use crate::lib::utils::{
-    genome::{get_primary_assembly, ReferenceGenome, Sequence},
-    histogram::SimpleHistogram,
+use crate::lib::{
+    qc::{results, ComputationalLoad, SequenceBasedQualityCheckFacet},
+    utils::{
+        genome::{get_primary_assembly, ReferenceGenome, Sequence},
+        histogram::SimpleHistogram,
+    },
 };
-
-use super::SequenceBasedQualityCheckFacet;
 
 #[derive(Clone, Default, Serialize)]
 pub struct IgnoredMetrics {
@@ -52,8 +53,8 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         "Coverage Metrics"
     }
 
-    fn computational_load(&self) -> super::ComputationalLoad {
-        super::ComputationalLoad::Moderate
+    fn computational_load(&self) -> ComputationalLoad {
+        ComputationalLoad::Moderate
     }
 
     fn supports_sequence_name(&self, name: &str) -> bool {
@@ -143,7 +144,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         Ok(())
     }
 
-    fn aggregate_results(&mut self, results: &mut super::results::Results) {
+    fn aggregate_results(&mut self, results: &mut results::Results) {
         results.set_coverage(self.metrics.clone());
     }
 }

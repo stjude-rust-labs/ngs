@@ -1,9 +1,9 @@
 use noodles_sam::{self as sam};
 use sam::alignment::Record;
 
-pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
+use crate::lib::qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
 
-use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
+pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
 pub mod metrics;
 
@@ -111,7 +111,7 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), super::Error> {
+    fn summarize(&mut self) -> Result<(), Error> {
         let summary = SummaryMetrics {
             duplication_pct: self.metrics.records.duplicate as f64
                 / self.metrics.records.total as f64

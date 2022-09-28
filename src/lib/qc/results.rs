@@ -6,7 +6,10 @@ use std::{
 
 use serde::Serialize;
 
-use super::{coverage, edits, features, gc_content, general, quality_scores, template_length};
+use super::{
+    record_based::{features, gc_content, general, quality_scores, template_length},
+    sequence_based::{coverage, edits},
+};
 
 #[derive(Default, Serialize)]
 pub struct Results {

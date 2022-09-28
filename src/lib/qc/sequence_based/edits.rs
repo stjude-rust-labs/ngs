@@ -6,11 +6,10 @@ use noodles_fasta as fasta;
 use noodles_sam::Header;
 use serde::Serialize;
 
-use crate::lib::utils::{
-    alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram,
+use crate::lib::{
+    qc::{results, ComputationalLoad, SequenceBasedQualityCheckFacet},
+    utils::{alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram},
 };
-
-use super::SequenceBasedQualityCheckFacet;
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct EditMetricsSummary {
@@ -55,8 +54,8 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         "Edit Metrics"
     }
 
-    fn computational_load(&self) -> super::ComputationalLoad {
-        super::ComputationalLoad::Heavy
+    fn computational_load(&self) -> ComputationalLoad {
+        ComputationalLoad::Heavy
     }
 
     fn supports_sequence_name(&self, _: &str) -> bool {
@@ -165,7 +164,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         Ok(())
     }
 
-    fn aggregate_results(&mut self, results: &mut super::results::Results) {
+    fn aggregate_results(&mut self, results: &mut results::Results) {
         self.metrics.summary = Some(EditMetricsSummary {
             mean_edits_read_one: self.metrics.read_one_edits.mean(),
             mean_edits_read_two: self.metrics.read_two_edits.mean(),

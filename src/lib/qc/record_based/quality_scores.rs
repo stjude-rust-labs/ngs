@@ -2,9 +2,10 @@ use std::collections::HashMap;
 
 use serde::Serialize;
 
-use crate::lib::utils::histogram::SimpleHistogram;
-
-use super::RecordBasedQualityCheckFacet;
+use crate::lib::{
+    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    utils::histogram::SimpleHistogram,
+};
 
 #[derive(Clone, Debug, Default, Serialize)]
 pub struct QualityScoreFacet {
@@ -21,11 +22,11 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         "Quality Score Metrics"
     }
 
-    fn computational_load(&self) -> super::ComputationalLoad {
-        super::ComputationalLoad::Moderate
+    fn computational_load(&self) -> ComputationalLoad {
+        ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &noodles_sam::alignment::Record) -> Result<(), super::Error> {
+    fn process(&mut self, record: &noodles_sam::alignment::Record) -> Result<(), Error> {
         for (i, val) in record.quality_scores().as_ref().iter().enumerate() {
             let histogram = self
                 .scores
@@ -39,14 +40,14 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), super::Error> {
+    fn summarize(&mut self) -> Result<(), Error> {
         // Nothing to summarize here, as we simply report the histograms for
         // each position.
 
         Ok(())
     }
 
-    fn aggregate_results(&self, results: &mut super::results::Results) {
+    fn aggregate_results(&self, results: &mut results::Results) {
         results.set_quality_scores(self.clone());
     }
 }

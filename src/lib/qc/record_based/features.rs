@@ -6,20 +6,21 @@ use rust_lapper::{Interval, Lapper};
 use sam::{alignment::Record, Header};
 use tracing::debug;
 
-use crate::lib::utils::{
-    formats,
-    genome::{get_primary_assembly, ReferenceGenome},
+use crate::lib::{
+    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    utils::{
+        formats,
+        genome::{get_primary_assembly, ReferenceGenome},
+    },
 };
+
+pub mod metrics;
+pub mod name_strand;
 
 pub use self::{
     metrics::{Metrics, SummaryMetrics},
     name_strand::FeatureNameStrand,
 };
-
-use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
-
-pub mod metrics;
-pub mod name_strand;
 
 //=================//
 // Utility structs //
@@ -78,7 +79,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
         ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &Record) -> Result<(), super::Error> {
+    fn process(&mut self, record: &Record) -> Result<(), Error> {
         // (1) Parse the read name.
         let read_name = match record.read_name() {
             Some(name) => name,

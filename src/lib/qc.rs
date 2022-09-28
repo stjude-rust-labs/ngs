@@ -3,14 +3,9 @@ use core::fmt;
 use noodles_sam as sam;
 use sam::{alignment::Record, header::ReferenceSequence};
 
-pub mod coverage;
-pub mod edits;
-pub mod features;
-pub mod gc_content;
-pub mod general;
-pub mod quality_scores;
+pub mod record_based;
 pub mod results;
-pub mod template_length;
+pub mod sequence_based;
 
 #[derive(Debug)]
 pub struct Error {

@@ -10,14 +10,14 @@ use tracing::{debug, info};
 
 use crate::lib::{
     qc::{
-        coverage::CoverageFacet,
-        edits::EditsFacet,
-        features::{FeatureNames, GenomicFeaturesFacet},
-        gc_content::GCContentFacet,
-        general::metrics::GeneralMetricsFacet,
-        quality_scores::QualityScoreFacet,
+        record_based::features::{FeatureNames, GenomicFeaturesFacet},
+        record_based::gc_content::GCContentFacet,
+        record_based::general::metrics::GeneralMetricsFacet,
+        record_based::quality_scores::QualityScoreFacet,
+        record_based::template_length::TemplateLengthFacet,
         results::Results,
-        template_length::TemplateLengthFacet,
+        sequence_based::coverage::CoverageFacet,
+        sequence_based::edits::EditsFacet,
         RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
     },
     utils::{

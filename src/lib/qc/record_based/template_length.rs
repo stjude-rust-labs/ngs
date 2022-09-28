@@ -3,9 +3,10 @@
 use noodles_sam::alignment::Record;
 use serde::Serialize;
 
-use crate::lib::utils::histogram::SimpleHistogram;
-
-use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
+use crate::lib::{
+    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    utils::histogram::SimpleHistogram,
+};
 
 #[derive(Clone, Debug, Serialize)]
 pub struct SummaryMetrics {

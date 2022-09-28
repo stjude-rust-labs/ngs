@@ -5,9 +5,10 @@ use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
 use serde::Serialize;
 
-use crate::lib::utils::histogram::SimpleHistogram;
-
-use super::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
+use crate::lib::{
+    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    utils::histogram::SimpleHistogram,
+};
 
 const TRUNCATION_LENGTH: usize = 100;
 
@@ -83,7 +84,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> Result<(), super::Error> {
+    fn process(&mut self, record: &Record) -> Result<(), Error> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags();
