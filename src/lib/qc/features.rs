@@ -38,7 +38,7 @@ pub struct FeatureNames {
 impl FeatureNames {
     pub fn new<I>(
         five_prime_utr_feature_name: I,
-        three_prime_utf_feature_name: I,
+        three_prime_utr_feature_name: I,
         coding_sequence_feature_name: I,
         exon_feature_name: I,
         gene_feature_name: I,
@@ -48,7 +48,7 @@ impl FeatureNames {
     {
         FeatureNames {
             five_prime_utr_feature_name: five_prime_utr_feature_name.into(),
-            three_prime_utr_feature_name: three_prime_utf_feature_name.into(),
+            three_prime_utr_feature_name: three_prime_utr_feature_name.into(),
             coding_sequence_feature_name: coding_sequence_feature_name.into(),
             exon_feature_name: exon_feature_name.into(),
             gene_feature_name: gene_feature_name.into(),
