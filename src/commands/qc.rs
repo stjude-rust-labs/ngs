@@ -296,7 +296,7 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     } else {
         std::env::current_dir().expect("Could not retrieve the current working directory.")
     };
-    debug!("  [*] Output directory: {:?}", output_directory);
+    debug!("  [*] Output directory: {}", output_directory.display());
 
     //===================//
     // Number of Records //
