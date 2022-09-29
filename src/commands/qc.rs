@@ -303,7 +303,7 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     //===================//
 
     let num_records = if let Some(m) = matches.value_of("num-records") {
-        let res = m.parse::<i64>().unwrap();
+        let res = m.parse::<i64>()?;
         debug!("Reading a maximum of {} records in the first pass.", res);
         res
     } else {
@@ -401,12 +401,7 @@ fn app(
         let record = result?;
 
         for facet in &mut record_facets {
-            match facet.process(&record) {
-                Ok(_) => {}
-                Err(e) => {
-                    panic!("[{}] {}", facet.name(), e.message);
-                }
-            }
+            facet.process(&record)?;
         }
 
         record_count += 1;
@@ -433,7 +428,7 @@ fn app(
 
     info!("Summarizing quality control facets for the first pass.");
     for facet in &mut record_facets {
-        facet.summarize().unwrap();
+        facet.summarize()?;
     }
 
     //============================================================//
@@ -456,7 +451,7 @@ fn app(
 
     for (name, seq) in header.reference_sequences() {
         let start = Position::MIN;
-        let end = Position::try_from(usize::from(seq.len())).unwrap();
+        let end = Position::try_from(usize::from(seq.len()))?;
 
         info!("Starting sequence {} ", name);
         let mut processed = 0;
@@ -464,24 +459,22 @@ fn app(
         debug!("  [*] Setting up sequence.");
         for facet in &mut sequence_facets {
             if facet.supports_sequence_name(name) {
-                facet.setup_sequence(seq).unwrap();
+                facet.setup_sequence(seq)?;
             }
         }
 
-        let query = reader
-            .query(
-                header.reference_sequences(),
-                &index,
-                &Region::new(name, start..=end),
-            )
-            .unwrap();
+        let query = reader.query(
+            header.reference_sequences(),
+            &index,
+            &Region::new(name, start..=end),
+        )?;
 
         debug!("  [*] Processing records from sequence.");
         for result in query {
             let record = result?;
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
-                    facet.process_record(seq, &record).unwrap();
+                    facet.process_record(seq, &record)?;
                 }
             }
 
@@ -495,7 +488,7 @@ fn app(
         debug!("  [*] Tearing down sequence.");
         for facet in &mut sequence_facets {
             if facet.supports_sequence_name(name) {
-                facet.teardown_sequence(seq).unwrap();
+                facet.teardown_sequence(seq)?;
             }
         }
     }

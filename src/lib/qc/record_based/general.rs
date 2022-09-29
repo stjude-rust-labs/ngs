@@ -1,7 +1,7 @@
 use noodles_sam::{self as sam};
 use sam::alignment::Record;
 
-use crate::lib::qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet};
+use crate::lib::qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet};
 
 pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
 
@@ -16,7 +16,7 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> Result<(), Error> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         // (1) Count the number of reads in the file.
         self.metrics.records.total += 1;
 
@@ -111,7 +111,7 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), Error> {
+    fn summarize(&mut self) -> anyhow::Result<()> {
         let summary = SummaryMetrics {
             duplication_pct: self.metrics.records.duplicate as f64
                 / self.metrics.records.total as f64

@@ -6,7 +6,7 @@ use sam::{alignment::Record, record::sequence::Base};
 use serde::Serialize;
 
 use crate::lib::{
-    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -84,7 +84,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> Result<(), Error> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags();
@@ -148,7 +148,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), Error> {
+    fn summarize(&mut self) -> anyhow::Result<()> {
         self.metrics.summary = Some(SummaryMetrics {
             gc_content_pct: (self.metrics.nucleobases.total_gc_count as f64
                 / (self.metrics.nucleobases.total_gc_count

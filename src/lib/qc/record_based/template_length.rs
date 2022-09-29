@@ -4,7 +4,7 @@ use noodles_sam::alignment::Record;
 use serde::Serialize;
 
 use crate::lib::{
-    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -80,7 +80,7 @@ impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> Result<(), Error> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         let template_len = record.template_length() as usize;
         match self.histogram.increment(template_len) {
             Ok(()) => self.records.processed += 1,
@@ -90,7 +90,7 @@ impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), Error> {
+    fn summarize(&mut self) -> anyhow::Result<()> {
         self.summary = Some(SummaryMetrics {
             template_length_unknown_pct: (self.histogram.get(0) as f64
                 / (self.records.processed as f64 + self.records.ignored as f64))

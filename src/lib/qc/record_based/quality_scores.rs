@@ -3,7 +3,7 @@ use std::collections::HashMap;
 use serde::Serialize;
 
 use crate::lib::{
-    qc::{results, ComputationalLoad, Error, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -26,7 +26,7 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &noodles_sam::alignment::Record) -> Result<(), Error> {
+    fn process(&mut self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
         for (i, val) in record.quality_scores().as_ref().iter().enumerate() {
             let histogram = self
                 .scores
@@ -40,7 +40,7 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         Ok(())
     }
 
-    fn summarize(&mut self) -> Result<(), Error> {
+    fn summarize(&mut self) -> anyhow::Result<()> {
         // Nothing to summarize here, as we simply report the histograms for
         // each position.
 
