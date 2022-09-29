@@ -226,7 +226,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
         Ok(())
     }
 
-    fn aggregate_results(&self, results: &mut results::Results) {
+    fn aggregate(&self, results: &mut results::Results) {
         results.set_features(self.metrics.clone())
     }
 }

@@ -62,11 +62,8 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         true
     }
 
-    fn setup_sequence(
-        &mut self,
-        seq: &noodles_sam::header::ReferenceSequence,
-    ) -> anyhow::Result<()> {
-        let seq_name = seq.name().as_str();
+    fn setup(&mut self, sequence: &noodles_sam::header::ReferenceSequence) -> anyhow::Result<()> {
+        let seq_name = sequence.name().as_str();
 
         for result in self.fasta.records() {
             let record = result?;
@@ -79,7 +76,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         bail!("Sequence {} not found in reference FASTA.", seq_name)
     }
 
-    fn process_record<'b>(
+    fn process<'b>(
         &mut self,
         _: &'b noodles_sam::header::ReferenceSequence,
         record: &noodles_sam::alignment::Record,
@@ -156,15 +153,12 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         Ok(())
     }
 
-    fn teardown_sequence(
-        &mut self,
-        _: &noodles_sam::header::ReferenceSequence,
-    ) -> anyhow::Result<()> {
+    fn teardown(&mut self, _: &noodles_sam::header::ReferenceSequence) -> anyhow::Result<()> {
         self.current_sequence = None;
         Ok(())
     }
 
-    fn aggregate_results(&mut self, results: &mut results::Results) {
+    fn aggregate(&mut self, results: &mut results::Results) {
         self.metrics.summary = Some(EditMetricsSummary {
             mean_edits_read_one: self.metrics.read_one_edits.mean(),
             mean_edits_read_two: self.metrics.read_two_edits.mean(),

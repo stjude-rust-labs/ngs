@@ -170,7 +170,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         Ok(())
     }
 
-    fn aggregate_results(&self, results: &mut results::Results) {
+    fn aggregate(&self, results: &mut results::Results) {
         results.set_gc_content(self.metrics.clone());
     }
 }

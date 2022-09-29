@@ -64,11 +64,11 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
             .any(|x| x == name)
     }
 
-    fn setup_sequence(&mut self, _: &ReferenceSequence) -> anyhow::Result<()> {
+    fn setup(&mut self, _: &ReferenceSequence) -> anyhow::Result<()> {
         Ok(())
     }
 
-    fn process_record<'b>(
+    fn process<'b>(
         &mut self,
         seq: &'b ReferenceSequence,
         record: &noodles_sam::alignment::Record,
@@ -105,8 +105,12 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         Ok(())
     }
 
-    fn teardown_sequence(&mut self, seq: &ReferenceSequence) -> anyhow::Result<()> {
-        let positions = self.by_position.storage.get(seq.name().as_str()).unwrap();
+    fn teardown(&mut self, sequence: &ReferenceSequence) -> anyhow::Result<()> {
+        let positions = self
+            .by_position
+            .storage
+            .get(sequence.name().as_str())
+            .unwrap();
         let mut coverages = SimpleHistogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
@@ -121,30 +125,30 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         let median_over_mean = median / mean;
 
         // Removed to save memory.
-        self.by_position.storage.remove(seq.name().as_str());
+        self.by_position.storage.remove(sequence.name().as_str());
 
         // Saved for reporting.
         self.metrics
             .mean_coverage
-            .insert(seq.name().to_string(), mean);
+            .insert(sequence.name().to_string(), mean);
         self.metrics
             .median_coverage
-            .insert(seq.name().to_string(), median);
+            .insert(sequence.name().to_string(), median);
         self.metrics
             .median_over_mean_coverage
-            .insert(seq.name().to_string(), median_over_mean);
+            .insert(sequence.name().to_string(), median_over_mean);
         self.metrics
             .histograms
-            .insert(seq.name().to_string(), coverages);
+            .insert(sequence.name().to_string(), coverages);
         self.metrics
             .ignored
             .pileup_too_large_positions
-            .insert(seq.name().to_string(), ignored);
+            .insert(sequence.name().to_string(), ignored);
 
         Ok(())
     }
 
-    fn aggregate_results(&mut self, results: &mut results::Results) {
+    fn aggregate(&mut self, results: &mut results::Results) {
         results.set_coverage(self.metrics.clone());
     }
 }

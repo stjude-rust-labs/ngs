@@ -139,7 +139,7 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
         Ok(())
     }
 
-    fn aggregate_results(&self, results: &mut results::Results) {
+    fn aggregate(&self, results: &mut results::Results) {
         results.set_general(self.clone())
     }
 }

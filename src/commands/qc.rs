@@ -459,7 +459,7 @@ fn app(
         debug!("  [*] Setting up sequence.");
         for facet in &mut sequence_facets {
             if facet.supports_sequence_name(name) {
-                facet.setup_sequence(seq)?;
+                facet.setup(seq)?;
             }
         }
 
@@ -474,7 +474,7 @@ fn app(
             let record = result?;
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
-                    facet.process_record(seq, &record)?;
+                    facet.process(seq, &record)?;
                 }
             }
 
@@ -488,7 +488,7 @@ fn app(
         debug!("  [*] Tearing down sequence.");
         for facet in &mut sequence_facets {
             if facet.supports_sequence_name(name) {
-                facet.teardown_sequence(seq)?;
+                facet.teardown(seq)?;
             }
         }
     }
@@ -500,11 +500,11 @@ fn app(
     let mut results = Results::default();
 
     for facet in &record_facets {
-        facet.aggregate_results(&mut results);
+        facet.aggregate(&mut results);
     }
 
     for facet in &mut sequence_facets {
-        facet.aggregate_results(&mut results);
+        facet.aggregate(&mut results);
     }
 
     results.write(String::from(output_prefix), &output_directory)?;
