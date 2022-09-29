@@ -18,7 +18,7 @@
 
 
   <p align="center">
-    Command line utility for manipulating next-generation sequencing files. 
+    Command line utility for working with next-generation sequencing files. 
     <br />
     <a href="https://github.com/stjude-rust-labs/ngs/wiki"><strong>Explore the docs »</strong></a>
     <br />
@@ -39,7 +39,7 @@
 
 ## 🎨 Features
 
-* **[`ngs derive`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-derive).** Forensic analysis tool useful in backwards computing information from next-generation sequencing data.
+* **[`ngs derive`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-derive).** Forensic analysis tool useful for backwards computing information from next-generation sequencing data.
 * **[`ngs generate`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-generate).** Tool to generate next-generation sequencing files.
 * **[`ngs qc`](https://github.com/stjude-rust-labs/ngs/wiki/ngs-qc).** Provides tools for checking the quality of next-generation sequencing files.
 
