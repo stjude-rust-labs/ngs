@@ -96,34 +96,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
             _ => bail!("Could not parse read name"),
         };
 
-        // (3) Parse the reference sequence id from the record
-        // let id = match record.reference_sequence_id() {
-        //     Some(id) => id,
-        //     _ => {
-        //         return Err(Error::new(format!(
-        //             "Could not parse reference sequence id for read: {}",
-        //             read_name
-        //         )))
-        //     }
-        // };
-
-        // (4) Lookup this record's reference sequence name
-        // let seq_name = match self
-        //     .header
-        //     .reference_sequences()
-        //     .get_index(id)
-        //     .map(|(_, rs)| Some(rs.name().as_str()))
-        // {
-        //     Some(Some(name)) => name,
-        //     _ => {
-        //         return Err(Error::new(format!(
-        //             "Could not map reference sequence id to header for read: {}",
-        //             read_name
-        //         )))
-        //     }
-        // };
-
-        // (4e) Do the actual calculation
+        // (3) Do the actual calculation
         let reference_start = record.alignment_start().unwrap();
         let cigar = record.cigar();
         let alignment_span = cigar.alignment_span();
