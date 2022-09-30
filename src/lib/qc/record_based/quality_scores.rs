@@ -1,15 +1,21 @@
 use std::collections::HashMap;
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct QualityScoreFacet {
     scores: HashMap<usize, SimpleHistogram>,
+}
+
+impl QualityScoreFacet {
+    pub fn scores(&self) -> &HashMap<usize, SimpleHistogram> {
+        &self.scores
+    }
 }
 
 const MAX_SCORE: usize = 93;

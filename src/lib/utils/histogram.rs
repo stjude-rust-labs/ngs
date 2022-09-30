@@ -2,9 +2,10 @@
 //! to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
 //! starting at zero because that is all this package needs.
 #![allow(dead_code)]
-use serde::Serialize;
+use anyhow::bail;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimpleHistogram {
     // Vec-backed value store for the histogram.
     values: Vec<usize>,
@@ -86,57 +87,97 @@ impl SimpleHistogram {
         sum / denominator
     }
 
-    /// Computes the median of all values within the histogram.
+    pub fn percentile(&self, percentile: f64) -> anyhow::Result<Option<f64>> {
+        // (1) Bounds check on the input data
+        if !(0.0..=1.0).contains(&percentile) {
+            bail!("Provided percentile was not within a valid range.");
+        }
+
+        // (2) Count up the total number of items in the histogram
+        let mut num_items = 0usize;
+        for i in self.range_start..=self.range_stop {
+            num_items += self.get(i);
+        }
+
+        // (3) If the number of items is zero, then there is no median. Note
+        // that num_items is a usize, so obviously cannot be less than zero
+        if num_items == 0 {
+            return Ok(None);
+        }
+
+        // (4) Some simple math to figure out how many items constitutes
+        // the nth percentile.
+        let needed_items = percentile * num_items as f64;
+
+        // (5) Simple algorithm to calculate the percentile: starting at the
+        // lowest value for the histogram, slowly step through the histogram
+        // until we have collected `needed_items`.
+        let mut collected_items = 0.0;
+        let mut index = self.range_start;
+
+        loop {
+            // (5a) If we go past the range stop, something really strange has
+            // happened and needs to be looked into
+            if index > self.range_stop {
+                bail!("Unknown error!");
+            }
+
+            // (5b) Increment the collected items amount by the current bin we
+            // are looking at
+            collected_items += self.get(index) as f64;
+
+            // (5c) If the number of collected items eclipses the number of
+            // needed items, then we've found our answer!
+            if collected_items > needed_items {
+                return Ok(Some(index as f64));
+            }
+
+            // (5d) If the number of collected items equals the number of needed
+            // items, then we have a runoff! Technically, the right way to
+            // handle this is to find the next item which has a nonzero count
+            // and take the middle of the two (even though that doesn't appear
+            // in the set necessarily). So that's what we do here!
+            if collected_items == needed_items {
+                let lowest = index;
+                index += 1;
+
+                while self.get(index) == 0 {
+                    index += 1;
+                }
+
+                let highest = index;
+                return Ok(Some(lowest as f64 + ((highest - lowest) as f64 / 2.0)));
+            }
+
+            // (5e) Increment the bin we are looking at by one
+            index += 1;
+        }
+    }
+
+    pub fn first_quartile(&self) -> Option<f64> {
+        self.percentile(0.25).unwrap()
+    }
+
     pub fn median(&self) -> Option<f64> {
-        let mut sum: i64 = 0;
-        // fp => Front pointer
-        // bp => Back pointer
-        let mut fp = self.range_start as i64 - 1;
-        let mut bp = self.range_stop as i64 + 1;
-        let mut last_known_nonzero_front: Option<i64> = None;
-        let mut last_known_nonzero_back: Option<i64> = None;
+        self.percentile(0.5).unwrap()
+    }
 
-        while fp != bp {
-            if sum < 0 {
-                fp += 1;
+    pub fn third_quartile(&self) -> Option<f64> {
+        self.percentile(0.75).unwrap()
+    }
 
-                if !self.in_range(fp as usize) {
-                    break;
-                }
-
-                let val = self.get(fp as usize);
-                if val != 0 && fp != bp {
-                    last_known_nonzero_front = Some(fp);
-                    sum += val as i64;
-                }
-            } else {
-                bp -= 1;
-
-                if !self.in_range(bp as usize) {
-                    break;
-                }
-
-                let val = self.get(bp as usize);
-                if val != 0 && fp != bp {
-                    last_known_nonzero_back = Some(bp);
-                    sum -= val as i64;
-                }
+    pub fn interquartile_range(&self) -> Option<f64> {
+        if let Some(first) = self.first_quartile() {
+            if let Some(third) = self.third_quartile() {
+                return Some(third - first);
             }
         }
 
-        if sum == 0 {
-            if let Some(nonzero_front) = last_known_nonzero_front {
-                if let Some(nonzero_back) = last_known_nonzero_back {
-                    return Some(
-                        (nonzero_back - nonzero_front) as f64 / 2.0 + nonzero_front as f64,
-                    );
-                }
-            }
+        None
+    }
 
-            None
-        } else {
-            Some(fp as f64)
-        }
+    pub fn values(&self) -> &[usize] {
+        self.values.as_ref()
     }
 }
 
@@ -165,13 +206,18 @@ mod tests {
         s.increment(25).unwrap();
         s.increment(50).unwrap();
         s.increment_by(75, 3).unwrap();
+        s.increment_by(100, 5).unwrap();
 
         assert_eq!(s.get(25), 1);
         assert_eq!(s.get(50), 1);
         assert_eq!(s.get(75), 3);
+        assert_eq!(s.get(100), 5);
 
-        assert_eq!(s.mean(), 60.0);
-        assert_eq!(s.median().unwrap(), 75.0);
+        assert_eq!(s.mean(), 80.0);
+        assert_eq!(s.first_quartile().unwrap(), 75.0);
+        assert_eq!(s.median().unwrap(), 87.5);
+        assert_eq!(s.third_quartile().unwrap(), 100.0);
+        assert_eq!(s.interquartile_range().unwrap(), 25.0);
     }
 
     #[test]

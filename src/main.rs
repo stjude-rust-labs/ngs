@@ -35,6 +35,7 @@ fn main() -> anyhow::Result<()> {
     let derive_cmd = commands::derive::get_command();
     let generate_cmd = commands::generate::get_command();
     let list_cmd = commands::list::get_command();
+    let plot_cmd = commands::plot::get_command();
     let qc_cmd = commands::qc::get_command();
 
     let matches = Command::new("ngs")
@@ -44,6 +45,7 @@ fn main() -> anyhow::Result<()> {
         .subcommand(add_verbosity_args(derive_cmd))
         .subcommand(add_verbosity_args(generate_cmd))
         .subcommand(add_verbosity_args(list_cmd))
+        .subcommand(add_verbosity_args(plot_cmd))
         .subcommand(add_verbosity_args(qc_cmd))
         .get_matches();
 
@@ -71,6 +73,15 @@ fn main() -> anyhow::Result<()> {
             }
             "generate" => return commands::generate(subcommand),
             "list" => return commands::list::list(subcommand),
+            "plot" => {
+                if let Some(m) = subcommand.subcommand_matches("sample") {
+                    return commands::plot::sample::plot(m);
+                } else if let Some(m) = subcommand.subcommand_matches("cohort") {
+                    return commands::plot::cohort::plot(m);
+                } else {
+                    unreachable!();
+                }
+            }
             "qc" => return commands::qc(subcommand),
             s => {
                 bail!("Unknown subcommand: {}", s);

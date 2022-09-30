@@ -1,20 +1,20 @@
 //! Functionality related to computing template lenght and related metrics.
 
 use noodles_sam::alignment::Record;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SummaryMetrics {
     template_length_unknown_pct: f64,
     template_length_out_of_range_pct: f64,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordMetrics {
     // Number of records that were processed (and, as such, had template lengths
     // that fell within our histogram's range).
@@ -30,7 +30,7 @@ pub struct RecordMetrics {
 /// template length up to a certain threshold. Any records that fall outside of
 /// that range are ignored (as tallied in the `ignored` field). Similarly,
 /// records that are processed are tallied in the `processed` field.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TemplateLengthFacet {
     // Histogram that represents the number of records that have a given
     // template length (up to the specified threshold).
