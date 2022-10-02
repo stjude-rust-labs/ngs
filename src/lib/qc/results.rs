@@ -45,6 +45,7 @@ impl Results {
     // General //
     //=========//
 
+    #[allow(dead_code)]
     pub fn general(&self) -> Option<&general::metrics::GeneralMetrics> {
         self.general.as_ref()
     }
@@ -57,6 +58,7 @@ impl Results {
     // Features //
     //==========//
 
+    #[allow(dead_code)]
     pub fn features(&self) -> Option<&features::Metrics> {
         self.features.as_ref()
     }
@@ -69,6 +71,7 @@ impl Results {
     // GC Content //
     //============//
 
+    #[allow(dead_code)]
     pub fn gc_content(&self) -> Option<&gc_content::GCContentMetrics> {
         self.gc_content.as_ref()
     }
@@ -81,6 +84,7 @@ impl Results {
     // Template Length //
     //=================//
 
+    #[allow(dead_code)]
     pub fn template_length(&self) -> Option<&template_length::TemplateLengthFacet> {
         self.template_length.as_ref()
     }
@@ -93,6 +97,7 @@ impl Results {
     // Coverage //
     //==========//
 
+    #[allow(dead_code)]
     pub fn coverage(&self) -> Option<&coverage::CoverageMetrics> {
         self.coverage.as_ref()
     }
@@ -105,6 +110,7 @@ impl Results {
     // Edits //
     //=======//
 
+    #[allow(dead_code)]
     pub fn edits(&self) -> Option<&edits::EditMetrics> {
         self.edits.as_ref()
     }

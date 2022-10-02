@@ -176,8 +176,17 @@ impl SimpleHistogram {
         None
     }
 
+    pub fn sum(&self) -> usize {
+        self.values.iter().sum()
+    }
+
     pub fn values(&self) -> &[usize] {
         self.values.as_ref()
+    }
+
+    pub fn values_normalized(&self) -> Vec<f64> {
+        let total = self.sum() as f64;
+        self.values.iter().map(|x| *x as f64 / total).collect()
     }
 }
 

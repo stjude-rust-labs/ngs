@@ -6,31 +6,35 @@ use plotly::{
     Layout, Scatter,
 };
 
-use crate::commands::plot::{Plot, PlotKind};
+use crate::commands::plot::{FilepathResults, SamplePlot};
 
 pub struct QualityScoreDistributionPlot;
 
-impl Plot for QualityScoreDistributionPlot {
+impl SamplePlot for QualityScoreDistributionPlot {
     fn name(&self) -> &'static str {
         "Quality Score Distribution"
-    }
-
-    fn kind(&self) -> crate::commands::plot::PlotKind {
-        PlotKind::Sample
     }
 
     fn filename(&self) -> &'static str {
         "quality-score-distribution"
     }
 
-    fn generate(&self, data: &crate::lib::qc::results::Results) -> anyhow::Result<plotly::Plot> {
+    fn generate(&self, filepath_results: &FilepathResults<'_>) -> anyhow::Result<plotly::Plot> {
         let mut plot = plotly::Plot::new();
+        let FilepathResults(filepath, results) = filepath_results;
 
-        let quality_scores = match data.quality_scores() {
+        // (1) Check to make sure that the results files have the necessary
+        // keys to plot the data. If they don't then we need to fail as there
+        // will be nothing to plot.
+        let quality_scores = match results.quality_scores() {
             Some(qs) => qs,
-            None => bail!("Quality scores are required to plot {}", self.name()),
+            None => bail!(
+                "File {} has no quality score information!",
+                filepath.display()
+            ),
         };
 
+        // (2) Tally up the quality scores and configure the plot.
         let scores = quality_scores.scores();
         let mut x = Vec::new();
         let mut y = Vec::new();
@@ -54,31 +58,38 @@ impl Plot for QualityScoreDistributionPlot {
             }
         }
 
-        let layout = Layout::new()
-            .title(Title::new(self.name()))
-            .x_axis(
-                Axis::new()
-                    .title(Title::new("Position"))
-                    .range(vec![0, x.last().unwrap() + 1]),
-            )
-            .y_axis(
-                Axis::new()
-                    .title(Title::new("Quality Score"))
-                    .range(vec![0, y_lim as usize + 1]),
-            );
+        // (3) Generalize the tracename based on the filename.
+        // TODO: This could be done quite a bit better.
+        let trace_name = filepath
+            .file_name()
+            .expect("the file to have a filename")
+            .to_os_string()
+            .into_string()
+            .expect("the filename to be convertable to a string")
+            .replace(".results.json", "");
 
+        // (4) Add this trace to the plot.
         let trace = Scatter::new(x, y)
             .mode(Mode::LinesMarkers)
-            .name("Quality Scores")
+            .name(trace_name)
             .line(Line::new().shape(LineShape::Spline))
             .error_y(
                 ErrorData::new(ErrorType::Data)
                     .array(error_plus)
                     .array_minus(error_minus),
             );
-
-        plot.set_layout(layout);
         plot.add_trace(trace);
+
+        // (5) Configure the graph for plotting and return.
+        let layout = Layout::new()
+            .title(Title::new(self.name()))
+            .x_axis(Axis::new().title(Title::new("Position")).auto_range(true))
+            .y_axis(
+                Axis::new()
+                    .title(Title::new("Quality Score"))
+                    .range(vec![0, y_lim as usize + 1]),
+            );
+        plot.set_layout(layout);
 
         Ok(plot)
     }

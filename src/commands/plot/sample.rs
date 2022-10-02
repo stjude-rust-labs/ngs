@@ -7,9 +7,10 @@ use anyhow::Context;
 use clap::{value_parser, Arg, ArgMatches, Command};
 use tracing::{debug, info};
 
-use crate::lib::qc::results::Results;
-
-use super::{get_all_plots, PlotKind};
+use crate::{
+    commands::plot::{get_all_sample_plots, FilepathResults},
+    lib::qc::results::Results,
+};
 
 pub fn get_command<'a>() -> Command<'a> {
     Command::new("sample")
@@ -37,7 +38,10 @@ pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
     //========//
 
     let src: &PathBuf = matches.get_one("src").expect("missing src filepath");
-    let results = Results::read(src).with_context(|| "invalid input file")?;
+    let results = FilepathResults(
+        src,
+        Results::read(src).with_context(|| format!("invalid input file: {}", src.display()))?,
+    );
     debug!("  [*] Source: {}", src.display());
 
     //==================//
@@ -51,14 +55,12 @@ pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
-    let plots = get_all_plots();
-    let filtered_plots = plots.iter().filter(|p| p.kind() == PlotKind::Sample);
-
-    for p in filtered_plots {
+    let plots = get_all_sample_plots();
+    for p in plots {
         let plot = p.generate(&results)?;
 
         let mut filename = output_directory.clone();
-        filename.push(String::from(p.filename()) + ".html");
+        filename.push(String::from(p.filename()) + ".sample.html");
 
         info!("  [*] Writing {} to {}", p.name(), filename.display());
         plot.write_html(filename);
