@@ -58,7 +58,7 @@ pub struct SummaryMetrics {
 pub struct GCContentMetrics {
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
-    histogram: SimpleHistogram,
+    pub histogram: SimpleHistogram,
 
     // Struct holding all of the nucleobase metrics.
     pub nucleobases: NucleobaseMetrics,
@@ -66,7 +66,7 @@ pub struct GCContentMetrics {
     // Struct containing all of the status of processed/ignored records.
     pub records: RecordMetrics,
 
-    summary: Option<SummaryMetrics>,
+    pub summary: Option<SummaryMetrics>,
 }
 
 #[derive(Default)]

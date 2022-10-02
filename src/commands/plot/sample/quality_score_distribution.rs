@@ -1,10 +1,8 @@
 use anyhow::bail;
 use itertools::Itertools;
 use plotly::{
-    box_plot::BoxPoints,
-    common::{DashType, ErrorData, ErrorType, Line, LineShape, Mode, Title},
+    common::{ErrorData, ErrorType, Line, LineShape, Mode, Title},
     layout::Axis,
-    traces::BoxPlot,
     Layout, Scatter,
 };
 
@@ -22,7 +20,7 @@ impl Plot for QualityScoreDistributionPlot {
     }
 
     fn filename(&self) -> &'static str {
-        "QualityScoreDistribution"
+        "quality-score-distribution"
     }
 
     fn generate(&self, data: &crate::lib::qc::results::Results) -> anyhow::Result<plotly::Plot> {
@@ -71,7 +69,7 @@ impl Plot for QualityScoreDistributionPlot {
 
         let trace = Scatter::new(x, y)
             .mode(Mode::LinesMarkers)
-            .name("Mean")
+            .name("Quality Scores")
             .line(Line::new().shape(LineShape::Spline))
             .error_y(
                 ErrorData::new(ErrorType::Data)
@@ -81,6 +79,7 @@ impl Plot for QualityScoreDistributionPlot {
 
         plot.set_layout(layout);
         plot.add_trace(trace);
+
         Ok(plot)
     }
 }
