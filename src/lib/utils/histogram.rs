@@ -87,6 +87,7 @@ impl SimpleHistogram {
         sum / denominator
     }
 
+    /// Computes the value of the nth percentile based on an exhaustive search.
     pub fn percentile(&self, percentile: f64) -> anyhow::Result<Option<f64>> {
         // (1) Bounds check on the input data
         if !(0.0..=1.0).contains(&percentile) {
@@ -154,18 +155,22 @@ impl SimpleHistogram {
         }
     }
 
+    /// Computes the first quartile of the distribution.
     pub fn first_quartile(&self) -> Option<f64> {
         self.percentile(0.25).unwrap()
     }
 
+    /// Computes the mean of the distribution.
     pub fn median(&self) -> Option<f64> {
         self.percentile(0.5).unwrap()
     }
 
+    /// Computes the third quartile of the distribution.
     pub fn third_quartile(&self) -> Option<f64> {
         self.percentile(0.75).unwrap()
     }
 
+    /// Computes the interquartile range for this distribution.
     pub fn interquartile_range(&self) -> Option<f64> {
         if let Some(first) = self.first_quartile() {
             if let Some(third) = self.third_quartile() {
@@ -176,14 +181,17 @@ impl SimpleHistogram {
         None
     }
 
+    /// Computes the sum of the values within the distribution.
     pub fn sum(&self) -> usize {
         self.values.iter().sum()
     }
 
+    /// Simply returns the values in the distribution by ref.
     pub fn values(&self) -> &[usize] {
         self.values.as_ref()
     }
 
+    /// Normalizes the values so that they sum to one and returns them as a Vec.
     pub fn values_normalized(&self) -> Vec<f64> {
         let total = self.sum() as f64;
         self.values.iter().map(|x| *x as f64 / total).collect()
@@ -277,5 +285,23 @@ mod tests {
         assert_eq!(default.get_range_start(), 0);
         assert_eq!(default.get_range_stop(), 512);
         assert_eq!(default.len(), 513);
+    }
+
+    #[test]
+    pub fn test_values() {
+        let mut histogram = SimpleHistogram::zero_based_with_capacity(3);
+        histogram.increment(1).unwrap();
+        histogram.increment(2).unwrap();
+        histogram.increment_by(3, 3).unwrap();
+        assert_eq!(histogram.values(), [0, 1, 1, 3]);
+    }
+
+    #[test]
+    pub fn test_values_normalized() {
+        let mut histogram = SimpleHistogram::zero_based_with_capacity(3);
+        histogram.increment(1).unwrap();
+        histogram.increment(2).unwrap();
+        histogram.increment_by(3, 3).unwrap();
+        assert_eq!(histogram.values_normalized(), [0.0, 0.2, 0.2, 0.6]);
     }
 }
