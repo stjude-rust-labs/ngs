@@ -12,6 +12,12 @@ pub struct QualityScoreFacet {
     scores: HashMap<usize, SimpleHistogram>,
 }
 
+impl QualityScoreFacet {
+    pub fn scores(&self) -> &HashMap<usize, SimpleHistogram> {
+        &self.scores
+    }
+}
+
 const MAX_SCORE: usize = 93;
 // Hopefully in the future, we can do something like this if `noodles` makes
 // this a public accessible const.

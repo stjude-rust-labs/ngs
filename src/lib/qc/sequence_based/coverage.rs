@@ -106,11 +106,14 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
     }
 
     fn teardown(&mut self, sequence: &ReferenceSequence) -> anyhow::Result<()> {
-        let positions = self
-            .by_position
-            .storage
-            .get(sequence.name().as_str())
-            .unwrap();
+        let positions = match self.by_position.storage.get(sequence.name().as_str()) {
+            Some(s) => s,
+            // In the None case, no records were inserted for this sequence.
+            // This may be because the file is a mini-SAM/BAM/CRAM. If that's
+            // the case, we just return Ok(()).
+            None => return Ok(()),
+        };
+
         let mut coverages = SimpleHistogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
