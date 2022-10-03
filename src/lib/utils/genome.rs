@@ -1,9 +1,11 @@
+pub mod microsoft;
 pub mod ncbi;
 pub mod one_thousand_genomes;
 
 use std::fmt;
 use std::{fmt::Debug, rc::Rc, str::FromStr};
 
+use self::microsoft::hg38m1x::HG38M1X;
 use self::ncbi::grch38_no_alt::GRCh38NoAlt;
 use self::one_thousand_genomes::hs37d5::HS37D5;
 
@@ -14,7 +16,7 @@ use self::one_thousand_genomes::hs37d5::HS37D5;
 /// Gets all of the supported reference genomes for the tool. When new reference
 /// genomes are added, this needs to be updated.
 pub fn get_all_reference_genomes() -> Vec<Box<dyn ReferenceGenome>> {
-    vec![Box::new(HS37D5), Box::new(GRCh38NoAlt)]
+    vec![Box::new(HS37D5), Box::new(GRCh38NoAlt), Box::new(HG38M1X)]
 }
 
 /// Utility method to map a string (generally passed on the command line) to a
