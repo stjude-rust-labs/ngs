@@ -1,7 +1,7 @@
 use std::{collections::HashMap, rc::Rc};
 
 use noodles_sam::header::ReferenceSequence;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::lib::{
@@ -12,13 +12,13 @@ use crate::lib::{
     },
 };
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct IgnoredMetrics {
     nonsensical_records: usize,
     pileup_too_large_positions: HashMap<String, usize>,
 }
 
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Serialize, Deserialize)]
 pub struct CoverageMetrics {
     mean_coverage: HashMap<String, f64>,
     median_coverage: HashMap<String, f64>,

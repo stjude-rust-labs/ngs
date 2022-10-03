@@ -2,9 +2,10 @@
 //! to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
 //! starting at zero because that is all this package needs.
 #![allow(dead_code)]
-use serde::Serialize;
+use anyhow::bail;
+use serde::{Deserialize, Serialize};
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimpleHistogram {
     // Vec-backed value store for the histogram.
     values: Vec<usize>,

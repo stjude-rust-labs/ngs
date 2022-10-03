@@ -4,20 +4,20 @@ use anyhow::{bail, Context};
 use fasta::record::Sequence;
 use noodles_fasta as fasta;
 use noodles_sam::Header;
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, SequenceBasedQualityCheckFacet},
     utils::{alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram},
 };
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EditMetricsSummary {
     pub mean_edits_read_one: f64,
     pub mean_edits_read_two: f64,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EditMetrics {
     pub read_one_edits: SimpleHistogram,
     pub read_two_edits: SimpleHistogram,

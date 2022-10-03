@@ -1,17 +1,17 @@
 use std::{
-    fs::File,
+    fs::{self, File},
     io::{self, Write},
     path::{Path, PathBuf},
 };
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use super::{
     record_based::{features, gc_content, general, quality_scores, template_length},
     sequence_based::{coverage, edits},
 };
 
-#[derive(Default, Serialize)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct Results {
     general: Option<general::metrics::GeneralMetrics>,
     features: Option<features::Metrics>,

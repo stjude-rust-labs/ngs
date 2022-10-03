@@ -3,7 +3,7 @@
 use noodles_sam as sam;
 use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
@@ -12,7 +12,7 @@ use crate::lib::{
 
 const TRUNCATION_LENGTH: usize = 100;
 
-#[derive(Clone, Default, Debug, Serialize)]
+#[derive(Clone, Default, Debug, Serialize, Deserialize)]
 pub struct NucleobaseMetrics {
     // Total number of nucleobases read as a 'G' or a 'C'.
     total_gc_count: usize,
@@ -25,7 +25,7 @@ pub struct NucleobaseMetrics {
     total_other_count: usize,
 }
 
-#[derive(Clone, Debug, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct RecordMetrics {
     // Number of records that have been processed by this struct.
     processed: usize,
@@ -37,7 +37,7 @@ pub struct RecordMetrics {
     ignored_too_short: usize,
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SummaryMetrics {
     // Mean GC content for the given sample.
     gc_content_pct: f64,
@@ -54,11 +54,11 @@ pub struct SummaryMetrics {
 /// content all the way up to 100% GC content. The other fields are for counting
 /// the number of nucleobases which are G/C, the number of nucleobases that are
 /// A/T, or the number of nucleobases that fall into other.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct GCContentMetrics {
     // Histogram that represents the number of reads which have 0% GC content
     // all the way up to 100% GC content.
-    histogram: SimpleHistogram,
+    pub histogram: SimpleHistogram,
 
     // Struct holding all of the nucleobase metrics.
     pub nucleobases: NucleobaseMetrics,
@@ -66,7 +66,7 @@ pub struct GCContentMetrics {
     // Struct containing all of the status of processed/ignored records.
     pub records: RecordMetrics,
 
-    summary: Option<SummaryMetrics>,
+    pub summary: Option<SummaryMetrics>,
 }
 
 #[derive(Default)]
