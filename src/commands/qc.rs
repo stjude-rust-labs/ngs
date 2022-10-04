@@ -1,11 +1,18 @@
-use std::{fs::File, path::PathBuf, rc::Rc};
+use std::{
+    fs::File,
+    path::PathBuf,
+    rc::Rc,
+    sync::{Arc, Mutex},
+};
 
 use anyhow::{bail, Context};
 use clap::{value_parser, Arg, ArgMatches, Command};
+use itertools::Itertools;
 use noodles_bam::{self as bam, bai};
 use noodles_core::{Position, Region};
-use noodles_sam::Header;
+use noodles_sam::{alignment::Record, Header};
 use num_format::{Locale, ToFormattedString};
+use rayon::prelude::*;
 use tracing::{debug, info};
 
 use crate::lib::{
@@ -37,9 +44,9 @@ pub fn get_record_based_qc_facets<'a>(
     feature_names: &'a FeatureNames,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityCheckFacet + 'a>>> {
+) -> anyhow::Result<Arc<Vec<Box<dyn RecordBasedQualityCheckFacet + Send + Sync + 'a>>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn RecordBasedQualityCheckFacet>> = vec![
+    let mut facets: Vec<Box<dyn RecordBasedQualityCheckFacet + Send + Sync>> = vec![
         Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),
@@ -56,7 +63,7 @@ pub fn get_record_based_qc_facets<'a>(
         )?));
     }
 
-    Ok(facets)
+    Ok(Arc::new(facets))
 }
 
 /// Dynamically compiles the sequence-based quality check facets that should be run for this
@@ -379,14 +386,14 @@ fn app(
     // First pass: print out which facets we're going to analyze //
     //===========================================================//
 
-    let mut record_facets = get_record_based_qc_facets(
+    let record_facets = get_record_based_qc_facets(
         features_gff,
         &feature_names,
         &header,
         Rc::clone(&reference_genome),
     )?;
     info!("First pass with the following facets enabled:");
-    for facet in &record_facets {
+    for facet in record_facets.iter() {
         info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
     }
 
@@ -397,25 +404,50 @@ fn app(
     debug!("Starting first pass for QC stats.");
     let mut record_count = 0;
 
-    for result in reader.records() {
-        let record = result?;
+    for chunk in &reader.records().into_iter().chunks(5_000_000) {
+        let records: Vec<Record> = chunk.map(|x| x.unwrap()).collect();
+        let results: Vec<_> = records
+            .par_iter()
+            .map(|record| -> anyhow::Result<()> {
+                for facet in record_facets.iter() {
+                    facet.process(record)?;
+                }
 
-        for facet in &mut record_facets {
-            facet.process(&record)?;
-        }
+                Ok(())
+            })
+            .collect();
 
-        record_count += 1;
-        if record_count % 1_000_000 == 0 && record_count > 0 {
-            info!(
-                "  [*] Processed {} records.",
-                record_count.to_formatted_string(&Locale::en),
-            );
-        }
+        record_count += 5_000_000;
+        info!(
+            "  [*] Processed {} records.",
+            record_count.to_formatted_string(&Locale::en),
+        );
 
         if num_records > -1 && record_count >= num_records {
             break;
         }
     }
+
+    // for result in reader.records() {
+    //     let record = result?;
+
+    //     let mut facets = record_facets.lock().unwrap();
+    //     for facet in &mut facets.iter_mut() {
+    //         facet.process(&record)?;
+    //     }
+
+    //     record_count += 1;
+    //     if record_count % 1_000_000 == 0 && record_count > 0 {
+    //         info!(
+    //             "  [*] Processed {} records.",
+    //             record_count.to_formatted_string(&Locale::en),
+    //         );
+    //     }
+
+    //     if num_records > -1 && record_count >= num_records {
+    //         break;
+    //     }
+    // }
 
     info!(
         "Processed {} records in the first pass.",
@@ -427,9 +459,9 @@ fn app(
     //================================//
 
     info!("Summarizing quality control facets for the first pass.");
-    for facet in &mut record_facets {
-        facet.summarize()?;
-    }
+    // for facet in record_facets.iter() {
+    //     facet.summarize()?;
+    // }
 
     //============================================================//
     // Second pass: print out which facets we're going to analyze //
@@ -446,52 +478,52 @@ fn app(
     // Second pass: set up file handles and prepare file //
     //===================================================//
 
-    let mut reader = File::open(src).map(bam::Reader::new)?;
-    let index = bai::read(src.with_extension("bam.bai")).with_context(|| "bam index")?;
+    // let mut reader = File::open(src).map(bam::Reader::new)?;
+    // let index = bai::read(src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
-    for (name, seq) in header.reference_sequences() {
-        let start = Position::MIN;
-        let end = Position::try_from(usize::from(seq.len()))?;
+    // for (name, seq) in header.reference_sequences() {
+    //     let start = Position::MIN;
+    //     let end = Position::try_from(usize::from(seq.len()))?;
 
-        info!("Starting sequence {} ", name);
-        let mut processed = 0;
+    //     info!("Starting sequence {} ", name);
+    //     let mut processed = 0;
 
-        debug!("  [*] Setting up sequence.");
-        for facet in &mut sequence_facets {
-            if facet.supports_sequence_name(name) {
-                facet.setup(seq)?;
-            }
-        }
+    //     debug!("  [*] Setting up sequence.");
+    //     for facet in &mut sequence_facets {
+    //         if facet.supports_sequence_name(name) {
+    //             facet.setup(seq)?;
+    //         }
+    //     }
 
-        let query = reader.query(
-            header.reference_sequences(),
-            &index,
-            &Region::new(name, start..=end),
-        )?;
+    //     let query = reader.query(
+    //         header.reference_sequences(),
+    //         &index,
+    //         &Region::new(name, start..=end),
+    //     )?;
 
-        debug!("  [*] Processing records from sequence.");
-        for result in query {
-            let record = result?;
-            for facet in &mut sequence_facets {
-                if facet.supports_sequence_name(name) {
-                    facet.process(seq, &record)?;
-                }
-            }
+    //     debug!("  [*] Processing records from sequence.");
+    //     for result in query {
+    //         let record = result?;
+    //         for facet in &mut sequence_facets {
+    //             if facet.supports_sequence_name(name) {
+    //                 facet.process(seq, &record)?;
+    //             }
+    //         }
 
-            processed += 1;
+    //         processed += 1;
 
-            if processed % 1_000_000 == 0 {
-                info!("  [*] Processed {} records for this sequence.", processed);
-            }
-        }
+    //         if processed % 1_000 == 0 {
+    //             info!("  [*] Processed {} records for this sequence.", processed);
+    //         }
+    //     }
 
-        debug!("  [*] Tearing down sequence.");
-        for facet in &mut sequence_facets {
-            if facet.supports_sequence_name(name) {
-                facet.teardown(seq)?;
-            }
-        }
-    }
+    //     debug!("  [*] Tearing down sequence.");
+    //     for facet in &mut sequence_facets {
+    //         if facet.supports_sequence_name(name) {
+    //             facet.teardown(seq)?;
+    //         }
+    //     }
+    // }
 
     //=====================================//
     // Finalize: write all results to file //
@@ -499,13 +531,13 @@ fn app(
 
     let mut results = Results::default();
 
-    for facet in &record_facets {
+    for facet in record_facets.iter() {
         facet.aggregate(&mut results);
     }
 
-    for facet in &mut sequence_facets {
-        facet.aggregate(&mut results);
-    }
+    // for facet in &mut sequence_facets {
+    //     facet.aggregate(&mut results);
+    // }
 
     results.write(String::from(output_prefix), &output_directory)?;
 

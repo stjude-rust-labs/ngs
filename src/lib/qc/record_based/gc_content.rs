@@ -72,7 +72,6 @@ pub struct GCContentMetrics {
 #[derive(Default)]
 pub struct GCContentFacet {
     pub metrics: GCContentMetrics,
-    rng: ThreadRng,
 }
 
 impl RecordBasedQualityCheckFacet for GCContentFacet {
@@ -84,12 +83,12 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
+    fn process(&self, record: &Record) -> anyhow::Result<()> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags();
         if flags.is_duplicate() || flags.is_secondary() {
-            self.metrics.records.ignored_flags += 1;
+            // self.metrics.records.ignored_flags += 1;
             return Ok(());
         };
 
@@ -106,7 +105,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         // results—all records should have a fair chance to generate between 0%
         // to 100% GC content.
         if sequence_length < TRUNCATION_LENGTH {
-            self.metrics.records.ignored_too_short += 1;
+            // self.metrics.records.ignored_too_short += 1;
             return Ok(());
         }
 
@@ -117,7 +116,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         let mut gc_this_read = 0usize;
         let offset = if TRUNCATION_LENGTH < sequence_length {
             let max_offset = sequence_length - TRUNCATION_LENGTH;
-            self.rng.gen_range(0..max_offset)
+            ThreadRng::default().gen_range(0..max_offset)
         } else {
             0
         };
@@ -128,10 +127,14 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
             match nucleobase {
                 Base::C | Base::G => {
                     gc_this_read += 1;
-                    self.metrics.nucleobases.total_gc_count += 1;
+                    // self.metrics.nucleobases.total_gc_count += 1;
                 }
-                Base::A | Base::T => self.metrics.nucleobases.total_at_count += 1,
-                _ => self.metrics.nucleobases.total_other_count += 1,
+                Base::A | Base::T => {
+                    // self.metrics.nucleobases.total_at_count += 1
+                }
+                _ => {
+                    // self.metrics.nucleobases.total_other_count += 1,
+                }
             }
         }
 
@@ -139,11 +142,11 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         // histogram accordingly.
         let gc_content_this_read_pct =
             ((gc_this_read as f64 / TRUNCATION_LENGTH as f64) * 100.0).round() as usize;
-        self.metrics
-            .histogram
-            .increment(gc_content_this_read_pct)
-            .unwrap();
-        self.metrics.records.processed += 1;
+        // self.metrics
+        //     .histogram
+        //     .increment(gc_content_this_read_pct)
+        //     .unwrap();
+        // self.metrics.records.processed += 1;
 
         Ok(())
     }

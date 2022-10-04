@@ -32,15 +32,15 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
+    fn process(&self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
         for (i, val) in record.quality_scores().as_ref().iter().enumerate() {
-            let histogram = self
-                .scores
-                .entry(i + 1) // indices are 0-based, we want this to be 1-based.
-                .or_insert_with(|| SimpleHistogram::zero_based_with_capacity(self::MAX_SCORE));
+            // let histogram = self
+            //     .scores
+            //     .entry(i + 1) // indices are 0-based, we want this to be 1-based.
+            //     .or_insert_with(|| SimpleHistogram::zero_based_with_capacity(self::MAX_SCORE));
 
             let score = u8::from(*val) as usize;
-            histogram.increment(score).unwrap();
+            // histogram.increment(score).unwrap();
         }
 
         Ok(())

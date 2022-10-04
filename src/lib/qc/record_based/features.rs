@@ -79,7 +79,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
         ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
+    fn process(&self, record: &Record) -> anyhow::Result<()> {
         // (1) Parse the read name.
         let read_name = match record.read_name() {
             Some(name) => name,
@@ -91,7 +91,6 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
         // (3) If the read is unmapped, just return—no need to throw an error.
         if flags.is_unmapped() {
-            self.metrics.records.ignored_flags += 1;
             return Ok(());
         }
 
@@ -127,7 +126,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
             .iter()
             .any(|s: &String| s == seq_name)
         {
-            self.metrics.records.ignored_nonprimary_chromosome += 1;
+            // self.metrics.records.ignored_nonprimary_chromosome += 1;
             return Ok(());
         }
 
@@ -156,21 +155,21 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
                     && f.name() == self.feature_names.five_prime_utr_feature_name
                 {
                     counted_as_five_prime_utr = true;
-                    self.metrics.exonic_translation_regions.utr_five_prime_count += 1;
+                    // self.metrics.exonic_translation_regions.utr_five_prime_count += 1;
                 } else if !counted_as_three_prime_utr
                     && f.name() == self.feature_names.three_prime_utr_feature_name
                 {
                     counted_as_three_prime_utr = true;
-                    self.metrics
-                        .exonic_translation_regions
-                        .utr_three_prime_count += 1;
+                    // self.metrics
+                    //     .exonic_translation_regions
+                    //     .utr_three_prime_count += 1;
                 } else if !counted_as_coding_sequence
                     && f.name() == self.feature_names.coding_sequence_feature_name
                 {
                     counted_as_coding_sequence = true;
-                    self.metrics
-                        .exonic_translation_regions
-                        .coding_sequence_count += 1;
+                    // self.metrics
+                    //     .exonic_translation_regions
+                    //     .coding_sequence_count += 1;
                 }
             }
         }
@@ -195,16 +194,16 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
             if has_gene {
                 if has_exon {
-                    self.metrics.gene_regions.exonic_count += 1;
+                    // self.metrics.gene_regions.exonic_count += 1;
                 } else {
-                    self.metrics.gene_regions.intronic_count += 1;
+                    // self.metrics.gene_regions.intronic_count += 1;
                 }
             } else {
-                self.metrics.gene_regions.intergenic_count += 1;
+                // self.metrics.gene_regions.intergenic_count += 1;
             }
         }
 
-        self.metrics.records.processed += 1;
+        // self.metrics.records.processed += 1;
         Ok(())
     }
 

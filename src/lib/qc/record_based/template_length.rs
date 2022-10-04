@@ -80,12 +80,12 @@ impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
+    fn process(&self, record: &Record) -> anyhow::Result<()> {
         let template_len = record.template_length() as usize;
-        match self.histogram.increment(template_len) {
-            Ok(()) => self.records.processed += 1,
-            Err(_) => self.records.ignored += 1,
-        }
+        // match self.histogram.increment(template_len) {
+        //     Ok(()) => self.records.processed += 1,
+        //     Err(_) => self.records.ignored += 1,
+        // }
 
         Ok(())
     }
