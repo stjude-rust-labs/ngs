@@ -54,8 +54,7 @@ impl SamplePlot for GCContentDistributionPlot {
         let mut x = Vec::new();
         let mut y = Vec::new();
 
-        let histogram = gc_content.histogram.values();
-        for (position, value) in histogram.iter().enumerate() {
+        for (position, value) in gc_content.histogram.values.iter().enumerate() {
             x.push(position);
             y.push(*value as f64 / total as f64);
         }

@@ -1,5 +1,7 @@
 //! Functionality related to computing GC content and related metrics.
 
+use std::sync::atomic::Ordering;
+
 use noodles_sam as sam;
 use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
@@ -7,71 +9,18 @@ use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
-    utils::histogram::SimpleHistogram,
+    utils::histogram::MutexBackedHistogram,
 };
+
+use self::metrics::{AtomicGCContentMetrics, SummaryMetrics};
+
+pub mod metrics;
 
 const TRUNCATION_LENGTH: usize = 100;
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct NucleobaseMetrics {
-    // Total number of nucleobases read as a 'G' or a 'C'.
-    total_gc_count: usize,
-
-    // Total number of nucleobases read as an 'A' or a 'T'.
-    total_at_count: usize,
-
-    // Total number of nucleobases which were not read as an 'A', a 'C', a 'G',
-    // or a 'T'.
-    total_other_count: usize,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RecordMetrics {
-    // Number of records that have been processed by this struct.
-    processed: usize,
-
-    // Number of records that were ignored because of their flags.
-    ignored_flags: usize,
-
-    // Number of records that were ignored because they were too short.
-    ignored_too_short: usize,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SummaryMetrics {
-    // Mean GC content for the given sample.
-    gc_content_pct: f64,
-
-    // Percentage of records that were ignored because of flags.
-    ignored_flags_pct: f64,
-
-    // Percentage of records that were ignored because they were too short.
-    ignored_too_short_pct: f64,
-}
-
-/// Primary struct used to compile stats regarding GC content. Within this
-/// struct, the histogram represents the number of reads which have 0% GC
-/// content all the way up to 100% GC content. The other fields are for counting
-/// the number of nucleobases which are G/C, the number of nucleobases that are
-/// A/T, or the number of nucleobases that fall into other.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct GCContentMetrics {
-    // Histogram that represents the number of reads which have 0% GC content
-    // all the way up to 100% GC content.
-    pub histogram: SimpleHistogram,
-
-    // Struct holding all of the nucleobase metrics.
-    pub nucleobases: NucleobaseMetrics,
-
-    // Struct containing all of the status of processed/ignored records.
-    pub records: RecordMetrics,
-
-    pub summary: Option<SummaryMetrics>,
-}
-
 #[derive(Default)]
 pub struct GCContentFacet {
-    pub metrics: GCContentMetrics,
+    pub metrics: AtomicGCContentMetrics,
 }
 
 impl RecordBasedQualityCheckFacet for GCContentFacet {
@@ -83,12 +32,15 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         ComputationalLoad::Light
     }
 
-    fn process(&self, record: &Record) -> anyhow::Result<()> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         // (1) Check the record's flags. If any of the flags aren't to our
         // liking, then we reject the record as an ignored flag record.
         let flags = record.flags();
         if flags.is_duplicate() || flags.is_secondary() {
-            // self.metrics.records.ignored_flags += 1;
+            self.metrics
+                .records
+                .ignored_flags
+                .fetch_add(1, Ordering::SeqCst);
             return Ok(());
         };
 
@@ -105,7 +57,10 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         // results—all records should have a fair chance to generate between 0%
         // to 100% GC content.
         if sequence_length < TRUNCATION_LENGTH {
-            // self.metrics.records.ignored_too_short += 1;
+            self.metrics
+                .records
+                .ignored_too_short
+                .fetch_add(1, Ordering::SeqCst);
             return Ok(());
         }
 
@@ -127,13 +82,22 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
             match nucleobase {
                 Base::C | Base::G => {
                     gc_this_read += 1;
-                    // self.metrics.nucleobases.total_gc_count += 1;
+                    self.metrics
+                        .nucleobases
+                        .total_gc_count
+                        .fetch_add(1, Ordering::SeqCst);
                 }
                 Base::A | Base::T => {
-                    // self.metrics.nucleobases.total_at_count += 1
+                    self.metrics
+                        .nucleobases
+                        .total_at_count
+                        .fetch_add(1, Ordering::SeqCst);
                 }
                 _ => {
-                    // self.metrics.nucleobases.total_other_count += 1,
+                    self.metrics
+                        .nucleobases
+                        .total_other_count
+                        .fetch_add(1, Ordering::SeqCst);
                 }
             }
         }
@@ -142,31 +106,52 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         // histogram accordingly.
         let gc_content_this_read_pct =
             ((gc_this_read as f64 / TRUNCATION_LENGTH as f64) * 100.0).round() as usize;
-        // self.metrics
-        //     .histogram
-        //     .increment(gc_content_this_read_pct)
-        //     .unwrap();
-        // self.metrics.records.processed += 1;
+        self.metrics
+            .histogram
+            .increment(gc_content_this_read_pct)
+            .unwrap();
+        self.metrics
+            .records
+            .processed
+            .fetch_add(1, Ordering::SeqCst);
 
         Ok(())
     }
 
     fn summarize(&mut self) -> anyhow::Result<()> {
+        let total_gc_count = self
+            .metrics
+            .nucleobases
+            .total_gc_count
+            .load(Ordering::SeqCst);
+        let total_at_count = self
+            .metrics
+            .nucleobases
+            .total_at_count
+            .load(Ordering::SeqCst);
+        let total_other_count = self
+            .metrics
+            .nucleobases
+            .total_other_count
+            .load(Ordering::SeqCst);
+
+        let ignored_flags = self.metrics.records.ignored_flags.load(Ordering::SeqCst);
+        let ignored_too_short = self
+            .metrics
+            .records
+            .ignored_too_short
+            .load(Ordering::SeqCst);
+        let processed = self.metrics.records.processed.load(Ordering::SeqCst);
+
         self.metrics.summary = Some(SummaryMetrics {
-            gc_content_pct: (self.metrics.nucleobases.total_gc_count as f64
-                / (self.metrics.nucleobases.total_gc_count
-                    + self.metrics.nucleobases.total_at_count
-                    + self.metrics.nucleobases.total_other_count) as f64)
+            gc_content_pct: (total_gc_count as f64
+                / (total_gc_count + total_at_count + total_other_count) as f64)
                 * 100.0,
-            ignored_flags_pct: (self.metrics.records.ignored_flags as f64
-                / (self.metrics.records.ignored_flags
-                    + self.metrics.records.ignored_too_short
-                    + self.metrics.records.processed) as f64)
+            ignored_flags_pct: (ignored_flags as f64
+                / (ignored_flags + ignored_too_short + processed) as f64)
                 * 100.0,
-            ignored_too_short_pct: (self.metrics.records.ignored_too_short as f64
-                / (self.metrics.records.ignored_flags
-                    + self.metrics.records.ignored_too_short
-                    + self.metrics.records.processed) as f64)
+            ignored_too_short_pct: (ignored_too_short as f64
+                / (ignored_flags + ignored_too_short + processed) as f64)
                 * 100.0,
         });
 
@@ -174,18 +159,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_gc_content(self.metrics.clone());
-    }
-}
-
-impl Default for GCContentMetrics {
-    fn default() -> Self {
-        Self {
-            histogram: SimpleHistogram::zero_based_with_capacity(100),
-            nucleobases: Default::default(),
-            records: Default::default(),
-            summary: Default::default(),
-        }
+        results.set_gc_content(self.metrics.clone_nonatomic());
     }
 }
 

@@ -19,7 +19,7 @@ pub trait RecordBasedQualityCheckFacet {
     fn computational_load(&self) -> ComputationalLoad;
 
     // Lifecycle methods
-    fn process(&self, record: &Record) -> anyhow::Result<()>;
+    fn process(&mut self, record: &Record) -> anyhow::Result<()>;
     fn summarize(&mut self) -> anyhow::Result<()>;
     fn aggregate(&self, results: &mut results::Results);
 }

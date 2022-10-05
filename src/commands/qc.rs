@@ -23,9 +23,10 @@ use crate::lib::{
         record_based::quality_scores::QualityScoreFacet,
         record_based::template_length::TemplateLengthFacet,
         results::Results,
-        sequence_based::coverage::CoverageFacet,
-        sequence_based::edits::EditsFacet,
-        RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
+        // sequence_based::coverage::CoverageFacet,
+        // sequence_based::edits::EditsFacet,
+        RecordBasedQualityCheckFacet,
+        SequenceBasedQualityCheckFacet,
     },
     utils::{
         formats::sam::parse_header,
@@ -44,23 +45,23 @@ pub fn get_record_based_qc_facets<'a>(
     feature_names: &'a FeatureNames,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Arc<Vec<Box<dyn RecordBasedQualityCheckFacet + Send + Sync + 'a>>>> {
+) -> anyhow::Result<Arc<Vec<Mutex<Box<dyn RecordBasedQualityCheckFacet + Send + Sync + 'a>>>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn RecordBasedQualityCheckFacet + Send + Sync>> = vec![
-        Box::new(GeneralMetricsFacet::default()),
-        Box::new(TemplateLengthFacet::with_capacity(1024)),
-        Box::new(GCContentFacet::default()),
-        Box::new(QualityScoreFacet::default()),
+    let mut facets: Vec<Mutex<Box<dyn RecordBasedQualityCheckFacet + Send + Sync>>> = vec![
+        Mutex::new(Box::new(GeneralMetricsFacet::default())),
+        Mutex::new(Box::new(TemplateLengthFacet::with_capacity(1024))),
+        Mutex::new(Box::new(GCContentFacet::default())),
+        Mutex::new(Box::new(QualityScoreFacet::default())),
     ];
 
     // Optionally load the Genomic Features facet if the GFF file is provided.
     if let Some(s) = features_gff {
-        facets.push(Box::new(GenomicFeaturesFacet::try_from(
+        facets.push(Mutex::new(Box::new(GenomicFeaturesFacet::try_from(
             s,
             feature_names,
             header,
             reference_genome,
-        )?));
+        )?)));
     }
 
     Ok(Arc::new(facets))
@@ -68,22 +69,22 @@ pub fn get_record_based_qc_facets<'a>(
 
 /// Dynamically compiles the sequence-based quality check facets that should be run for this
 /// invocation of the command line tool.
-pub fn get_sequence_based_qc_facets<'a>(
-    reference_fasta: Option<&PathBuf>,
-    header: &'a Header,
-    reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet<'a> + 'a>>> {
-    // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet<'_>>> =
-        vec![Box::new(CoverageFacet::new(reference_genome))];
+// pub fn get_sequence_based_qc_facets<'a>(
+//     reference_fasta: Option<&PathBuf>,
+//     header: &'a Header,
+//     reference_genome: Rc<Box<dyn ReferenceGenome>>,
+// ) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet<'a> + 'a>>> {
+//     // Default facets that are loaded within the qc subcommand.
+//     let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet<'_>>> =
+//         vec![Box::new(CoverageFacet::new(reference_genome))];
 
-    // Optionally load the Edits facet if a reference FASTA is provided.
-    if let Some(fasta) = reference_fasta {
-        facets.push(Box::new(EditsFacet::try_from(fasta, header)?))
-    }
+//     // Optionally load the Edits facet if a reference FASTA is provided.
+//     if let Some(fasta) = reference_fasta {
+//         facets.push(Box::new(EditsFacet::try_from(fasta, header)?))
+//     }
 
-    Ok(facets)
-}
+//     Ok(facets)
+// }
 
 //========================//
 // Command line arguments //
@@ -393,7 +394,8 @@ fn app(
         Rc::clone(&reference_genome),
     )?;
     info!("First pass with the following facets enabled:");
-    for facet in record_facets.iter() {
+    for result in record_facets.iter() {
+        let facet = result.lock().unwrap();
         info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
     }
 
@@ -404,20 +406,20 @@ fn app(
     debug!("Starting first pass for QC stats.");
     let mut record_count = 0;
 
-    for chunk in &reader.records().into_iter().chunks(5_000_000) {
+    for chunk in &reader.records().into_iter().chunks(1_000_000) {
         let records: Vec<Record> = chunk.map(|x| x.unwrap()).collect();
         let results: Vec<_> = records
             .par_iter()
             .map(|record| -> anyhow::Result<()> {
                 for facet in record_facets.iter() {
-                    facet.process(record)?;
+                    facet.lock().unwrap().process(record)?;
                 }
 
                 Ok(())
             })
             .collect();
 
-        record_count += 5_000_000;
+        record_count += 1_000_000;
         info!(
             "  [*] Processed {} records.",
             record_count.to_formatted_string(&Locale::en),
@@ -467,12 +469,12 @@ fn app(
     // Second pass: print out which facets we're going to analyze //
     //============================================================//
 
-    let mut sequence_facets =
-        get_sequence_based_qc_facets(reference_fasta, &header, Rc::clone(&reference_genome))?;
-    info!("Second pass with the following facets enabled:");
-    for facet in &sequence_facets {
-        info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
-    }
+    // let mut sequence_facets =
+    //     get_sequence_based_qc_facets(reference_fasta, &header, Rc::clone(&reference_genome))?;
+    // info!("Second pass with the following facets enabled:");
+    // for facet in &sequence_facets {
+    //     info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
+    // }
 
     //===================================================//
     // Second pass: set up file handles and prepare file //
@@ -531,7 +533,8 @@ fn app(
 
     let mut results = Results::default();
 
-    for facet in record_facets.iter() {
+    for result in record_facets.iter() {
+        let facet = result.lock().unwrap();
         facet.aggregate(&mut results);
     }
 

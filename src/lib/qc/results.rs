@@ -15,11 +15,11 @@ use super::{
 pub struct Results {
     general: Option<general::metrics::GeneralMetrics>,
     features: Option<features::Metrics>,
-    gc_content: Option<gc_content::GCContentMetrics>,
-    template_length: Option<template_length::TemplateLengthFacet>,
-    coverage: Option<coverage::CoverageMetrics>,
-    edits: Option<edits::EditMetrics>,
-    quality_scores: Option<quality_scores::QualityScoreFacet>,
+    gc_content: Option<gc_content::metrics::GCContentMetrics>,
+    template_length: Option<template_length::TemplateLengthMetrics>,
+    // coverage: Option<coverage::CoverageMetrics>,
+    // edits: Option<edits::EditMetrics>,
+    quality_scores: Option<quality_scores::QualityScoreMetrics>,
 }
 
 impl Results {
@@ -50,8 +50,8 @@ impl Results {
         self.general.as_ref()
     }
 
-    pub fn set_general(&mut self, general: general::GeneralMetricsFacet) {
-        self.general = Some(general.metrics);
+    pub fn set_general(&mut self, metrics: general::metrics::GeneralMetrics) {
+        self.general = Some(metrics);
     }
 
     //==========//
@@ -72,11 +72,11 @@ impl Results {
     //============//
 
     #[allow(dead_code)]
-    pub fn gc_content(&self) -> Option<&gc_content::GCContentMetrics> {
+    pub fn gc_content(&self) -> Option<&gc_content::metrics::GCContentMetrics> {
         self.gc_content.as_ref()
     }
 
-    pub fn set_gc_content(&mut self, gc_content: gc_content::GCContentMetrics) {
+    pub fn set_gc_content(&mut self, gc_content: gc_content::metrics::GCContentMetrics) {
         self.gc_content = Some(gc_content);
     }
 
@@ -85,11 +85,11 @@ impl Results {
     //=================//
 
     #[allow(dead_code)]
-    pub fn template_length(&self) -> Option<&template_length::TemplateLengthFacet> {
+    pub fn template_length(&self) -> Option<&template_length::TemplateLengthMetrics> {
         self.template_length.as_ref()
     }
 
-    pub fn set_template_length(&mut self, template_length: template_length::TemplateLengthFacet) {
+    pub fn set_template_length(&mut self, template_length: template_length::TemplateLengthMetrics) {
         self.template_length = Some(template_length);
     }
 
@@ -97,37 +97,37 @@ impl Results {
     // Coverage //
     //==========//
 
-    #[allow(dead_code)]
-    pub fn coverage(&self) -> Option<&coverage::CoverageMetrics> {
-        self.coverage.as_ref()
-    }
+    // #[allow(dead_code)]
+    // pub fn coverage(&self) -> Option<&coverage::CoverageMetrics> {
+    //     self.coverage.as_ref()
+    // }
 
-    pub fn set_coverage(&mut self, coverage: coverage::CoverageMetrics) {
-        self.coverage = Some(coverage);
-    }
+    // pub fn set_coverage(&mut self, coverage: coverage::CoverageMetrics) {
+    //     self.coverage = Some(coverage);
+    // }
 
     //=======//
     // Edits //
     //=======//
 
-    #[allow(dead_code)]
-    pub fn edits(&self) -> Option<&edits::EditMetrics> {
-        self.edits.as_ref()
-    }
+    // #[allow(dead_code)]
+    // pub fn edits(&self) -> Option<&edits::EditMetrics> {
+    //     self.edits.as_ref()
+    // }
 
-    pub fn set_edits(&mut self, edits: edits::EditMetrics) {
-        self.edits = Some(edits);
-    }
+    // pub fn set_edits(&mut self, edits: edits::EditMetrics) {
+    //     self.edits = Some(edits);
+    // }
 
     //================//
     // Quality Scores //
     //================//
 
-    pub fn quality_scores(&self) -> Option<&quality_scores::QualityScoreFacet> {
+    pub fn quality_scores(&self) -> Option<&quality_scores::QualityScoreMetrics> {
         self.quality_scores.as_ref()
     }
 
-    pub fn set_quality_scores(&mut self, quality_scores: quality_scores::QualityScoreFacet) {
+    pub fn set_quality_scores(&mut self, quality_scores: quality_scores::QualityScoreMetrics) {
         self.quality_scores = Some(quality_scores);
     }
 }

@@ -1,21 +1,42 @@
-use std::collections::HashMap;
+use std::{collections::HashMap, sync::Mutex};
 
 use serde::{Deserialize, Serialize};
 
 use crate::lib::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
-    utils::histogram::SimpleHistogram,
+    utils::histogram::{Histogram, MutexBackedHistogram},
 };
 
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct QualityScoreFacet {
-    scores: HashMap<usize, SimpleHistogram>,
+//=======================//
+// Quality Score Metrics //
+//=======================//
+
+#[derive(Debug, Default)]
+pub struct AtomicQualityScoreMetrics {
+    scores: Mutex<HashMap<usize, MutexBackedHistogram>>,
 }
 
-impl QualityScoreFacet {
-    pub fn scores(&self) -> &HashMap<usize, SimpleHistogram> {
-        &self.scores
+#[derive(Debug, Serialize, Deserialize)]
+pub struct QualityScoreMetrics {
+    pub scores: HashMap<usize, Histogram>,
+}
+
+impl AtomicQualityScoreMetrics {
+    pub fn clone_nonatomic(&self) -> QualityScoreMetrics {
+        let scores = self.scores.lock().unwrap();
+        let mut new_scores = HashMap::new();
+
+        for (key, value) in scores.iter() {
+            new_scores.insert(*key, value.clone_nonmutex());
+        }
+
+        QualityScoreMetrics { scores: new_scores }
     }
+}
+
+#[derive(Debug, Default)]
+pub struct QualityScoreFacet {
+    metrics: AtomicQualityScoreMetrics,
 }
 
 const MAX_SCORE: usize = 93;
@@ -32,12 +53,15 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         ComputationalLoad::Moderate
     }
 
-    fn process(&self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
+    fn process(&mut self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
         for (i, val) in record.quality_scores().as_ref().iter().enumerate() {
-            // let histogram = self
-            //     .scores
-            //     .entry(i + 1) // indices are 0-based, we want this to be 1-based.
-            //     .or_insert_with(|| SimpleHistogram::zero_based_with_capacity(self::MAX_SCORE));
+            let histogram = self
+                .metrics
+                .scores
+                .lock()
+                .unwrap()
+                .entry(i + 1) // indices are 0-based, we want this to be 1-based.
+                .or_insert_with(|| MutexBackedHistogram::zero_based_with_capacity(self::MAX_SCORE));
 
             let score = u8::from(*val) as usize;
             // histogram.increment(score).unwrap();
@@ -54,6 +78,6 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_quality_scores(self.clone());
+        results.set_quality_scores(self.metrics.clone_nonatomic());
     }
 }

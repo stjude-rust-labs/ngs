@@ -1,4 +1,4 @@
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, rc::Rc, sync::atomic::Ordering};
 
 use anyhow::{bail, Context};
 use noodles_sam as sam;
@@ -17,6 +17,7 @@ use crate::lib::{
 pub mod metrics;
 pub mod name_strand;
 
+use self::metrics::AtomicMetrics;
 pub use self::{
     metrics::{Metrics, SummaryMetrics},
     name_strand::FeatureNameStrand,
@@ -66,7 +67,7 @@ pub struct GenomicFeaturesFacet<'a> {
     gene_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
-    metrics: Metrics,
+    metrics: AtomicMetrics,
     primary_chromosome_names: Vec<String>,
 }
 
@@ -79,7 +80,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
         ComputationalLoad::Moderate
     }
 
-    fn process(&self, record: &Record) -> anyhow::Result<()> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         // (1) Parse the read name.
         let read_name = match record.read_name() {
             Some(name) => name,
@@ -126,7 +127,10 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
             .iter()
             .any(|s: &String| s == seq_name)
         {
-            // self.metrics.records.ignored_nonprimary_chromosome += 1;
+            self.metrics
+                .records
+                .ignored_nonprimary_chromosome
+                .fetch_add(1, Ordering::SeqCst);
             return Ok(());
         }
 
@@ -155,21 +159,26 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
                     && f.name() == self.feature_names.five_prime_utr_feature_name
                 {
                     counted_as_five_prime_utr = true;
-                    // self.metrics.exonic_translation_regions.utr_five_prime_count += 1;
+                    self.metrics
+                        .exonic_translation_regions
+                        .utr_five_prime_count
+                        .fetch_add(1, Ordering::SeqCst);
                 } else if !counted_as_three_prime_utr
                     && f.name() == self.feature_names.three_prime_utr_feature_name
                 {
                     counted_as_three_prime_utr = true;
-                    // self.metrics
-                    //     .exonic_translation_regions
-                    //     .utr_three_prime_count += 1;
+                    self.metrics
+                        .exonic_translation_regions
+                        .utr_three_prime_count
+                        .fetch_add(1, Ordering::SeqCst);
                 } else if !counted_as_coding_sequence
                     && f.name() == self.feature_names.coding_sequence_feature_name
                 {
                     counted_as_coding_sequence = true;
-                    // self.metrics
-                    //     .exonic_translation_regions
-                    //     .coding_sequence_count += 1;
+                    self.metrics
+                        .exonic_translation_regions
+                        .coding_sequence_count
+                        .fetch_add(1, Ordering::SeqCst);
                 }
             }
         }
@@ -194,12 +203,21 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
             if has_gene {
                 if has_exon {
-                    // self.metrics.gene_regions.exonic_count += 1;
+                    self.metrics
+                        .gene_regions
+                        .exonic_count
+                        .fetch_add(1, Ordering::SeqCst);
                 } else {
-                    // self.metrics.gene_regions.intronic_count += 1;
+                    self.metrics
+                        .gene_regions
+                        .intronic_count
+                        .fetch_add(1, Ordering::SeqCst);
                 }
             } else {
-                // self.metrics.gene_regions.intergenic_count += 1;
+                self.metrics
+                    .gene_regions
+                    .intergenic_count
+                    .fetch_add(1, Ordering::SeqCst);
             }
         }
 
@@ -209,16 +227,29 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
     fn summarize(&mut self) -> anyhow::Result<()> {
         self.metrics.summary = Some(SummaryMetrics {
-            ignored_flags_pct: (self.metrics.records.ignored_flags as f64
-                / (self.metrics.records.ignored_flags
-                    + self.metrics.records.ignored_nonprimary_chromosome
-                    + self.metrics.records.processed) as f64)
+            ignored_flags_pct: (self.metrics.records.ignored_flags.load(Ordering::SeqCst) as f64
+                / (self.metrics.records.ignored_flags.load(Ordering::SeqCst)
+                    + self
+                        .metrics
+                        .records
+                        .ignored_nonprimary_chromosome
+                        .load(Ordering::SeqCst)
+                    + self.metrics.records.processed.load(Ordering::SeqCst))
+                    as f64)
                 * 100.0,
-            ignored_nonprimary_chromosome_pct: (self.metrics.records.ignored_nonprimary_chromosome
-                as f64
-                / (self.metrics.records.ignored_flags
-                    + self.metrics.records.ignored_nonprimary_chromosome
-                    + self.metrics.records.processed) as f64)
+            ignored_nonprimary_chromosome_pct: (self
+                .metrics
+                .records
+                .ignored_nonprimary_chromosome
+                .load(Ordering::SeqCst) as f64
+                / (self.metrics.records.ignored_flags.load(Ordering::SeqCst)
+                    + self
+                        .metrics
+                        .records
+                        .ignored_nonprimary_chromosome
+                        .load(Ordering::SeqCst)
+                    + self.metrics.records.processed.load(Ordering::SeqCst))
+                    as f64)
                 * 100.0,
         });
 
@@ -226,7 +257,7 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_features(self.metrics.clone())
+        results.set_features(self.metrics.clone_nonatomic())
     }
 }
 
@@ -311,7 +342,7 @@ impl<'a> GenomicFeaturesFacet<'a> {
             gene_regions,
             feature_names,
             header,
-            metrics: Metrics::new(),
+            metrics: AtomicMetrics::new(),
             primary_chromosome_names: primary_assembly_sequence_names,
         })
     }

@@ -35,7 +35,7 @@ impl SamplePlot for QualityScoreDistributionPlot {
         };
 
         // (2) Tally up the quality scores and configure the plot.
-        let scores = quality_scores.scores();
+        let scores = &quality_scores.scores;
         let mut x = Vec::new();
         let mut y = Vec::new();
         let mut error_plus = Vec::new();

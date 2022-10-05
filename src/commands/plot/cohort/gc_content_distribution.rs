@@ -61,7 +61,7 @@ impl CohortPlot for GCContentDistributionPlot {
             let mut x = Vec::new();
             let mut y = Vec::new();
 
-            for (position, value) in histogram.values().iter().enumerate() {
+            for (position, value) in histogram.values.iter().enumerate() {
                 x.push(position);
                 y.push(*value as f64 / total as f64);
             }
