@@ -344,6 +344,11 @@ fn app(
     //=====================================================//
 
     let mut reader = File::open(src).map(bam::Reader::new)?;
+    // This check is here simply so that, if the BAM index does not exist, we
+    // don't complete the first pass before erroring out. It's not strictly
+    // needed for this first pass as we aren't doing random access throughout
+    // the file.
+    let _ = bai::read(src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
     let ht = reader.read_header()?;
     let header = parse_header(ht);
