@@ -10,6 +10,7 @@ use std::{
     str::FromStr,
 };
 
+use anyhow::bail;
 use fasta::record::Sequence;
 use noodles_core::Position;
 use noodles_fasta::{self as fasta};
@@ -199,57 +200,55 @@ fn reference_provider_params_from_str(
     let parts: Vec<_> = s.split(':').collect();
 
     if parts.len() != 6 {
-        return Err("Invalid format for reference genome sequence provider, \
-            please check the docs."
-            .into());
+        bail!(
+            "invalid format for reference genome sequence provider, \
+            please check the wiki for the correct format."
+        );
     }
 
     let src = PathBuf::from(parts[0]);
     let error_frequency = match parts[1].parse::<usize>() {
         Ok(result) => result,
         Err(_) => {
-            return Err(format!(
-                "Could not parse the error frequency for reference provider: {}.",
+            bail!(
+                "could not parse the error frequency for reference provider: {}.",
                 s
-            ))
+            )
         }
     };
 
     let mu = match parts[2].parse::<f64>() {
         Ok(result) => result,
         Err(_) => {
-            return Err(format!(
-            "Could not parse the mean for inner distance distribution for reference provider: {}.",
+            bail!(
+            "could not parse the mean for inner distance distribution for reference provider: {}.",
             s
-        ))
+        )
         }
     };
 
     let sigma = match parts[3].parse::<f64>() {
             Ok(result) => result,
-            Err(_) => return Err(format!(
-                "Could not parse the std deviation for inner distance distribution for reference provider: {}.",
+            Err(_) => bail!(
+                "could not parse the std deviation for inner distance distribution for reference provider: {}.",
                 s
-            ))
+            )
         };
 
     let read_length = match parts[4].parse::<usize>() {
         Ok(result) => result,
         Err(_) => {
-            return Err(format!(
-                "Could not parse the read length for reference provider: {}.",
+            bail!(
+                "could not parse the read length for reference provider: {}.",
                 s
-            ))
+            )
         }
     };
 
     let weight = match parts[5].parse::<usize>() {
         Ok(result) => result,
         Err(_) => {
-            return Err(format!(
-                "Could not parse the weight for reference provider: {}.",
-                s
-            ))
+            bail!("could not parse the weight for reference provider: {}.", s)
         }
     };
 
@@ -258,7 +257,7 @@ fn reference_provider_params_from_str(
 }
 
 impl FromStr for ReferenceGenomeSequenceProvider {
-    type Err = String;
+    type Err = anyhow::Error;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let (src, error_frequency, params, read_length, weight) =
             reference_provider_params_from_str(s)?;
@@ -270,7 +269,7 @@ impl FromStr for ReferenceGenomeSequenceProvider {
             weight,
         ) {
             Ok(rsp) => Ok(rsp),
-            Err(e) => Err(e.to_string()),
+            Err(e) => bail!(e),
         }
     }
 }
@@ -434,8 +433,8 @@ mod tests {
         let result = reference_provider_params_from_str("path:20:5.");
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Invalid format for reference genome sequence provider, please check the docs."
+            result.err().unwrap().to_string(),
+            "invalid format for reference genome sequence provider, please check the wiki for the correct format."
         );
     }
 
@@ -444,8 +443,8 @@ mod tests {
         let result = reference_provider_params_from_str("path:20.0:5.0:6.0:150:100");
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Could not parse the error frequency for reference provider: path:20.0:5.0:6.0:150:100."
+            result.err().unwrap().to_string(),
+            "could not parse the error frequency for reference provider: path:20.0:5.0:6.0:150:100."
         );
     }
 
@@ -454,8 +453,8 @@ mod tests {
         let result = reference_provider_params_from_str("path:20:err:6.0:150:100");
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Could not parse the mean for inner distance distribution for reference provider: path:20:err:6.0:150:100."
+            result.err().unwrap().to_string(),
+            "could not parse the mean for inner distance distribution for reference provider: path:20:err:6.0:150:100."
         );
     }
 
@@ -465,8 +464,8 @@ mod tests {
 
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Could not parse the std deviation for inner distance distribution for reference provider: path:20:5.0:err:150:100."
+            result.err().unwrap().to_string(),
+            "could not parse the std deviation for inner distance distribution for reference provider: path:20:5.0:err:150:100."
         );
     }
 
@@ -475,8 +474,8 @@ mod tests {
         let result = reference_provider_params_from_str("path:20:5.0:6.0:false:100");
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Could not parse the read length for reference provider: path:20:5.0:6.0:false:100."
+            result.err().unwrap().to_string(),
+            "could not parse the read length for reference provider: path:20:5.0:6.0:false:100."
         );
     }
 
@@ -485,8 +484,8 @@ mod tests {
         let result = reference_provider_params_from_str("path:20:5.0:6.0:150:false");
         assert!(result.is_err());
         assert_eq!(
-            result.err().unwrap(),
-            "Could not parse the weight for reference provider: path:20:5.0:6.0:150:false."
+            result.err().unwrap().to_string(),
+            "could not parse the weight for reference provider: path:20:5.0:6.0:150:false."
         );
     }
 }

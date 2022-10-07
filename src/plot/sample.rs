@@ -4,7 +4,7 @@ pub mod quality_score_distribution;
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{value_parser, Arg, ArgMatches, Command};
+use clap::Args;
 use tracing::{debug, info};
 
 use crate::{
@@ -12,51 +12,42 @@ use crate::{
     qc::results::Results,
 };
 
-pub fn get_command() -> Command {
-    Command::new("sample")
-        .about("Plots sample-specific information produced by the `ngs qc` command.")
-        .arg(
-            Arg::new("src")
-                .help("`ngs qc` results file for which to generate the plot(s)")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        )
-        .arg(
-            Arg::new("output-directory")
-                .long("--output-directory")
-                .short('o')
-                .help("The directory to output files to.")
-                .value_parser(value_parser!(PathBuf))
-                .required(false),
-        )
+#[derive(Args)]
+pub struct SampleArgs {
+    /// `ngs qc` results file for which to generate the plot(s).
+    #[arg(value_name = "JSON")]
+    pub src: PathBuf,
+
+    /// The directory to output all files within.
+    #[arg(short, long, value_name = "PATH")]
+    pub output_directory: Option<PathBuf>,
 }
 
-pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
+pub fn plot(args: SampleArgs) -> anyhow::Result<()> {
     //========//
     // Source //
     //========//
 
-    let src: &PathBuf = matches.get_one("src").expect("missing src filepath");
-    let results = FilepathResults(
-        src,
-        Results::read(src).with_context(|| format!("invalid input file: {}", src.display()))?,
-    );
-    debug!("  [*] Source: {}", src.display());
+    let results = Results::read(&args.src)
+        .with_context(|| format!("invalid input file: {}", args.src.display()))?;
+
+    let filepath_results = FilepathResults(args.src.clone(), results);
+    debug!("  [*] Source: {}", args.src.display());
 
     //==================//
     // Output Directory //
     //==================//
 
-    let output_directory = if let Some(m) = matches.get_one::<PathBuf>("output-directory") {
-        PathBuf::from(m)
+    let output_directory = if let Some(o) = args.output_directory {
+        o
     } else {
-        std::env::current_dir().expect("Could not retrieve the current working directory.")
+        std::env::current_dir().expect("could not retrieve the current working directory.")
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
     let plots = get_all_sample_plots();
     for p in plots {
-        let plot = p.generate(&results)?;
+        let plot = p.generate(&filepath_results)?;
 
         let mut filename = output_directory.clone();
         filename.push(String::from(p.filename()) + ".sample.html");

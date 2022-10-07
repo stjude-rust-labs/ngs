@@ -32,8 +32,8 @@ pub struct EditsFacet<'a> {
 }
 
 impl<'a> EditsFacet<'a> {
-    pub fn try_from(reference_fasta: &PathBuf, header: &'a Header) -> anyhow::Result<Self> {
-        let fasta = formats::fasta::open(reference_fasta).with_context(|| {
+    pub fn try_from(reference_fasta: PathBuf, header: &'a Header) -> anyhow::Result<Self> {
+        let fasta = formats::fasta::open(&reference_fasta).with_context(|| {
             format!(
                 "Error opening reference FASTA file: {}.",
                 reference_fasta.display()

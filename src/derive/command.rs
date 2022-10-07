@@ -1,11 +1,19 @@
 pub mod instrument;
 
-use clap::Command;
+use clap::{Args, Subcommand};
 
-pub fn get_command() -> Command {
-    let derive_instrument_cmd = self::instrument::get_command();
-    Command::new("derive")
-        .about("Forensic analysis tool for next-generation sequencing data")
-        .subcommand_required(true)
-        .subcommand(derive_instrument_cmd)
+//===============//
+// Command setup //
+//===============//
+
+#[derive(Args)]
+pub struct DeriveArgs {
+    #[command(subcommand)]
+    pub subcommand: DeriveSubcommand,
+}
+
+#[derive(Subcommand)]
+pub enum DeriveSubcommand {
+    /// Derives the instrument used to produce the file.
+    Instrument(self::instrument::Instrument),
 }

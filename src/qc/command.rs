@@ -1,7 +1,7 @@
 use std::{fs::File, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
-use clap::{value_parser, Arg, ArgMatches, Command};
+use clap::Args;
 use noodles_bam::{self as bam, bai};
 use noodles_core::{Position, Region};
 use noodles_sam::Header;
@@ -37,6 +37,66 @@ pub enum NumberOfRecords {
     Some(usize),
 }
 
+//========================//
+// Command line arguments //
+//========================//
+
+#[derive(Args)]
+pub struct QcArgs {
+    /// Source BAM file.
+    #[arg(value_name = "BAM")]
+    src: PathBuf,
+
+    /// Supported reference genome used as the basis for analysis.
+    reference_genome: String,
+
+    /// Features GFF file (some metrics only supported if present).
+    #[arg(short = 'f', long, value_name = "PATH")]
+    features_gff: Option<PathBuf>,
+
+    /// Number of records to process in the first pass.
+    #[arg(short = 'n', long, value_name = "USIZE")]
+    num_records: Option<usize>,
+
+    /// Directory to output files to. Defaults to current working directory.
+    #[arg(short = 'o', long, value_name = "PATH")]
+    output_directory: Option<PathBuf>,
+
+    /// Output prefix for the files that will be created. Defaults to the name
+    /// of the file.
+    #[arg(short = 'p', long, value_name = "STRING")]
+    output_prefix: Option<String>,
+
+    /// Reference FASTA file (some metrics only supported if present).
+    #[arg(short = 'r', long, value_name = "PATH")]
+    reference_fasta: Option<PathBuf>,
+
+    /// Name of the feature that represents a five prime UTR region in the GFF
+    /// file. Defaults to the respective GENCODE feature name.
+    #[arg(long, value_name = "STRING", default_value = "five_prime_UTR")]
+    five_prime_utr_feature_name: String,
+
+    /// Name of the feature that represents a three prime UTR region in the GFF
+    /// file. Defaults to the respective GENCODE feature name.
+    #[arg(long, value_name = "STRING", default_value = "three_prime_UTR")]
+    three_prime_utr_feature_name: String,
+
+    /// Name of the feature that represents a coding sequence region in the GFF
+    /// file. Defaults to the respective GENCODE feature name.
+    #[arg(long, value_name = "STRING", default_value = "CDS")]
+    coding_sequence_feature_name: String,
+
+    /// Name of the feature that represents an exonic region in the GFF file.
+    /// Defaults to the repective GENCODE feature name.
+    #[arg(long, value_name = "STRING", default_value = "exon")]
+    exon_feature_name: String,
+
+    /// Name of the feature that represents a gene region in the GFF file.
+    /// Defaults to the repective GENCODE feature name.
+    #[arg(long, value_name = "STRING", default_value = "gene")]
+    gene_feature_name: String,
+}
+
 //============================================//
 // Dynamic allocation of quality check facets //
 //============================================//
@@ -44,7 +104,7 @@ pub enum NumberOfRecords {
 /// Dynamically compiles the record-based quality check facets that should be run for this
 /// invocation of the command line tool.
 pub fn get_record_based_qc_facets<'a>(
-    features_gff: Option<&PathBuf>,
+    features_gff: Option<PathBuf>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
@@ -73,7 +133,7 @@ pub fn get_record_based_qc_facets<'a>(
 /// Dynamically compiles the sequence-based quality check facets that should be run for this
 /// invocation of the command line tool.
 pub fn get_sequence_based_qc_facets<'a>(
-    reference_fasta: Option<&PathBuf>,
+    reference_fasta: Option<PathBuf>,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
 ) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet<'a> + 'a>>> {
@@ -89,127 +149,12 @@ pub fn get_sequence_based_qc_facets<'a>(
     Ok(facets)
 }
 
-//========================//
-// Command line arguments //
-//========================//
-
-/// Gets the command line arguments for the `qc` subcommand.
-pub fn get_command() -> Command {
-    Command::new("qc")
-        .about("Generates quality control metrics for BAM files.")
-        .arg(
-            Arg::new("src")
-                .help("Source BAM file to perform QC on.")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        )
-        .arg(
-            Arg::new("reference-fasta")
-                .long("--reference-fasta")
-                .short('r')
-                .help("Reference FASTA for edit lookups.")
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            Arg::new("features-gff")
-                .long("--features-gff")
-                .short('f')
-                .help("Features GFF file.")
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            Arg::new("reference-genome")
-                .long("--reference-genome")
-                .help("Referenvalue_ofce genome used as the basis for the file.")
-                .value_parser(value_parser!(String))
-                .required(true),
-        )
-        .arg(
-            Arg::new("output-prefix")
-                .long("--output-prefix")
-                .short('p')
-                .help("Output prefix for the files that will be created.")
-                .value_parser(value_parser!(String)),
-        )
-        .arg(
-            Arg::new("output-directory")
-                .long("--output-directory")
-                .short('o')
-                .help("The directory to output files to.")
-                .required(false)
-                .value_parser(value_parser!(PathBuf)),
-        )
-        .arg(
-            Arg::new("num-records")
-                .long("--num-records")
-                .short('n')
-                .help("Number of records to process in the first pass.")
-                .value_parser(value_parser!(usize))
-                .required(false),
-        )
-        .arg(
-            Arg::new("five-prime-utr-feature-name")
-                .long("--five-prime-utr-feature-name")
-                .help(concat!(
-                    "Name of the feature that represents a five prime ",
-                    "UTR region in the GFF file. The default is to use the ",
-                    "GENCODE feature name."
-                ))
-                .value_parser(value_parser!(String))
-                .default_value("five_prime_UTR"),
-        )
-        .arg(
-            Arg::new("three-prime-utr-feature-name")
-                .long("--three-prime-utr-feature-name")
-                .help(concat!(
-                    "Name of the feature that represents a three prime ",
-                    "UTR region in the GFF file. The default is to use the ",
-                    "GENCODE feature name."
-                ))
-                .value_parser(value_parser!(String))
-                .default_value("three_prime_UTR"),
-        )
-        .arg(
-            Arg::new("coding-sequence-feature-name")
-                .long("--coding-sequence-feature-name")
-                .help(concat!(
-                    "Name of the feature that represents a coding sequence ",
-                    "region in the GFF file. The default is to use the ",
-                    "GENCODE feature name."
-                ))
-                .value_parser(value_parser!(String))
-                .default_value("CDS"),
-        )
-        .arg(
-            Arg::new("exon-feature-name")
-                .long("--exon-feature-name")
-                .help(concat!(
-                    "Name of the feature that represents an exonic ",
-                    "region in the GFF file. The default is to use the ",
-                    "GENCODE feature name."
-                ))
-                .value_parser(value_parser!(String))
-                .default_value("exon"),
-        )
-        .arg(
-            Arg::new("gene-feature-name")
-                .long("--gene-feature-name")
-                .help(concat!(
-                    "Name of the feature that represents an gene ",
-                    "region in the GFF file. The default is to use the ",
-                    "GENCODE feature name."
-                ))
-                .value_parser(value_parser!(String))
-                .default_value("gene"),
-        )
-}
-
 //==============================//
 // Prepares the `qc` subcommand //
 //==============================//
 
 /// Prepares the arguments for running the main `qc` subcommand.
-pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
+pub fn qc(args: QcArgs) -> anyhow::Result<()> {
     info!("Starting qc command...");
     debug!("Arguments:");
 
@@ -217,20 +162,16 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Source Path //
     //=============//
 
-    let src: &PathBuf = matches
-        .get_one("src")
-        .expect("Could not parse the arguments that were passed in for src.");
+    let src: PathBuf = args.src;
     debug!("  [*] Source: {}", src.display());
 
     //==================//
     // Reference Genome //
     //==================//
 
-    let provided_reference_genome = matches
-        .get_one::<String>("reference-genome")
-        .expect("Did not receive a reference genome.");
+    let provided_reference_genome = args.reference_genome;
 
-    let reference_genome = match get_reference_genome(provided_reference_genome) {
+    let reference_genome = match get_reference_genome(&provided_reference_genome) {
         Some(s) => Rc::new(s),
         None => bail!(
             "reference genome is not supported: {}. \
@@ -245,14 +186,14 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Reference FASTA //
     //=================//
 
-    let reference_fasta = matches.get_one("reference-fasta");
+    let reference_fasta = args.reference_fasta;
     debug!("  [*] Reference FASTA: {:?}", reference_fasta);
 
     //==============//
     // Features GFF //
     //==============//
 
-    let features_gff = matches.get_one::<PathBuf>("features-gff");
+    let features_gff = args.features_gff;
     debug!("  [*] Features GFF : {:?}", features_gff);
 
     //===============//
@@ -260,56 +201,33 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     //===============//
 
     // Default is the name of the file.
-    let output_prefix = matches
-        .get_one::<String>("output-prefix")
-        .map(|s| s.to_owned())
-        .unwrap_or_else(|| {
-            src.file_name()
-                .unwrap()
-                .to_os_string()
-                .into_string()
-                .unwrap()
-        });
+    let output_prefix = args.output_prefix.unwrap_or_else(|| {
+        src.file_name()
+            .unwrap()
+            .to_os_string()
+            .into_string()
+            .unwrap()
+    });
     debug!("  [*] Output prefix: {}", output_prefix);
 
     //==========================//
     // Feature GFF Column Names //
     //==========================//
 
-    let five_prime_utr_feature_name = matches
-        .get_one::<String>("five-prime-utr-feature-name")
-        .expect("Could not parse the five prime UTR feature name.");
-
-    let three_prime_utr_feature_name = matches
-        .get_one::<String>("three-prime-utr-feature-name")
-        .expect("Could not parse the three prime UTR feature name.");
-
-    let coding_sequence_feature_name = matches
-        .get_one::<String>("coding-sequence-feature-name")
-        .expect("Could not parse the coding sequence feature name.");
-
-    let exon_feature_name = matches
-        .get_one::<String>("exon-feature-name")
-        .expect("Could not parse the exon feature name.");
-
-    let gene_feature_name = matches
-        .get_one::<String>("gene-feature-name")
-        .expect("Could not parse the gene feature name.");
-
     let feature_names = FeatureNames::new(
-        five_prime_utr_feature_name,
-        three_prime_utr_feature_name,
-        coding_sequence_feature_name,
-        exon_feature_name,
-        gene_feature_name,
+        args.five_prime_utr_feature_name,
+        args.three_prime_utr_feature_name,
+        args.coding_sequence_feature_name,
+        args.exon_feature_name,
+        args.gene_feature_name,
     );
 
     //==================//
     // Output Directory //
     //==================//
 
-    let output_directory = match matches.get_one::<PathBuf>("output-directory") {
-        Some(p) => p.to_owned(),
+    let output_directory = match args.output_directory {
+        Some(p) => p,
         None => std::env::current_dir()?,
     };
     debug!("  [*] Output directory: {}", output_directory.display());
@@ -318,10 +236,10 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Number of Records //
     //===================//
 
-    let num_records = match matches.get_one::<usize>("num-records") {
+    let num_records = match args.num_records {
         Some(n) => {
             debug!("Reading a maximum of {} records in the first pass.", n);
-            NumberOfRecords::Some(*n)
+            NumberOfRecords::Some(n)
         }
         None => {
             debug!("Reading all available records in the first pass.");
@@ -348,9 +266,9 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
 /// Runs the main program for the `qc` subcommand.
 #[allow(clippy::too_many_arguments)]
 fn app(
-    src: &PathBuf,
-    reference_fasta: Option<&PathBuf>,
-    features_gff: Option<&PathBuf>,
+    src: PathBuf,
+    reference_fasta: Option<PathBuf>,
+    features_gff: Option<PathBuf>,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
     output_prefix: String,
     output_directory: PathBuf,
@@ -361,12 +279,12 @@ fn app(
     // Preprocessing: set up file handles and prepare file //
     //=====================================================//
 
-    let mut reader = File::open(src).map(bam::Reader::new)?;
+    let mut reader = File::open(&src).map(bam::Reader::new)?;
     // This check is here simply so that, if the BAM index does not exist, we
     // don't complete the first pass before erroring out. It's not strictly
     // needed for this first pass as we aren't doing random access throughout
     // the file.
-    let _ = bai::read(src.with_extension("bam.bai")).with_context(|| "bam index")?;
+    let _ = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
     let ht = reader.read_header()?;
     let header = parse_header(ht);
@@ -471,8 +389,8 @@ fn app(
     // Second pass: set up file handles and prepare file //
     //===================================================//
 
-    let mut reader = File::open(src).map(bam::Reader::new)?;
-    let index = bai::read(src.with_extension("bam.bai")).with_context(|| "bam index")?;
+    let mut reader = File::open(&src).map(bam::Reader::new)?;
+    let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
     for (name, seq) in header.reference_sequences() {
         let start = Position::MIN;

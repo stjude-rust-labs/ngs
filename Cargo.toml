@@ -1,4 +1,5 @@
 [package]
+authors = ["Clay McLeod <clay.l.mcleod@gmail.com>"]
 edition = "2021"
 license = "MIT"
 name = "ngs"
@@ -10,7 +11,7 @@ version = "0.2.0"
 
 [dependencies]
 anyhow = "1.0.65"
-clap = { version = "4.0.10", features = ["string"] }
+clap = { version = "4.0.10", features = ["cargo", "derive", "string"] }
 flate2 = "1.0.23"
 futures = "0.3.21"
 git-testament = "0.2.1"

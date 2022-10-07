@@ -1,27 +1,19 @@
 use anyhow::bail;
-use clap::{builder::PossibleValuesParser, Arg, ArgMatches, Command};
+use clap::{builder::PossibleValuesParser, Args};
 
 use prettytable::{row, Table};
 
 use crate::utils::genome::get_all_reference_genomes;
 
-pub fn get_command() -> Command {
-    Command::new("list")
-        .about("Utility to list various supported items in this command line tool.")
-        .arg(
-            Arg::new("subject")
-                .help("The subject which you want to list values for.")
-                .value_parser(PossibleValuesParser::new(["reference-genomes"]))
-                .required(true),
-        )
+#[derive(Args)]
+pub struct ListArgs {
+    /// The subject which you want to list values for.
+    #[arg(value_parser = PossibleValuesParser::new(["reference-genomes"]))]
+    subject: String,
 }
 
-pub fn list(matches: &ArgMatches) -> anyhow::Result<()> {
-    let subject = matches
-        .get_one::<String>("subject")
-        .expect("could not parse subject");
-
-    match subject.as_str() {
+pub fn list(args: ListArgs) -> anyhow::Result<()> {
+    match args.subject.as_str() {
         "reference-genomes" => {
             let mut table = Table::new();
 

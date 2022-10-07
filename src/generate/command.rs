@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{value_parser, Arg, ArgGroup, ArgMatches, Command};
+use clap::{ArgGroup, Args};
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::prelude::*;
 use tracing::info;
@@ -11,75 +11,55 @@ use crate::{
     utils::formats,
 };
 
-pub fn get_command() -> Command {
-    Command::new("generate")
-        .about("Generates a BAM file from a given reference genome.")
-        .arg(
-            Arg::new("reads-one-file")
-                .long("--reads-one-file")
-                .help("Destination for the first reads FASTQ file.")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        )
-        .arg(
-            Arg::new("reads-two-file")
-                .long("--reads-two-file")
-                .help("Destination for the second reads FASTQ file.")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        )
-        .arg(
-            Arg::new("reference-providers")
-                .long("--reference-provider")
-                .help("One or more reference FASTAs to generate the data based off of.")
-                .required(true),
-        )
-        .arg(Arg::new("error-rate")
-                 .short('e')
-                 .long("--error-rate")
-                 .default_value("0.0001")
-                 .value_parser(value_parser!(f64))
-                 .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
-        )
-        .arg(
-            Arg::new("num-records")
-                .short('n')
-                .long("--num-records")
-                .help("Specifies the number of records to generate.")
-                .value_parser(value_parser!(usize))
-                .conflicts_with("coverage"),
-        )
-        .arg(
-            Arg::new("coverage")
-                .short('c')
-                .long("--coverage")
-                .help("Dynamically calculate the number of reads needed for a particular mean coverage.")
-                .value_parser(value_parser!(usize))
-                .conflicts_with("num-reads"),
-        )
-        .group(
-            ArgGroup::new("reads-count")
-                .arg("coverage")
-                .arg("num-reads")
-                .required(true),
-        )
+pub fn error_rate_in_range(error_rate_raw: &str) -> Result<f32, String> {
+    let error_rate: f32 = error_rate_raw
+        .parse()
+        .map_err(|_| format!("{} isn't a float", error_rate_raw))?;
+
+    match (0.0..=1.0).contains(&error_rate) {
+        true => Ok(error_rate),
+        false => Err(String::from("Error rate must be between 0.0 and 1.0")),
+    }
 }
 
-pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
+#[derive(Args)]
+#[command(group(ArgGroup::new("record-count").required(true).args(["coverage", "num_records"])))]
+pub struct GenerateArgs {
+    /// Destination for the FASTQ file containing all read ones.
+    read_ones_file: PathBuf,
+
+    /// Destination for the FASTQ file containing all read twos.
+    read_twos_file: PathBuf,
+
+    /// One or more reference FASTAs to generate the data based off of.
+    #[arg(required = true)] // required implies one or more
+    reference_providers: Vec<String>,
+
+    /// The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).
+    #[arg(short, long, value_name = "F32", default_value = "0.0001")]
+    #[arg(value_parser = error_rate_in_range)]
+    error_rate: Option<f32>,
+
+    /// Specifies the number of records to generate.
+    #[arg(short, long, value_name = "USIZE", conflicts_with = "coverage")]
+    num_records: Option<usize>,
+
+    /// Dynamically calculate the number of reads needed for a particular mean coverage.
+    #[arg(short, long, value_name = "USIZE", conflicts_with = "num_records")]
+    coverage: Option<usize>,
+}
+
+pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
-    let reference_providers: Vec<_> = matches
-        .get_many::<String>("reference-providers")
-        .expect("missing reference providers")
-        .map(|rp| rp.parse::<ReferenceGenomeSequenceProvider>().unwrap())
+    let result: anyhow::Result<Vec<_>> = args
+        .reference_providers
+        .iter()
+        .map(|provider_as_string| provider_as_string.parse::<ReferenceGenomeSequenceProvider>())
         .collect();
+    let reference_providers = result.with_context(|| "issue parsing reference providers")?;
 
-    let reads_one_file = matches
-        .get_one::<PathBuf>("reads-one-file")
-        .expect("missing reads one file");
-
-    let reads_two_file = matches
-        .get_one::<PathBuf>("reads-two-file")
-        .expect("missing reads two file");
+    let reads_one_file = args.read_ones_file;
+    let reads_two_file = args.read_twos_file;
 
     info!("Starting generate command...");
     let mut writer_read_one = formats::fastq::writer(&reads_one_file).with_context(|| {
@@ -97,10 +77,10 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let mut total_reads: usize = 0;
 
-    if let Some(num_reads) = matches.get_one::<usize>("num-reads") {
-        total_reads = *num_reads
-    } else if let Some(coverage) = matches.get_one::<usize>("coverage") {
-        total_reads = reference_providers[0].reads_needed_for_coverage(*coverage);
+    if let Some(num_records) = args.num_records {
+        total_reads = num_records
+    } else if let Some(coverage) = args.coverage {
+        total_reads = reference_providers[0].reads_needed_for_coverage(coverage);
     }
 
     // (2) Set up the output writers.

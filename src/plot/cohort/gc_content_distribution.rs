@@ -18,7 +18,7 @@ impl CohortPlot for GCContentDistributionPlot {
         "gc-content-distribution"
     }
 
-    fn generate(&self, filepath_results: &[FilepathResults<'_>]) -> anyhow::Result<plotly::Plot> {
+    fn generate(&self, filepath_results: &[FilepathResults]) -> anyhow::Result<plotly::Plot> {
         let mut plot = plotly::Plot::new();
 
         for FilepathResults(filepath, result) in filepath_results {

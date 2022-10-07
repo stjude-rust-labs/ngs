@@ -2,43 +2,32 @@ use anyhow::bail;
 use futures::TryStreamExt;
 use std::{collections::HashSet, path::PathBuf, thread};
 
-use clap::{value_parser, Arg, ArgMatches, Command};
+use clap::Args;
 use noodles_bam as bam;
 use tokio::fs::File;
 use tracing::info;
 
 use crate::derive::instrument::{compute, reads::IlluminaReadName};
 
-pub fn get_command() -> Command {
-    Command::new("instrument")
-        .about("Derives the instrument used to produce the file. Only Illumina instruments are supported at present.")
-        .arg(
-            Arg::new("src")
-                .index(1)
-                .help("Source file. Only BAM files are supported at present.")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        ).arg(
-            Arg::new("num-records")
-                .short('n')
-                .long("--num-records")
-                .help("Only consider the first n records in the file.")
-                .value_parser(value_parser!(usize))
-        ).arg(
-            Arg::new("threads")
-                .short('t')
-                .long("threads")
-                .help("Use a specific number of threads.")
-                .value_parser(value_parser!(usize))
-        )
+#[derive(Args)]
+pub struct Instrument {
+    // Source BAM.
+    #[arg(value_name = "BAM")]
+    src: PathBuf,
+
+    /// Only examine the first n records in the file.
+    #[arg(short, long, value_name = "USIZE")]
+    num_records: Option<usize>,
+
+    /// Use a specific number of threads.
+    #[arg(short, long, value_name = "USIZE")]
+    threads: Option<usize>,
 }
 
-pub fn derive(matches: &ArgMatches) -> anyhow::Result<()> {
-    let src: &PathBuf = matches.get_one("src").unwrap();
-
-    let first_n_reads: Option<usize> = matches.get_one("first-n-reads").copied();
-    let threads = match matches.get_one("threads") {
-        Some(t) => *t,
+pub fn derive(args: Instrument) -> anyhow::Result<()> {
+    let first_n_reads: Option<usize> = args.num_records;
+    let threads = match args.threads {
+        Some(t) => t,
         None => thread::available_parallelism().map(usize::from)?,
     };
 
@@ -51,10 +40,10 @@ pub fn derive(matches: &ArgMatches) -> anyhow::Result<()> {
         .worker_threads(threads)
         .build()?;
 
-    rt.block_on(app(src, first_n_reads))
+    rt.block_on(app(args.src, first_n_reads))
 }
 
-async fn app(src: &PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
+async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 

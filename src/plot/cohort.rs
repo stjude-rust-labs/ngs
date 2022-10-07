@@ -4,49 +4,35 @@ use anyhow::Context;
 use std::path::PathBuf;
 use tracing::{debug, info};
 
-use clap::{value_parser, Arg, ArgMatches, Command};
+use clap::Args;
 
 use crate::{
     plot::command::{get_all_cohort_plots, FilepathResults},
     qc::results::Results,
 };
 
-pub fn get_command() -> Command {
-    Command::new("cohort")
-        .about("Plots cohort-level information produced by the `ngs qc` command.")
-        .arg(
-            Arg::new("src")
-                .help("`ngs qc` results files for which to generate the plot(s)")
-                .value_parser(value_parser!(PathBuf))
-                .required(true),
-        )
-        .arg(
-            Arg::new("output-directory")
-                .long("--output-directory")
-                .short('o')
-                .help("The directory to output files to.")
-                .value_parser(value_parser!(PathBuf))
-                .required(false),
-        )
+#[derive(Args)]
+pub struct CohortArgs {
+    /// `ngs qc` results files for which to generate the plot(s).
+    #[arg(required = true, value_name = "JSON")] // required implies one or more
+    pub src: Vec<PathBuf>,
+
+    /// The directory to output all files within.
+    #[arg(short, long, value_name = "PATH")]
+    pub output_directory: Option<PathBuf>,
 }
 
-pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
+pub fn plot(args: CohortArgs) -> anyhow::Result<()> {
     //========//
     // Source //
     //========//
 
-    let sources: Vec<&PathBuf> = matches
-        .get_many("src")
-        .expect("missing src filepath(s)")
-        .collect();
+    let mut filepath_results = Vec::new();
 
-    let mut results = Vec::new();
-
-    for src in sources {
-        results.push(FilepathResults(
-            src,
-            Results::read(src).with_context(|| format!("invalid input file: {}", src.display()))?,
-        ));
+    for src in args.src {
+        let results = Results::read(&src)
+            .with_context(|| format!("invalid input file: {}", src.display()))?;
+        filepath_results.push(FilepathResults(src.clone(), results));
         debug!("  [*] Source: {}", src.display());
     }
 
@@ -54,10 +40,10 @@ pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
     // Output Directory //
     //==================//
 
-    let output_directory = if let Some(m) = matches.get_one::<PathBuf>("output-directory") {
-        PathBuf::from(m)
+    let output_directory = if let Some(o) = args.output_directory {
+        o
     } else {
-        std::env::current_dir().expect("Could not retrieve the current working directory.")
+        std::env::current_dir().expect("could not retrieve the current working directory.")
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
@@ -67,7 +53,7 @@ pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let plots = get_all_cohort_plots();
     for p in plots {
-        let plot = p.generate(&results)?;
+        let plot = p.generate(&filepath_results)?;
 
         let mut filename = output_directory.clone();
         filename.push(String::from(p.filename()) + ".cohort.html");

@@ -233,12 +233,12 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
 
 impl<'a> GenomicFeaturesFacet<'a> {
     pub fn try_from(
-        src: &PathBuf,
+        src: PathBuf,
         feature_names: &'a FeatureNames,
         header: &'a Header,
         reference_genome: Rc<Box<dyn ReferenceGenome>>,
     ) -> anyhow::Result<Self> {
-        let mut gff = formats::gff::open(src)
+        let mut gff = formats::gff::open(&src)
             .with_context(|| format!("Could not open GFF: {}", src.display()))?;
 
         let mut exonic_translations = HashMap::new();
