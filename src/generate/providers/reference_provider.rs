@@ -12,9 +12,9 @@ use std::{
 
 use anyhow::bail;
 use fasta::record::Sequence;
-use noodles_core::Position;
-use noodles_fasta::{self as fasta};
-use noodles_fastq::{self as fastq};
+use noodles::core::Position;
+use noodles::fasta;
+use noodles::fastq;
 use rand::{rngs::ThreadRng, Rng};
 use rand_distr::{Distribution, Normal, WeightedIndex};
 

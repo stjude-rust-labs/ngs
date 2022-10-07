@@ -1,6 +1,6 @@
 //! Functionality related to computing GC content and related metrics.
 
-use noodles_sam as sam;
+use noodles::sam;
 use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
 use serde::{Deserialize, Serialize};

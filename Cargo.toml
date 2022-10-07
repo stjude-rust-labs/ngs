@@ -17,13 +17,16 @@ futures = "0.3.21"
 git-testament = "0.2.1"
 indicatif = "0.16.2"
 itertools = "0.10.5"
-noodles-bam = { version = "0.21.0", features = ["async"] }
-noodles-bgzf = { version = "0.14.0", features = ["libdeflate"] }
-noodles-core = "0.8.0"
-noodles-fasta = "0.13.0"
-noodles-fastq = "0.5.0"
-noodles-gff = "0.7.0"
-noodles-sam = "0.18.0"
+noodles = { version = "0.27.0", features = [
+    "bam",
+    "bgzf",
+    "csi",
+    "core",
+    "fasta",
+    "fastq",
+    "gff",
+    "sam",
+] }
 num-format = "0.4.0"
 plotly = "0.8.1"
 prettytable-rs = "0.9.0"

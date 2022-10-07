@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
-use noodles_sam as sam;
+use noodles::sam;
 use rust_lapper::{Interval, Lapper};
 use sam::{alignment::Record, Header};
 use tracing::debug;

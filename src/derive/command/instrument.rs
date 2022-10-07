@@ -1,10 +1,8 @@
 use anyhow::bail;
-use futures::TryStreamExt;
-use std::{collections::HashSet, path::PathBuf, thread};
+use std::{collections::HashSet, fs::File, path::PathBuf, thread};
 
 use clap::Args;
-use noodles_bam as bam;
-use tokio::fs::File;
+use noodles::bam;
 use tracing::info;
 
 use crate::derive::instrument::{compute, reads::IlluminaReadName};
@@ -47,9 +45,9 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 
-    let mut reader = File::open(src).await.map(bam::AsyncReader::new)?;
-    reader.read_header().await?;
-    reader.read_reference_sequences().await?;
+    let mut reader = File::open(src).map(bam::Reader::new)?;
+    reader.read_header()?;
+    reader.read_reference_sequences()?;
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.
@@ -60,9 +58,10 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
         sample_max = s;
     }
 
-    let mut records = reader.lazy_records();
-    while let Some(record) = records.try_next().await? {
-        if let Ok(Some(read_name)) = record.read_name() {
+    for result in reader.records() {
+        let record = result?;
+
+        if let Some(read_name) = record.read_name() {
             let name: &str = read_name.as_ref();
 
             match name.parse::<IlluminaReadName>() {

@@ -1,4 +1,4 @@
-use noodles_sam::record::cigar::op::Kind;
+use noodles::sam::record::cigar::op::Kind;
 
 pub fn consumes_reference(kind: Kind) -> bool {
     matches!(

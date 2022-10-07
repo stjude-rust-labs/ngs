@@ -2,8 +2,10 @@ use std::{fs::File, io::BufReader, path::PathBuf};
 
 use anyhow::{bail, Context};
 use fasta::record::Sequence;
-use noodles_fasta as fasta;
-use noodles_sam::Header;
+use noodles::fasta;
+use noodles::sam::header::record::value::Map;
+use noodles::sam::Header;
+use noodles::sam::{alignment::Record, header::record::value::map::ReferenceSequence};
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -62,7 +64,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         true
     }
 
-    fn setup(&mut self, sequence: &noodles_sam::header::ReferenceSequence) -> anyhow::Result<()> {
+    fn setup(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()> {
         let seq_name = sequence.name().as_str();
 
         for result in self.fasta.records() {
@@ -76,11 +78,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         bail!("Sequence {} not found in reference FASTA.", seq_name)
     }
 
-    fn process<'b>(
-        &mut self,
-        _: &'b noodles_sam::header::ReferenceSequence,
-        record: &noodles_sam::alignment::Record,
-    ) -> anyhow::Result<()>
+    fn process<'b>(&mut self, _: &'b Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()>
     where
         'b: 'a,
     {
@@ -126,7 +124,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for EditsFacet<'a> {
         Ok(())
     }
 
-    fn teardown(&mut self, _: &noodles_sam::header::ReferenceSequence) -> anyhow::Result<()> {
+    fn teardown(&mut self, _: &Map<ReferenceSequence>) -> anyhow::Result<()> {
         self.current_sequence = None;
         Ok(())
     }

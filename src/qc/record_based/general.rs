@@ -1,4 +1,4 @@
-use noodles_sam::{self as sam};
+use noodles::sam;
 use sam::alignment::Record;
 
 use crate::qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet};

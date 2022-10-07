@@ -1,4 +1,4 @@
-use noodles_fastq as fastq;
+use noodles::fastq;
 use rand_distr::Normal;
 
 /// Simple utility struct used for passing around a sequence name and its

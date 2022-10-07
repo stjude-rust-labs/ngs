@@ -1,6 +1,6 @@
 //! Functionality related to computing template lenght and related metrics.
 
-use noodles_sam::alignment::Record;
+use noodles::sam::alignment::Record;
 use serde::{Deserialize, Serialize};
 
 use crate::{

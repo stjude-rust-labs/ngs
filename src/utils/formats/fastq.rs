@@ -6,7 +6,7 @@ use std::{
 
 use anyhow::bail;
 use flate2::{write::GzEncoder, Compression};
-use noodles_fastq as fastq;
+use noodles::fastq;
 
 pub fn writer<P>(src: P) -> anyhow::Result<fastq::Writer<Box<dyn Write>>>
 where

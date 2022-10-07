@@ -1,7 +1,7 @@
 use std::{fs::File, io::BufReader, path::Path};
 
 use anyhow::bail;
-use noodles_fasta as fasta;
+use noodles::fasta;
 
 mod phred;
 

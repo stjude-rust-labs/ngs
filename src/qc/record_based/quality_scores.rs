@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+use noodles::sam::alignment::Record;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -32,7 +33,7 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
         ComputationalLoad::Moderate
     }
 
-    fn process(&mut self, record: &noodles_sam::alignment::Record) -> anyhow::Result<()> {
+    fn process(&mut self, record: &Record) -> anyhow::Result<()> {
         for (i, val) in record.quality_scores().as_ref().iter().enumerate() {
             let histogram = self
                 .scores

@@ -1,4 +1,4 @@
-use noodles_sam::record::{cigar::op::Kind, sequence::Base, Cigar};
+use noodles::sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
 use super::cigar::{consumes_reference, consumes_sequence};
 

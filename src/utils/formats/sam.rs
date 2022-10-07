@@ -1,4 +1,4 @@
-use noodles_sam as sam;
+use noodles::sam;
 use regex::{Captures, Regex};
 
 /// Corrects common header mistakes. See the inline comments for the things that

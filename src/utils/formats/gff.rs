@@ -1,6 +1,6 @@
 use anyhow::bail;
 use flate2::read::MultiGzDecoder;
-use noodles_gff as gff;
+use noodles::gff;
 use std::{
     fs::File,
     io::{BufRead, BufReader},

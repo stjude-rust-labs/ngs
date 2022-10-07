@@ -1,6 +1,9 @@
 use std::{collections::HashMap, rc::Rc};
 
-use noodles_sam::header::ReferenceSequence;
+use noodles::sam::{
+    alignment::Record,
+    header::record::value::{map::ReferenceSequence, Map},
+};
 use serde::{Deserialize, Serialize};
 use tracing::error;
 
@@ -64,14 +67,14 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
             .any(|x| x == name)
     }
 
-    fn setup(&mut self, _: &ReferenceSequence) -> anyhow::Result<()> {
+    fn setup(&mut self, _: &Map<ReferenceSequence>) -> anyhow::Result<()> {
         Ok(())
     }
 
     fn process<'b>(
         &mut self,
-        seq: &'b ReferenceSequence,
-        record: &noodles_sam::alignment::Record,
+        seq: &'b Map<ReferenceSequence>,
+        record: &Record,
     ) -> anyhow::Result<()>
     where
         'b: 'a,
@@ -80,7 +83,9 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
             .by_position
             .storage
             .entry(seq.name().as_str())
-            .or_insert_with(|| SimpleHistogram::zero_based_with_capacity(usize::from(seq.len())));
+            .or_insert_with(|| {
+                SimpleHistogram::zero_based_with_capacity(usize::from(seq.length()))
+            });
 
         let record_start = usize::from(record.alignment_start().unwrap());
         let record_end = usize::from(record.alignment_end().unwrap());
@@ -105,7 +110,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         Ok(())
     }
 
-    fn teardown(&mut self, sequence: &ReferenceSequence) -> anyhow::Result<()> {
+    fn teardown(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()> {
         let positions = match self.by_position.storage.get(sequence.name().as_str()) {
             Some(s) => s,
             // In the None case, no records were inserted for this sequence.

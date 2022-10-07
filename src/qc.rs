@@ -1,5 +1,8 @@
-use noodles_sam as sam;
-use sam::{alignment::Record, header::ReferenceSequence};
+use noodles::sam::{
+    self,
+    header::record::value::{map::ReferenceSequence, Map},
+};
+use sam::alignment::Record;
 
 pub mod command;
 pub mod record_based;
@@ -32,14 +35,14 @@ pub trait SequenceBasedQualityCheckFacet<'a> {
 
     // Lifecycle methods
     fn supports_sequence_name(&self, name: &str) -> bool;
-    fn setup(&mut self, sequence: &ReferenceSequence) -> anyhow::Result<()>;
+    fn setup(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()>;
     fn process<'b>(
         &mut self,
-        seq: &'b ReferenceSequence,
-        record: &sam::alignment::Record,
+        seq: &'b Map<ReferenceSequence>,
+        record: &Record,
     ) -> anyhow::Result<()>
     where
         'b: 'a;
-    fn teardown(&mut self, sequence: &ReferenceSequence) -> anyhow::Result<()>;
+    fn teardown(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()>;
     fn aggregate(&mut self, results: &mut results::Results);
 }

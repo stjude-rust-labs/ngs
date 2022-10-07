@@ -2,9 +2,9 @@ use std::{fs::File, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
 use clap::Args;
-use noodles_bam::{self as bam, bai};
-use noodles_core::{Position, Region};
-use noodles_sam::Header;
+use noodles::bam::{self as bam, bai};
+use noodles::core::{Position, Region};
+use noodles::sam::Header;
 use num_format::{Locale, ToFormattedString};
 use tracing::{debug, info};
 
@@ -394,7 +394,7 @@ fn app(
 
     for (name, seq) in header.reference_sequences() {
         let start = Position::MIN;
-        let end = Position::try_from(usize::from(seq.len()))?;
+        let end = Position::try_from(usize::from(seq.length()))?;
 
         info!("Starting sequence {} ", name);
         let mut processed = 0;
