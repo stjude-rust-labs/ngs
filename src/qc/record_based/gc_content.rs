@@ -196,6 +196,6 @@ mod tests {
         let default = GCContentFacet::default();
         assert_eq!(default.metrics.histogram.get_range_start(), 0);
         assert_eq!(default.metrics.histogram.get_range_stop(), 100);
-        assert_eq!(default.metrics.histogram.len(), 101);
+        assert_eq!(default.metrics.histogram.range_len(), 101);
     }
 }

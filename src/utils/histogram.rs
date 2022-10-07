@@ -44,7 +44,7 @@ impl SimpleHistogram {
     }
 
     /// Gives the length of the open range for the histogram.
-    pub fn len(&self) -> usize {
+    pub fn range_len(&self) -> usize {
         self.range_stop - self.range_start + 1
     }
 
@@ -212,7 +212,7 @@ mod tests {
     #[test]
     pub fn test_initialization() {
         let s = SimpleHistogram::zero_based_with_capacity(100);
-        assert_eq!(s.len(), 101);
+        assert_eq!(s.range_len(), 101);
         assert_eq!(s.get_range_start(), 0);
         assert_eq!(s.get_range_stop(), 100);
     }
@@ -284,7 +284,7 @@ mod tests {
         let default = SimpleHistogram::default();
         assert_eq!(default.get_range_start(), 0);
         assert_eq!(default.get_range_stop(), 512);
-        assert_eq!(default.len(), 513);
+        assert_eq!(default.range_len(), 513);
     }
 
     #[test]
