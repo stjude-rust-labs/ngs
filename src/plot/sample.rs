@@ -30,6 +30,14 @@ pub fn get_command<'a>() -> Command<'a> {
                 .required(false)
                 .takes_value(true),
         )
+        .arg(
+            Arg::new("sample")
+                .help("sample name to include in plot title")
+                .long("--sample")
+                .short('s')
+                .required(false)
+                .takes_value(true),
+        )
 }
 
 pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
@@ -57,10 +65,17 @@ pub fn plot(matches: &ArgMatches) -> anyhow::Result<()> {
 
     let plots = get_all_sample_plots();
     for p in plots {
-        let plot = p.generate(&results)?;
+        let plot = p.generate(&results, matches.get_one::<String>("sample"))?;
 
         let mut filename = output_directory.clone();
-        filename.push(String::from(p.filename()) + ".sample.html");
+        match matches.get_one::<String>("sample") {
+            Some(a) => {
+                filename.push(format!("{}.{}.sample.html", a, p.filename()));
+            }
+            None => {
+                filename.push(String::from(p.filename()) + ".sample.html");
+            }
+        }
 
         info!("  [*] Writing {} to {}", p.name(), filename.display());
         plot.write_html(filename);

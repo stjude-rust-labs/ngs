@@ -18,7 +18,11 @@ impl SamplePlot for GCContentDistributionPlot {
         "gc-content-distribution"
     }
 
-    fn generate(&self, filepath_results: &FilepathResults<'_>) -> anyhow::Result<plotly::Plot> {
+    fn generate(
+        &self,
+        filepath_results: &FilepathResults<'_>,
+        sample: Option<&String>,
+    ) -> anyhow::Result<plotly::Plot> {
         let mut plot = plotly::Plot::new();
         let FilepathResults(filepath, results) = filepath_results;
 
@@ -78,8 +82,13 @@ impl SamplePlot for GCContentDistributionPlot {
         plot.add_trace(trace);
 
         // (6) Configure the graph for plotting and return.
+        let title = match sample {
+            Some(s) => format!("{} - {}", self.name(), s.clone()),
+            None => self.name().to_string(),
+        };
+
         let layout = Layout::new()
-            .title(Title::new(self.name()))
+            .title(Title::new(title.as_str()))
             .x_axis(
                 Axis::new()
                     .title(Title::new("Percentage GC"))

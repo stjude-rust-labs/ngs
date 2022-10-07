@@ -27,7 +27,11 @@ pub struct FilepathResults<'a>(pub &'a PathBuf, pub Results);
 pub trait SamplePlot {
     fn name(&self) -> &'static str;
     fn filename(&self) -> &'static str;
-    fn generate(&self, filepath_results: &FilepathResults<'_>) -> anyhow::Result<plotly::Plot>;
+    fn generate(
+        &self,
+        filepath_results: &FilepathResults<'_>,
+        sample: Option<&String>,
+    ) -> anyhow::Result<plotly::Plot>;
 }
 
 //===================//
