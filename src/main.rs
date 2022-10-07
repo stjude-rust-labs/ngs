@@ -8,7 +8,7 @@
 use clap::{Parser, Subcommand};
 
 use git_testament::{git_testament, render_testament};
-use ngs::{derive, generate, list, plot, qc};
+use ngs::{derive, generate, index, list, plot, qc};
 
 #[derive(Parser)]
 #[command(author, version = render_testament!(TESTAMENT), propagate_version = true, about, long_about = None)]
@@ -32,6 +32,9 @@ enum Subcommands {
 
     /// Generates a BAM file from a given reference genome.
     Generate(generate::command::GenerateArgs),
+
+    /// Generates the index file to various next-generation sequencing files.
+    Index(index::command::IndexArgs),
 
     /// Utility to list various supported items in this command line tool.
     List(list::command::ListArgs),
@@ -77,6 +80,7 @@ fn main() -> anyhow::Result<()> {
             }
         },
         Subcommands::Generate(args) => generate::command::generate(args)?,
+        Subcommands::Index(args) => index::command::index(args)?,
         Subcommands::List(args) => list::command::list(args)?,
         Subcommands::Plot(args) => match args.subcommand {
             plot::command::PlotSubcommand::Cohort(args) => plot::cohort::plot(args)?,
