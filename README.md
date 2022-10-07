@@ -77,6 +77,9 @@ cargo test
 
 # Ensure the project doesn't have any linting warnings.
 cargo clippy
+
+# Ensure the project passes `cargo fmt`.
+cargo fmt --check
 ```
 
 ## Minimum Supported Rust Version (MSRV)
