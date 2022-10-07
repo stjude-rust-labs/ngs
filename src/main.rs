@@ -6,37 +6,21 @@
 //! [wiki](https://github.com/stjude-rust-labs/ngs/wiki).
 
 use anyhow::bail;
-use clap::{arg, Command};
-
-mod commands;
-mod lib;
+use clap::Command;
 
 use git_testament::{git_testament, render_testament};
+use ngs::{derive, generate, list, plot, qc, utils::commands::add_verbosity_args};
 
 git_testament!(TESTAMENT);
-
-/// Utility method to add the verbosity arguments to any subcommands passed to Clap.
-///
-/// # Arguments
-///
-/// * `subcommand` — The Clap subcommand to add these arguments to.
-fn add_verbosity_args(subcommand: Command<'_>) -> Command<'_> {
-    subcommand
-        .arg(arg!(-q --quiet "Only errors are printed to the stderr stream."))
-        .arg(
-            arg!(-v --verbose "All available information, including debug information, is \
-                printed to stderr."),
-        )
-}
 
 fn main() -> anyhow::Result<()> {
     let version = render_testament!(TESTAMENT);
 
-    let derive_cmd = commands::derive::get_command();
-    let generate_cmd = commands::generate::get_command();
-    let list_cmd = commands::list::get_command();
-    let plot_cmd = commands::plot::get_command();
-    let qc_cmd = commands::qc::get_command();
+    let derive_cmd = derive::command::get_command();
+    let generate_cmd = generate::command::get_command();
+    let list_cmd = list::command::get_command();
+    let plot_cmd = plot::command::get_command();
+    let qc_cmd = qc::command::get_command();
 
     let matches = Command::new("ngs")
         .version(version.as_str())
@@ -66,23 +50,23 @@ fn main() -> anyhow::Result<()> {
         match name {
             "derive" => {
                 if let Some(m) = subcommand.subcommand_matches("instrument") {
-                    return commands::derive::instrument::derive(m);
+                    return derive::command::instrument::derive(m);
                 } else {
                     unreachable!();
                 }
             }
-            "generate" => return commands::generate(subcommand),
-            "list" => return commands::list::list(subcommand),
+            "generate" => return generate::command::generate(subcommand),
+            "list" => return list::command::list(subcommand),
             "plot" => {
                 if let Some(m) = subcommand.subcommand_matches("sample") {
-                    return commands::plot::sample::plot(m);
+                    return plot::sample::plot(m);
                 } else if let Some(m) = subcommand.subcommand_matches("cohort") {
-                    return commands::plot::cohort::plot(m);
+                    return plot::cohort::plot(m);
                 } else {
                     unreachable!();
                 }
             }
-            "qc" => return commands::qc(subcommand),
+            "qc" => return qc::command::qc(subcommand),
             s => {
                 bail!("Unknown subcommand: {}", s);
             }
