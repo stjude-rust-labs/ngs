@@ -52,8 +52,16 @@
 
 ### Installation
 
+To install the latest released version, you can simply use `cargo`.
+
 ```bash
 cargo install ngs
+```
+
+To install the latest version on `main`, you can use the following command.
+
+```bash
+cargo install --locked --git https://github.com/stjude-rust-labs/ngs.git
 ```
 
 ## 🖥️ Development
