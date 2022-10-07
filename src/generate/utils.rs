@@ -78,10 +78,12 @@ impl PairedRead {
 /// # Examples
 ///
 /// ```
-/// let input = "ACTGactg".as_bytes();
-/// compliment(input);
+/// use ngs::generate::utils;
+/// let base = 'a' as u8;
+/// let compliment = utils::compliment(&base).unwrap();
+/// assert_eq!(compliment, 't' as u8)
 /// ```
-fn compliment(seq: &u8) -> Option<u8> {
+pub fn compliment(seq: &u8) -> Option<u8> {
     match seq {
         0x61 => Some(0x74), // 'a' => 't'
         0x63 => Some(0x67), // 'c' => 'g'
