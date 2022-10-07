@@ -28,6 +28,15 @@ use super::{
     RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
 };
 
+//====================================//
+// Command line parsing utility types //
+//====================================//
+
+pub enum NumberOfRecords {
+    All,
+    Some(usize),
+}
+
 //============================================//
 // Dynamic allocation of quality check facets //
 //============================================//
@@ -35,7 +44,7 @@ use super::{
 /// Dynamically compiles the record-based quality check facets that should be run for this
 /// invocation of the command line tool.
 pub fn get_record_based_qc_facets<'a>(
-    features_gff: Option<&str>,
+    features_gff: Option<&PathBuf>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
@@ -85,7 +94,7 @@ pub fn get_sequence_based_qc_facets<'a>(
 //========================//
 
 /// Gets the command line arguments for the `qc` subcommand.
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("qc")
         .about("Generates quality control metrics for BAM files.")
         .arg(
@@ -99,29 +108,28 @@ pub fn get_command<'a>() -> Command<'a> {
                 .long("--reference-fasta")
                 .short('r')
                 .help("Reference FASTA for edit lookups.")
-                .value_parser(value_parser!(PathBuf))
-                .takes_value(true),
-        )
-        .arg(
-            Arg::new("reference-genome")
-                .long("--reference-genome")
-                .help("Reference genome used as the basis for the file.")
-                .takes_value(true)
-                .required(true),
+                .value_parser(value_parser!(PathBuf)),
         )
         .arg(
             Arg::new("features-gff")
                 .long("--features-gff")
                 .short('f')
                 .help("Features GFF file.")
-                .takes_value(true),
+                .value_parser(value_parser!(PathBuf)),
+        )
+        .arg(
+            Arg::new("reference-genome")
+                .long("--reference-genome")
+                .help("Referenvalue_ofce genome used as the basis for the file.")
+                .value_parser(value_parser!(String))
+                .required(true),
         )
         .arg(
             Arg::new("output-prefix")
                 .long("--output-prefix")
                 .short('p')
                 .help("Output prefix for the files that will be created.")
-                .takes_value(true),
+                .value_parser(value_parser!(String)),
         )
         .arg(
             Arg::new("output-directory")
@@ -129,14 +137,14 @@ pub fn get_command<'a>() -> Command<'a> {
                 .short('o')
                 .help("The directory to output files to.")
                 .required(false)
-                .takes_value(true),
+                .value_parser(value_parser!(PathBuf)),
         )
         .arg(
             Arg::new("num-records")
                 .long("--num-records")
                 .short('n')
                 .help("Number of records to process in the first pass.")
-                .takes_value(true)
+                .value_parser(value_parser!(usize))
                 .required(false),
         )
         .arg(
@@ -147,7 +155,7 @@ pub fn get_command<'a>() -> Command<'a> {
                     "UTR region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
-                .takes_value(true)
+                .value_parser(value_parser!(String))
                 .default_value("five_prime_UTR"),
         )
         .arg(
@@ -158,7 +166,7 @@ pub fn get_command<'a>() -> Command<'a> {
                     "UTR region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
-                .takes_value(true)
+                .value_parser(value_parser!(String))
                 .default_value("three_prime_UTR"),
         )
         .arg(
@@ -169,7 +177,7 @@ pub fn get_command<'a>() -> Command<'a> {
                     "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
-                .takes_value(true)
+                .value_parser(value_parser!(String))
                 .default_value("CDS"),
         )
         .arg(
@@ -180,7 +188,7 @@ pub fn get_command<'a>() -> Command<'a> {
                     "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
-                .takes_value(true)
+                .value_parser(value_parser!(String))
                 .default_value("exon"),
         )
         .arg(
@@ -191,7 +199,7 @@ pub fn get_command<'a>() -> Command<'a> {
                     "region in the GFF file. The default is to use the ",
                     "GENCODE feature name."
                 ))
-                .takes_value(true)
+                .value_parser(value_parser!(String))
                 .default_value("gene"),
         )
 }
@@ -244,7 +252,7 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Features GFF //
     //==============//
 
-    let features_gff = matches.value_of("features-gff");
+    let features_gff = matches.get_one::<PathBuf>("features-gff");
     debug!("  [*] Features GFF : {:?}", features_gff);
 
     //===============//
@@ -253,8 +261,15 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
 
     // Default is the name of the file.
     let output_prefix = matches
-        .value_of("output-prefix")
-        .unwrap_or_else(|| src.file_name().unwrap().to_str().unwrap());
+        .get_one::<String>("output-prefix")
+        .map(|s| s.to_owned())
+        .unwrap_or_else(|| {
+            src.file_name()
+                .unwrap()
+                .to_os_string()
+                .into_string()
+                .unwrap()
+        });
     debug!("  [*] Output prefix: {}", output_prefix);
 
     //==========================//
@@ -262,23 +277,23 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     //==========================//
 
     let five_prime_utr_feature_name = matches
-        .value_of("five-prime-utr-feature-name")
+        .get_one::<String>("five-prime-utr-feature-name")
         .expect("Could not parse the five prime UTR feature name.");
 
     let three_prime_utr_feature_name = matches
-        .value_of("three-prime-utr-feature-name")
+        .get_one::<String>("three-prime-utr-feature-name")
         .expect("Could not parse the three prime UTR feature name.");
 
     let coding_sequence_feature_name = matches
-        .value_of("coding-sequence-feature-name")
+        .get_one::<String>("coding-sequence-feature-name")
         .expect("Could not parse the coding sequence feature name.");
 
     let exon_feature_name = matches
-        .value_of("exon-feature-name")
+        .get_one::<String>("exon-feature-name")
         .expect("Could not parse the exon feature name.");
 
     let gene_feature_name = matches
-        .value_of("gene-feature-name")
+        .get_one::<String>("gene-feature-name")
         .expect("Could not parse the gene feature name.");
 
     let feature_names = FeatureNames::new(
@@ -293,10 +308,9 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Output Directory //
     //==================//
 
-    let output_directory = if let Some(m) = matches.value_of("output-directory") {
-        PathBuf::from(m)
-    } else {
-        std::env::current_dir().expect("Could not retrieve the current working directory.")
+    let output_directory = match matches.get_one::<PathBuf>("output-directory") {
+        Some(p) => p.to_owned(),
+        None => std::env::current_dir()?,
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
@@ -304,13 +318,15 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
     // Number of Records //
     //===================//
 
-    let num_records = if let Some(m) = matches.value_of("num-records") {
-        let res = m.parse::<i64>()?;
-        debug!("Reading a maximum of {} records in the first pass.", res);
-        res
-    } else {
-        debug!("Reading all available records in the first pass.");
-        -1
+    let num_records = match matches.get_one::<usize>("num-records") {
+        Some(n) => {
+            debug!("Reading a maximum of {} records in the first pass.", n);
+            NumberOfRecords::Some(*n)
+        }
+        None => {
+            debug!("Reading all available records in the first pass.");
+            NumberOfRecords::All
+        }
     };
 
     app(
@@ -334,11 +350,11 @@ pub fn qc(matches: &ArgMatches) -> anyhow::Result<()> {
 fn app(
     src: &PathBuf,
     reference_fasta: Option<&PathBuf>,
-    features_gff: Option<&str>,
+    features_gff: Option<&PathBuf>,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-    output_prefix: &str,
+    output_prefix: String,
     output_directory: PathBuf,
-    num_records: i64,
+    num_records: NumberOfRecords,
     feature_names: FeatureNames,
 ) -> anyhow::Result<()> {
     //=====================================================//
@@ -419,8 +435,10 @@ fn app(
             );
         }
 
-        if num_records > -1 && record_count >= num_records {
-            break;
+        if let NumberOfRecords::Some(n) = num_records {
+            if record_count > n {
+                break;
+            }
         }
     }
 
@@ -514,7 +532,7 @@ fn app(
         facet.aggregate(&mut results);
     }
 
-    results.write(String::from(output_prefix), &output_directory)?;
+    results.write(output_prefix, &output_directory)?;
 
     Ok(())
 }

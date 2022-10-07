@@ -12,7 +12,7 @@ use crate::{
     qc::results::Results,
 };
 
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("sample")
         .about("Plots sample-specific information produced by the `ngs qc` command.")
         .arg(
@@ -27,8 +27,7 @@ pub fn get_command<'a>() -> Command<'a> {
                 .short('o')
                 .help("The directory to output files to.")
                 .value_parser(value_parser!(PathBuf))
-                .required(false)
-                .takes_value(true),
+                .required(false),
         )
 }
 

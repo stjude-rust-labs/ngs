@@ -9,7 +9,7 @@ use tracing::info;
 
 use crate::derive::instrument::{compute, reads::IlluminaReadName};
 
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("instrument")
         .about("Derives the instrument used to produce the file. Only Illumina instruments are supported at present.")
         .arg(
@@ -22,7 +22,6 @@ pub fn get_command<'a>() -> Command<'a> {
             Arg::new("num-records")
                 .short('n')
                 .long("--num-records")
-                .takes_value(true)
                 .help("Only consider the first n records in the file.")
                 .value_parser(value_parser!(usize))
         ).arg(

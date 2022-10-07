@@ -5,12 +5,11 @@ use prettytable::{row, Table};
 
 use crate::utils::genome::get_all_reference_genomes;
 
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("list")
         .about("Utility to list various supported items in this command line tool.")
         .arg(
             Arg::new("subject")
-                .takes_value(true)
                 .help("The subject which you want to list values for.")
                 .value_parser(PossibleValuesParser::new(["reference-genomes"]))
                 .required(true),
@@ -18,7 +17,9 @@ pub fn get_command<'a>() -> Command<'a> {
 }
 
 pub fn list(matches: &ArgMatches) -> anyhow::Result<()> {
-    let subject: &String = matches.get_one("subject").expect("could not parse subject");
+    let subject = matches
+        .get_one::<String>("subject")
+        .expect("could not parse subject");
 
     match subject.as_str() {
         "reference-genomes" => {

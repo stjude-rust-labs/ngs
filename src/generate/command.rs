@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{Arg, ArgGroup, ArgMatches, Command};
+use clap::{value_parser, Arg, ArgGroup, ArgMatches, Command};
 use indicatif::{ProgressBar, ProgressStyle};
 use rand::prelude::*;
 use tracing::info;
@@ -11,52 +11,50 @@ use crate::{
     utils::formats,
 };
 
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("generate")
         .about("Generates a BAM file from a given reference genome.")
         .arg(
             Arg::new("reads-one-file")
                 .long("--reads-one-file")
-                .takes_value(true)
                 .help("Destination for the first reads FASTQ file.")
+                .value_parser(value_parser!(PathBuf))
                 .required(true),
         )
         .arg(
             Arg::new("reads-two-file")
                 .long("--reads-two-file")
-                .takes_value(true)
                 .help("Destination for the second reads FASTQ file.")
+                .value_parser(value_parser!(PathBuf))
                 .required(true),
         )
         .arg(
             Arg::new("reference-providers")
                 .long("--reference-provider")
-                .takes_value(true)
-                .multiple_values(true)
                 .help("One or more reference FASTAs to generate the data based off of.")
                 .required(true),
         )
         .arg(Arg::new("error-rate")
                  .short('e')
                  .long("--error-rate")
-                 .takes_value(true)
                  .default_value("0.0001")
+                 .value_parser(value_parser!(f64))
                  .help("The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).")
         )
         .arg(
             Arg::new("num-records")
                 .short('n')
                 .long("--num-records")
-                .takes_value(true)
                 .help("Specifies the number of records to generate.")
+                .value_parser(value_parser!(usize))
                 .conflicts_with("coverage"),
         )
         .arg(
             Arg::new("coverage")
                 .short('c')
                 .long("--coverage")
-                .takes_value(true)
                 .help("Dynamically calculate the number of reads needed for a particular mean coverage.")
+                .value_parser(value_parser!(usize))
                 .conflicts_with("num-reads"),
         )
         .group(
@@ -70,19 +68,17 @@ pub fn get_command<'a>() -> Command<'a> {
 pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
     let reference_providers: Vec<_> = matches
-        .values_of("reference-providers")
+        .get_many::<String>("reference-providers")
         .expect("missing reference providers")
         .map(|rp| rp.parse::<ReferenceGenomeSequenceProvider>().unwrap())
         .collect();
 
     let reads_one_file = matches
-        .value_of("reads-one-file")
-        .map(PathBuf::from)
+        .get_one::<PathBuf>("reads-one-file")
         .expect("missing reads one file");
 
     let reads_two_file = matches
-        .value_of("reads-two-file")
-        .map(PathBuf::from)
+        .get_one::<PathBuf>("reads-two-file")
         .expect("missing reads two file");
 
     info!("Starting generate command...");
@@ -100,15 +96,11 @@ pub fn generate(matches: &ArgMatches) -> anyhow::Result<()> {
     })?;
 
     let mut total_reads: usize = 0;
-    if let Some(num_reads) = matches.value_of("num-reads") {
-        total_reads = num_reads
-            .parse()
-            .expect("Could not parse number of reads from command line args.");
-    } else if let Some(coverage) = matches.value_of("coverage") {
-        let cov: usize = coverage
-            .parse()
-            .expect("Could not parse coverage as size from command line args.");
-        total_reads = reference_providers[0].reads_needed_for_coverage(cov);
+
+    if let Some(num_reads) = matches.get_one::<usize>("num-reads") {
+        total_reads = *num_reads
+    } else if let Some(coverage) = matches.get_one::<usize>("coverage") {
+        total_reads = reference_providers[0].reads_needed_for_coverage(*coverage);
     }
 
     // (2) Set up the output writers.

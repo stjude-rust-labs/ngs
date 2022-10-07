@@ -11,14 +11,13 @@ use crate::{
     qc::results::Results,
 };
 
-pub fn get_command<'a>() -> Command<'a> {
+pub fn get_command() -> Command {
     Command::new("cohort")
         .about("Plots cohort-level information produced by the `ngs qc` command.")
         .arg(
             Arg::new("src")
                 .help("`ngs qc` results files for which to generate the plot(s)")
                 .value_parser(value_parser!(PathBuf))
-                .multiple_values(true)
                 .required(true),
         )
         .arg(
@@ -27,8 +26,7 @@ pub fn get_command<'a>() -> Command<'a> {
                 .short('o')
                 .help("The directory to output files to.")
                 .value_parser(value_parser!(PathBuf))
-                .required(false)
-                .takes_value(true),
+                .required(false),
         )
 }
 

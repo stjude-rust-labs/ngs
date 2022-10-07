@@ -5,7 +5,7 @@ use clap::{arg, Command};
 /// # Arguments
 ///
 /// * `subcommand` — The Clap subcommand to add these arguments to.
-pub fn add_verbosity_args(subcommand: Command<'_>) -> Command<'_> {
+pub fn add_verbosity_args(subcommand: Command) -> Command {
     subcommand
         .arg(arg!(-q --quiet "Only errors are printed to the stderr stream."))
         .arg(

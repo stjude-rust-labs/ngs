@@ -14,8 +14,6 @@ use ngs::{derive, generate, list, plot, qc, utils::commands::add_verbosity_args}
 git_testament!(TESTAMENT);
 
 fn main() -> anyhow::Result<()> {
-    let version = render_testament!(TESTAMENT);
-
     let derive_cmd = derive::command::get_command();
     let generate_cmd = generate::command::get_command();
     let list_cmd = list::command::get_command();
@@ -23,7 +21,7 @@ fn main() -> anyhow::Result<()> {
     let qc_cmd = qc::command::get_command();
 
     let matches = Command::new("ngs")
-        .version(version.as_str())
+        .version(render_testament!(TESTAMENT))
         .propagate_version(true)
         .subcommand_required(true)
         .subcommand(add_verbosity_args(derive_cmd))
@@ -35,9 +33,9 @@ fn main() -> anyhow::Result<()> {
 
     if let Some((name, subcommand)) = matches.subcommand() {
         let mut level = tracing::Level::INFO;
-        if subcommand.is_present("quiet") {
+        if subcommand.get_flag("quiet") {
             level = tracing::Level::ERROR;
-        } else if subcommand.is_present("verbose") {
+        } else if subcommand.get_flag("verbose") {
             level = tracing::Level::DEBUG;
         }
 
