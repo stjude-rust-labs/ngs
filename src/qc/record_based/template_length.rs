@@ -5,7 +5,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
-    utils::histogram::SimpleHistogram,
+    utils::histogram::Histogram,
 };
 
 /// Summary statistics for the Template Length quality control facet.
@@ -42,7 +42,7 @@ pub struct RecordMetrics {
 pub struct TemplateLengthFacet {
     /// Histogram that represents the number of records that have a given
     /// template length (up to the specified threshold).
-    pub histogram: SimpleHistogram,
+    pub histogram: Histogram,
 
     /// General record metrics
     pub records: RecordMetrics,
@@ -56,7 +56,7 @@ impl TemplateLengthFacet {
     /// otherwise default values.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
-            histogram: SimpleHistogram::zero_based_with_capacity(capacity),
+            histogram: Histogram::zero_based_with_capacity(capacity),
             records: RecordMetrics {
                 processed: 0,
                 ignored: 0,

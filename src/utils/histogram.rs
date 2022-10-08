@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 /// to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
 /// starting at zero because that is all this package needs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SimpleHistogram {
+pub struct Histogram {
     // Vec-backed value store for the histogram.
     values: Vec<usize>,
     // Starting range for the histogram.
@@ -21,7 +21,7 @@ pub struct SimpleHistogram {
 #[derive(Debug, PartialEq, Eq)]
 pub struct BinOutOfBoundsError;
 
-impl SimpleHistogram {
+impl Histogram {
     /// Creates a zero-based histogram with a given capacity.
     pub fn zero_based_with_capacity(capacity: usize) -> Self {
         Self {
@@ -201,7 +201,7 @@ impl SimpleHistogram {
     }
 }
 
-impl Default for SimpleHistogram {
+impl Default for Histogram {
     fn default() -> Self {
         Self::zero_based_with_capacity(512)
     }
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     pub fn test_initialization() {
-        let s = SimpleHistogram::zero_based_with_capacity(100);
+        let s = Histogram::zero_based_with_capacity(100);
         assert_eq!(s.range_len(), 101);
         assert_eq!(s.get_range_start(), 0);
         assert_eq!(s.get_range_stop(), 100);
@@ -222,7 +222,7 @@ mod tests {
 
     #[test]
     pub fn test_valid_incremements_and_mean_median() {
-        let mut s = SimpleHistogram::zero_based_with_capacity(100);
+        let mut s = Histogram::zero_based_with_capacity(100);
         s.increment(25).unwrap();
         s.increment(50).unwrap();
         s.increment_by(75, 3).unwrap();
@@ -242,13 +242,13 @@ mod tests {
 
     #[test]
     pub fn test_median_on_empty_histogram() {
-        let s = SimpleHistogram::zero_based_with_capacity(5000);
+        let s = Histogram::zero_based_with_capacity(5000);
         assert!(s.median().is_none());
     }
 
     #[test]
     pub fn test_median_extensively() {
-        let mut s = SimpleHistogram::zero_based_with_capacity(5000);
+        let mut s = Histogram::zero_based_with_capacity(5000);
 
         // Start to add in values
         s.increment_by(0, 2500).unwrap();
@@ -274,7 +274,7 @@ mod tests {
 
     #[test]
     pub fn test_invalid_increments() {
-        let mut s = SimpleHistogram::zero_based_with_capacity(100);
+        let mut s = Histogram::zero_based_with_capacity(100);
         assert_eq!(s.increment(101).unwrap_err(), BinOutOfBoundsError);
     }
 
@@ -284,7 +284,7 @@ mod tests {
         // its metric collection. As such, it depends on the defaults being
         // from 0 to 100. If you wish to change the default, be sure to update
         // that QC facet accordingly.
-        let default = SimpleHistogram::default();
+        let default = Histogram::default();
         assert_eq!(default.get_range_start(), 0);
         assert_eq!(default.get_range_stop(), 512);
         assert_eq!(default.range_len(), 513);
@@ -292,7 +292,7 @@ mod tests {
 
     #[test]
     pub fn test_values() {
-        let mut histogram = SimpleHistogram::zero_based_with_capacity(3);
+        let mut histogram = Histogram::zero_based_with_capacity(3);
         histogram.increment(1).unwrap();
         histogram.increment(2).unwrap();
         histogram.increment_by(3, 3).unwrap();
@@ -301,7 +301,7 @@ mod tests {
 
     #[test]
     pub fn test_values_normalized() {
-        let mut histogram = SimpleHistogram::zero_based_with_capacity(3);
+        let mut histogram = Histogram::zero_based_with_capacity(3);
         histogram.increment(1).unwrap();
         histogram.increment(2).unwrap();
         histogram.increment_by(3, 3).unwrap();

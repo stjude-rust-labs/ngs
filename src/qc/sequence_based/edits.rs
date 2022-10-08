@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     qc::{results, ComputationalLoad, SequenceBasedQualityControlFacet},
-    utils::{alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram},
+    utils::{alignment::ReferenceRecordStepThrough, formats, histogram::Histogram},
 };
 
 //=========//
@@ -35,10 +35,10 @@ pub struct EditMetricsSummary {
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct EditMetrics {
     /// The distribution of edit counts for all read ones in the file.
-    pub read_one_edits: SimpleHistogram,
+    pub read_one_edits: Histogram,
 
     /// The distribution of edit counts for all read twos in the file.
-    pub read_two_edits: SimpleHistogram,
+    pub read_two_edits: Histogram,
 
     /// Summary statistics for the Edits quality control facet.
     pub summary: Option<EditMetricsSummary>,

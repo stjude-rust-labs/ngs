@@ -13,7 +13,7 @@ use crate::{
     qc::{results, ComputationalLoad, SequenceBasedQualityControlFacet},
     utils::{
         genome::{get_primary_assembly, ReferenceGenome, Sequence},
-        histogram::SimpleHistogram,
+        histogram::Histogram,
     },
 };
 
@@ -53,7 +53,7 @@ pub struct CoverageMetrics {
     pub ignored: IgnoredMetrics,
 
     /// Coverage distribution as a histogram per sequence.
-    pub coverage_distribution_per_sequence: HashMap<String, SimpleHistogram>,
+    pub coverage_distribution_per_sequence: HashMap<String, Histogram>,
 }
 
 /// Main struct for the Coverage quality control facet.
@@ -61,7 +61,7 @@ pub struct CoverageFacet {
     /// Data structure for tallying up coverage across position for every
     /// sequence in the reference genome. This is eventually discarded in favor
     /// of a coverage distribution for the sequence.
-    coverage_per_position: HashMap<String, SimpleHistogram>,
+    coverage_per_position: HashMap<String, Histogram>,
 
     /// Metrics related to the Coverage quality control facet.
     metrics: CoverageMetrics,
@@ -110,9 +110,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let h = self
             .coverage_per_position
             .entry(seq.name().to_string())
-            .or_insert_with(|| {
-                SimpleHistogram::zero_based_with_capacity(usize::from(seq.length()))
-            });
+            .or_insert_with(|| Histogram::zero_based_with_capacity(usize::from(seq.length())));
 
         let record_start = usize::from(record.alignment_start().unwrap());
         let record_end = usize::from(record.alignment_end().unwrap());
@@ -146,7 +144,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
             None => return Ok(()),
         };
 
-        let mut coverages = SimpleHistogram::zero_based_with_capacity(1024);
+        let mut coverages = Histogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
         for i in positions.get_range_start()..=positions.get_range_stop() {

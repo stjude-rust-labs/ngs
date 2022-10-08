@@ -2,7 +2,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::utils::histogram::SimpleHistogram;
+use crate::utils::histogram::Histogram;
 
 /// Metrics related to nucleobase counting.
 #[derive(Clone, Default, Debug, Serialize, Deserialize)]
@@ -54,7 +54,7 @@ pub struct SummaryMetrics {
 pub struct GCContentMetrics {
     /// Histogram that represents the number of reads which have 0% GC content
     /// all the way up to 100% GC content.
-    pub histogram: SimpleHistogram,
+    pub histogram: Histogram,
 
     /// Struct holding all of the nucleobase metrics.
     pub nucleobases: NucleobaseMetrics,

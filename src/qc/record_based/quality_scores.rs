@@ -7,14 +7,14 @@ use serde::{Deserialize, Serialize};
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
-    utils::histogram::SimpleHistogram,
+    utils::histogram::Histogram,
 };
 
 /// Main struct for the Quality Scores quality control facet.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct QualityScoreFacet {
     /// Distribution of quality scores for each position in the records observed.
-    pub scores: HashMap<usize, SimpleHistogram>,
+    pub scores: HashMap<usize, Histogram>,
 }
 
 /// Maximum quality score supported by the SAM specification.
@@ -38,7 +38,7 @@ impl RecordBasedQualityControlFacet for QualityScoreFacet {
             let histogram = self
                 .scores
                 .entry(i + 1) // indices are 0-based, we want this to be 1-based.
-                .or_insert_with(|| SimpleHistogram::zero_based_with_capacity(self::MAX_SCORE));
+                .or_insert_with(|| Histogram::zero_based_with_capacity(self::MAX_SCORE));
 
             let score = u8::from(*val) as usize;
             histogram.increment(score).unwrap();

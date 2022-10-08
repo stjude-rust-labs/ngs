@@ -8,7 +8,7 @@ use sam::{alignment::Record, record::sequence::Base};
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
-    utils::histogram::SimpleHistogram,
+    utils::histogram::Histogram,
 };
 
 use self::metrics::{GCContentMetrics, SummaryMetrics};
@@ -127,7 +127,7 @@ impl RecordBasedQualityControlFacet for GCContentFacet {
 impl Default for GCContentMetrics {
     fn default() -> Self {
         Self {
-            histogram: SimpleHistogram::zero_based_with_capacity(100),
+            histogram: Histogram::zero_based_with_capacity(100),
             nucleobases: Default::default(),
             records: Default::default(),
             summary: Default::default(),
