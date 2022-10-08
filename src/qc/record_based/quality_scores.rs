@@ -6,7 +6,7 @@ use noodles::sam::alignment::Record;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -24,7 +24,7 @@ pub struct QualityScoreFacet {
 /// `const MAX_SCORE: usize = sam::record::quality_scores::score::MAX as usize;`
 pub const MAX_SCORE: usize = 93;
 
-impl RecordBasedQualityCheckFacet for QualityScoreFacet {
+impl RecordBasedQualityControlFacet for QualityScoreFacet {
     fn name(&self) -> &'static str {
         "Quality Score Metrics"
     }

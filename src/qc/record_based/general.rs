@@ -3,7 +3,7 @@
 use noodles::sam;
 use sam::alignment::Record;
 
-use crate::qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet};
+use crate::qc::{results, ComputationalLoad, RecordBasedQualityControlFacet};
 
 use self::metrics::GeneralMetrics;
 pub use self::metrics::SummaryMetrics;
@@ -17,7 +17,7 @@ pub struct GeneralMetricsFacet {
     pub metrics: GeneralMetrics,
 }
 
-impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
+impl RecordBasedQualityControlFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
         "General Metrics"
     }

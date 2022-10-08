@@ -27,7 +27,7 @@ use super::{
         template_length::TemplateLengthFacet,
     },
     sequence_based::{coverage::CoverageFacet, edits::EditsFacet},
-    RecordBasedQualityCheckFacet, SequenceBasedQualityCheckFacet,
+    RecordBasedQualityControlFacet, SequenceBasedQualityControlFacet,
 };
 
 //====================================//
@@ -107,20 +107,20 @@ pub struct QcArgs {
     gene_feature_name: String,
 }
 
-//============================================//
-// Dynamic allocation of quality check facets //
-//============================================//
+//==============================================//
+// Dynamic allocation of quality control facets //
+//==============================================//
 
-/// Dynamically compiles the record-based quality check facets that should be run for this
-/// invocation of the command line tool.
+/// Dynamically compiles the record-based quality control facets that should be
+/// run for this invocation of the command line tool.
 pub fn get_record_based_qc_facets<'a>(
     features_gff: Option<PathBuf>,
     feature_names: &'a FeatureNames,
     header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityCheckFacet + 'a>>> {
+) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityControlFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn RecordBasedQualityCheckFacet>> = vec![
+    let mut facets: Vec<Box<dyn RecordBasedQualityControlFacet>> = vec![
         Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),
@@ -140,14 +140,14 @@ pub fn get_record_based_qc_facets<'a>(
     Ok(facets)
 }
 
-/// Dynamically compiles the sequence-based quality check facets that should be run for this
-/// invocation of the command line tool.
+/// Dynamically compiles the sequence-based quality control facets that should
+/// be run for this invocation of the command line tool.
 pub fn get_sequence_based_qc_facets<'a>(
     reference_fasta: Option<PathBuf>,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet + 'a>>> {
+) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityControlFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet>> =
+    let mut facets: Vec<Box<dyn SequenceBasedQualityControlFacet>> =
         vec![Box::new(CoverageFacet::new(reference_genome))];
 
     // Optionally load the Edits facet if a reference FASTA is provided.

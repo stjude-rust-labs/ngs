@@ -12,7 +12,7 @@ pub mod metrics;
 pub mod utils;
 
 use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
     utils::{
         formats,
         genome::{get_primary_assembly, ReferenceGenome},
@@ -97,7 +97,7 @@ pub struct GenomicFeaturesFacet<'a> {
     pub primary_chromosome_names: Vec<String>,
 }
 
-impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
+impl<'a> RecordBasedQualityControlFacet for GenomicFeaturesFacet<'a> {
     fn name(&self) -> &'static str {
         "Genomic Features Metrics"
     }

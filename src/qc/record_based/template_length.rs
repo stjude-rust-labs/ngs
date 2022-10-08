@@ -4,7 +4,7 @@ use noodles::sam::alignment::Record;
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -66,7 +66,7 @@ impl TemplateLengthFacet {
     }
 }
 
-impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
+impl RecordBasedQualityControlFacet for TemplateLengthFacet {
     fn name(&self) -> &'static str {
         "Template Length Metrics"
     }

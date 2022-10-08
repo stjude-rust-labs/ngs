@@ -10,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use tracing::error;
 
 use crate::{
-    qc::{results, ComputationalLoad, SequenceBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, SequenceBasedQualityControlFacet},
     utils::{
         genome::{get_primary_assembly, ReferenceGenome, Sequence},
         histogram::SimpleHistogram,
@@ -82,7 +82,7 @@ impl CoverageFacet {
     }
 }
 
-impl SequenceBasedQualityCheckFacet for CoverageFacet {
+impl SequenceBasedQualityControlFacet for CoverageFacet {
     fn name(&self) -> &'static str {
         "Coverage Metrics"
     }

@@ -12,7 +12,7 @@ use noodles::sam::{
 use serde::{Deserialize, Serialize};
 
 use crate::{
-    qc::{results, ComputationalLoad, SequenceBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, SequenceBasedQualityControlFacet},
     utils::{alignment::ReferenceRecordStepThrough, formats, histogram::SimpleHistogram},
 };
 
@@ -57,7 +57,7 @@ pub struct EditsFacet {
 
     /// The sequence currently being processed by the quality control facet.
     /// This is updated over time as the
-    /// [`setup`](../../trait.SequenceBasedQualityCheckFacet.html#tymethod.setup)
+    /// [`setup`](../../trait.SequenceBasedQualityControlFacet.html#tymethod.setup)
     /// is called.
     pub current_sequence: Option<Sequence>,
 }
@@ -80,7 +80,7 @@ impl EditsFacet {
     }
 }
 
-impl SequenceBasedQualityCheckFacet for EditsFacet {
+impl SequenceBasedQualityControlFacet for EditsFacet {
     fn name(&self) -> &'static str {
         "Edit Metrics"
     }

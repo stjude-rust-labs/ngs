@@ -7,7 +7,7 @@ use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
 
 use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
+    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
     utils::histogram::SimpleHistogram,
 };
 
@@ -24,7 +24,7 @@ pub struct GCContentFacet {
     pub metrics: GCContentMetrics,
 }
 
-impl RecordBasedQualityCheckFacet for GCContentFacet {
+impl RecordBasedQualityControlFacet for GCContentFacet {
     fn name(&self) -> &'static str {
         "GC Content Metrics"
     }

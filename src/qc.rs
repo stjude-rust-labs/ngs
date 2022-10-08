@@ -24,9 +24,9 @@ pub enum ComputationalLoad {
     Heavy,
 }
 
-/// A struct is [`RecordBasedQualityCheckFacet`] if it is a record-based
+/// A struct is [`RecordBasedQualityControlFacet`] if it is a record-based
 /// quality control facet.
-pub trait RecordBasedQualityCheckFacet {
+pub trait RecordBasedQualityControlFacet {
     //================//
     // Static methods //
     //================//
@@ -53,9 +53,9 @@ pub trait RecordBasedQualityCheckFacet {
     fn aggregate(&self, results: &mut results::Results);
 }
 
-/// A struct is [`SequenceBasedQualityCheckFacet`] if it is a sequence-based
+/// A struct is [`SequenceBasedQualityControlFacet`] if it is a sequence-based
 /// quality control facet.
-pub trait SequenceBasedQualityCheckFacet {
+pub trait SequenceBasedQualityControlFacet {
     //================//
     // Static methods //
     //================//
