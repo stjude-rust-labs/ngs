@@ -8,10 +8,10 @@ use anyhow::{bail, Context};
 use noodles::bam::{self as bam, bai};
 use noodles::csi::index::reference_sequence::bin::Chunk;
 use noodles::sam::{self as sam, alignment::Record, header::record::value::map::header::SortOrder};
-use std::path::Path;
 use std::{fs::File, io, path::PathBuf};
 
 use crate::utils::formats::sam::parse_header;
+use crate::utils::path::AppendExtension;
 
 //==================================//
 // Individual indexing methods: BAM //
@@ -37,21 +37,14 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
 
     // (2) Calculate where the BAM index should go and check if a file is
     // already there. Error out if so.
-    let ext = match src.extension() {
-        Some(ext) => ext.to_str().unwrap(),
-        // we've already checked that the BAM file should have an extension
-        // before we call this function.
-        None => unreachable!(),
-    };
-    let mut bai_pathbuf = src.clone();
-    bai_pathbuf.set_extension(String::from(ext) + ".bai");
-
-    let bai_path = Path::new(&bai_pathbuf);
-    if bai_path.exists() {
+    let bai = src
+        .append_extension("bai")
+        .with_context(|| "constructing the BAM index filepath")?;
+    if bai.exists() {
         bail!(
             "refusing to overwrite existing index file: {}. Please delete \
                 and rerun if you'd like to replace it.",
-            bai_path.display()
+            bai.display()
         );
     }
 
@@ -97,7 +90,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
     let index = builder.build(header.reference_sequences().len());
 
     // (6) Write the index to disk.
-    let mut writer = File::create(bai_path)
+    let mut writer = File::create(bai)
         .map(bai::Writer::new)
         .with_context(|| "creating BAM index output file")?;
 
