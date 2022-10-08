@@ -213,8 +213,8 @@ pub trait ReferenceGenome: Debug {
     /// Build upon which this reference genome is based.
     fn basis(&self) -> GenomeBasis;
 
-    /// Url where this reference genome is available.
-    fn url(&self) -> &'static str;
+    /// If available, url where this reference genome is available.
+    fn url(&self) -> Option<&'static str>;
 
     /// If available, the autosomes included in this reference genome.
     fn autosomes(&self) -> Option<Vec<Sequence>>;

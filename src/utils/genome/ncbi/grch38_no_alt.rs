@@ -29,8 +29,8 @@ impl ReferenceGenome for GRCh38NoAlt {
         GenomeBasis::GRCh38
     }
 
-    fn url(&self) -> &'static str {
-        "ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz"
+    fn url(&self) -> Option<&'static str> {
+        Some("ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz")
     }
 
     fn autosomes(&self) -> Option<Vec<Sequence>> {

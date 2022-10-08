@@ -33,8 +33,8 @@ impl ReferenceGenome for HS37D5 {
         GenomeBasis::GRCh37
     }
 
-    fn url(&self) -> &'static str {
-        "https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz"
+    fn url(&self) -> Option<&'static str> {
+        Some("https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz")
     }
 
     fn autosomes(&self) -> Option<Vec<Sequence>> {

@@ -24,8 +24,8 @@ impl ReferenceGenome for HG38M1X {
         GenomeBasis::GRCh38
     }
 
-    fn url(&self) -> &'static str {
-        "N/A"
+    fn url(&self) -> Option<&'static str> {
+        None
     }
 
     fn autosomes(&self) -> Option<Vec<Sequence>> {
