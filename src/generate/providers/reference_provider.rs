@@ -1,4 +1,4 @@
-//! Functionality related to the `ReferenceGenomeSequenceProvider`. This provider
+//! Functionality related to the [`ReferenceGenomeSequenceProvider`]. This provider
 //! generates records based on a provided reference genome (typically in the
 //! FASTA format). In general, the goal is to simulate the sequencing of the
 //! provided reference genome.
@@ -35,35 +35,42 @@ use super::{simulate_errors, SequenceProvider};
 /// simplify the code when picking a random sequence and was an intentional
 /// design decision.
 pub struct ReferenceGenomeSequenceProvider {
-    /// Filename, just to keep track of which provider we are looking at.
-    name: String,
+    /// Filename for reference FASTA associated with this provider.
+    pub filename: String,
+
     /// Sequence names stored as a one to one mapping with sequence lengths.
-    sequence_names: Vec<String>,
+    pub sequence_names: Vec<String>,
+
     /// Sequence names stored as a one to one mapping with sequence lengths.
-    sequence_lengths: Vec<usize>,
+    pub sequence_lengths: Vec<usize>,
+
     /// A hashmap containing a mapping between the sequence name and the
     /// sequence itself.
-    sequences: HashMap<String, Sequence>,
+    pub sequences: HashMap<String, Sequence>,
+
     /// Distribution to pull sequences from for this reference genome.
-    sequence_distribution: WeightedIndex<usize>,
+    pub sequence_distribution: WeightedIndex<usize>,
 
     /// Simulate generating a sequencing error every N nucleotides.
-    error_frequency: usize,
+    pub error_frequency: usize,
+
     /// Inner distances are pulled from this defined normal distribution.  
-    inner_distance_distribution: Normal<f64>,
+    pub inner_distance_distribution: Normal<f64>,
+
     /// Assigned read length for the provider.
-    read_length: usize,
+    pub read_length: usize,
+
     /// Total size of the reference genome.
-    total_size: usize,
+    pub total_size: usize,
 
     /// Weight of this reference genome provider. This will be used in
     /// conjunction with the weights of other reference genome providers to
     /// facilitate random sampling.
-    weight: usize,
+    pub weight: usize,
 }
 
 impl ReferenceGenomeSequenceProvider {
-    /// Tries to create a new `ReferenceGenomeSequenceProvider` from the
+    /// Tries to create a new [`ReferenceGenomeSequenceProvider`] from the
     /// provided arguments.
     ///
     /// # Arguments
@@ -72,9 +79,9 @@ impl ReferenceGenomeSequenceProvider {
     /// * `error_frequency` — Simulate sequencing errors one in every N nucleobases.
     /// * `inner_distance` — Distribution to pull the inner distances from.
     /// * `read_length` — Read length to generate for this provider.
-    /// * `weight` — Represents how often this `ReferenceGenomeSequenceProvider`
+    /// * `weight` — Represents how often this [`ReferenceGenomeSequenceProvider`]
     ///   should be used to generate reads with respect to the other
-    ///   `ReferenceGenomeSequenceProvider`s passed into the command.
+    ///   [`ReferenceGenomeSequenceProvider`]s passed into the command.
     pub fn try_new<P>(
         src: P,
         error_frequency: usize,
@@ -120,7 +127,7 @@ impl ReferenceGenomeSequenceProvider {
         let sequence_distribution = WeightedIndex::new(&sequence_lengths).unwrap();
 
         Ok(Self {
-            name: filename,
+            filename,
             sequence_names,
             sequence_lengths,
             sequences,
@@ -131,14 +138,6 @@ impl ReferenceGenomeSequenceProvider {
             total_size,
             weight,
         })
-    }
-
-    pub fn name(&self) -> &str {
-        self.name.as_ref()
-    }
-
-    pub fn weight(&self) -> usize {
-        self.weight
     }
 
     /// Selects a random sequence from the reference FASTA. This includes only the
@@ -177,7 +176,7 @@ impl ReferenceGenomeSequenceProvider {
 impl Display for ReferenceGenomeSequenceProvider {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         write!(f, "{{ ReferenceGenomeSequenceProvider: {{ ")?;
-        write!(f, "Name: {}, ", self.name)?;
+        write!(f, "Name: {}, ", self.filename)?;
         write!(f, "Sequences: {}, ", self.sequence_names.len())?;
         write!(f, "Total Size: {}, ", self.total_size)?;
         write!(f, "Weight: {} ", self.weight)?;
@@ -371,7 +370,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
              length. This usually means you need to increase the specified \
              inner distance or reduce the standard deviation for genome {} \
              such that fragments this short cannot be generated.",
-                    self.name()
+                    self.filename
                 )
             });
         let mut rev_vec = reverse_sequence.unwrap();
@@ -383,7 +382,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
              length. This usually means you need to increase the specified \
              inner distance or reduce the standard deviation for genome {} \
              such that fragments this short cannot be generated.",
-                    self.name()
+                    self.filename
                 )
             });
 

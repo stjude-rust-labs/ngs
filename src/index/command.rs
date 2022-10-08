@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs index` command itself.
+
 use std::{ffi::OsStr, path::PathBuf};
 
 use anyhow::bail;
@@ -7,6 +9,7 @@ use clap::Args;
 // Command-line arguments //
 //========================//
 
+/// Command line arguments for `ngs index`.
 #[derive(Args)]
 pub struct IndexArgs {
     /// Path to the file to index.
@@ -18,6 +21,7 @@ pub struct IndexArgs {
 // Main command //
 //==============//
 
+/// Main method for the `ngs index` subcommand.
 pub fn index(args: IndexArgs) -> anyhow::Result<()> {
     let src = args.src;
 

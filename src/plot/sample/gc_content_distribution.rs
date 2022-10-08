@@ -1,3 +1,5 @@
+//! GC content distribution plot for a single sample.
+
 use anyhow::bail;
 use plotly::{
     common::{Line, LineShape, Mode, Title},
@@ -7,6 +9,7 @@ use plotly::{
 
 use crate::plot::command::{FilepathResults, SamplePlot};
 
+/// Struct that represents a GC content distribution plot for a single sample.
 pub struct GCContentDistributionPlot;
 
 impl SamplePlot for GCContentDistributionPlot {
@@ -25,7 +28,7 @@ impl SamplePlot for GCContentDistributionPlot {
         // (1) Check to make sure that the results files have the necessary
         // keys to plot the data. If they don't then we need to fail as there
         // will be nothing to plot.
-        let gc_content = match results.gc_content() {
+        let gc_content = match &results.gc_content {
             Some(gc) => gc,
             None => bail!("File {} has no GC content information!", filepath.display()),
         };

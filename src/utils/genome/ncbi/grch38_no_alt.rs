@@ -3,15 +3,16 @@
 //! the original GRCh38 release (GCA_000001405.15). For a more full discussion
 //! of the differences between the analysis set and the original GRCh38
 //! reference genome, see this blog post:
-//! https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use.
+//! <https://lh3.github.io/2017/11/13/which-human-reference-genome-to-use>.
 //!
-//! Link: ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz
+//! Link: <ftp://ftp.ncbi.nlm.nih.gov/genomes/all/GCA/000/001/405/GCA_000001405.15_GRCh38/seqs_for_alignment_pipelines.ucsc_ids/GCA_000001405.15_GRCh38_no_alt_analysis_set.fna.gz>
 
 use crate::{
     sequence,
     utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
 };
 
+/// Main struct for the GRCh38NoAlt reference genome.
 #[derive(Debug)]
 pub struct GRCh38NoAlt;
 

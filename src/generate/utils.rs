@@ -1,3 +1,5 @@
+//! Utilities that are used within the `ngs generate` subcommand.
+
 use noodles::fastq;
 use rand_distr::Normal;
 
@@ -19,23 +21,30 @@ impl SeqLen {
     }
 }
 
+/// Simple utility struct that holds the mean (mu) and standard deviation
+/// (sigma) for a normal distribution. This is useful for passing around the
+/// variables in a more coherent way.
 #[derive(Debug)]
 pub struct NormalDistributionParams(f64, f64);
 
 impl NormalDistributionParams {
+    /// Creates a new [`NormalDistributionParams`].
     pub fn new(mu: f64, sigma: f64) -> Self {
         NormalDistributionParams(mu, sigma)
     }
 
+    /// Gets the mean of the normal distribution (mu).
     pub fn get_mu(&self) -> f64 {
         self.0
     }
 
+    /// Gets the standard deviation of the normal distribution (sigma).
     pub fn get_sigma(&self) -> f64 {
         self.1
     }
 }
 
+// TODO: this needs to be a `TryFrom` that uses a `Result`.
 impl From<NormalDistributionParams> for Normal<f64> {
     fn from(params: NormalDistributionParams) -> Self {
         Normal::new(params.get_mu(), params.get_sigma()).unwrap_or_else(|_| {
@@ -47,9 +56,10 @@ impl From<NormalDistributionParams> for Normal<f64> {
     }
 }
 
-/// Struct representing a pair of fastq::Records: one for the forward read and
-/// one for the reverse read. This is useful for returning the read pair to a
-/// caller of the `SequenceProvider.generate_read_pair` method.
+/// Struct representing a pair of [`fastq::Record`]s. The first record
+/// represents the forward read and the second record represents the reverse
+/// read. This is useful for returning the read pair to a caller of the
+/// [`generate_read_pair`](../providers/trait.SequenceProvider.html#tymethod.generate_read_pair) method.
 #[derive(Debug)]
 pub struct PairedRead(pub fastq::Record, pub fastq::Record);
 

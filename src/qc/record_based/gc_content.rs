@@ -1,78 +1,27 @@
-//! Functionality related to computing GC content and related metrics.
+//! Functionality related to the GC content quality control facet.
+
+pub mod metrics;
 
 use noodles::sam;
 use rand::prelude::*;
 use sam::{alignment::Record, record::sequence::Base};
-use serde::{Deserialize, Serialize};
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
     utils::histogram::SimpleHistogram,
 };
 
-const TRUNCATION_LENGTH: usize = 100;
+use self::metrics::{GCContentMetrics, SummaryMetrics};
 
-#[derive(Clone, Default, Debug, Serialize, Deserialize)]
-pub struct NucleobaseMetrics {
-    // Total number of nucleobases read as a 'G' or a 'C'.
-    total_gc_count: usize,
+/// Truncates reads that are longer than this value by randomly selecting a
+/// substring of this size.
+pub const TRUNCATION_LENGTH: usize = 100;
 
-    // Total number of nucleobases read as an 'A' or a 'T'.
-    total_at_count: usize,
-
-    // Total number of nucleobases which were not read as an 'A', a 'C', a 'G',
-    // or a 'T'.
-    total_other_count: usize,
-}
-
-#[derive(Clone, Debug, Default, Serialize, Deserialize)]
-pub struct RecordMetrics {
-    // Number of records that have been processed by this struct.
-    processed: usize,
-
-    // Number of records that were ignored because of their flags.
-    ignored_flags: usize,
-
-    // Number of records that were ignored because they were too short.
-    ignored_too_short: usize,
-}
-
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct SummaryMetrics {
-    // Mean GC content for the given sample.
-    gc_content_pct: f64,
-
-    // Percentage of records that were ignored because of flags.
-    ignored_flags_pct: f64,
-
-    // Percentage of records that were ignored because they were too short.
-    ignored_too_short_pct: f64,
-}
-
-/// Primary struct used to compile stats regarding GC content. Within this
-/// struct, the histogram represents the number of reads which have 0% GC
-/// content all the way up to 100% GC content. The other fields are for counting
-/// the number of nucleobases which are G/C, the number of nucleobases that are
-/// A/T, or the number of nucleobases that fall into other.
-#[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct GCContentMetrics {
-    // Histogram that represents the number of reads which have 0% GC content
-    // all the way up to 100% GC content.
-    pub histogram: SimpleHistogram,
-
-    // Struct holding all of the nucleobase metrics.
-    pub nucleobases: NucleobaseMetrics,
-
-    // Struct containing all of the status of processed/ignored records.
-    pub records: RecordMetrics,
-
-    pub summary: Option<SummaryMetrics>,
-}
-
+/// Main struct for the GC content quality control facet.
 #[derive(Default)]
 pub struct GCContentFacet {
+    /// The main metric counting struct.
     pub metrics: GCContentMetrics,
-    rng: ThreadRng,
 }
 
 impl RecordBasedQualityCheckFacet for GCContentFacet {
@@ -117,7 +66,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
         let mut gc_this_read = 0usize;
         let offset = if TRUNCATION_LENGTH < sequence_length {
             let max_offset = sequence_length - TRUNCATION_LENGTH;
-            self.rng.gen_range(0..max_offset)
+            ThreadRng::default().gen_range(0..max_offset)
         } else {
             0
         };
@@ -171,7 +120,7 @@ impl RecordBasedQualityCheckFacet for GCContentFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_gc_content(self.metrics.clone());
+        results.gc_content = Some(self.metrics.clone());
     }
 }
 

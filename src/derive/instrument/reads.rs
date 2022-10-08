@@ -1,24 +1,39 @@
-/// Functionality related to parsing Illumina read names. Only Illumina 1.4 and
-/// 1.8 read names are supported. The expected convention is the following
-/// pattern, where [] denotes optional sections of the name.
-///
-/// INSTRUMENT:[RUN:FLOWCELL:]LANE:TILE:X:Y
-///
+//! Functionality related to parsing Illumina read names.
+//!
+//! Only Illumina 1.4 and 1.8 read names are supported. The expected convention
+//! is the following pattern, where `[]` denotes optional sections of the name.
+//!
+//! `INSTRUMENT:[RUN:FLOWCELL:]LANE:TILE:X:Y`
+//!
 use std::str::FromStr;
 
+/// An Illumina read name.
 #[derive(Debug)]
 pub struct IlluminaReadName {
+    /// The name of the instrument that produced this read.
     pub instrument_name: String,
+
+    /// The id of the run that produced this read, if Illumina 1.8 read names.
     pub run: Option<String>,
+
+    /// The id of the flowcell that produced this read, if Illumina 1.8 read names.
     pub flowcell: Option<String>,
+
+    /// The lane of the flowcell that produced this read.
     pub lane: String,
+
+    /// The of tile of the flowcell lane that produced this read.
     pub tile: String,
+
+    /// The of X position of the flowcell well that produced this read.
     pub x: String,
+
+    /// The of Y position of the flowcell well that produced this read.
     pub y: String,
 }
 
 impl FromStr for IlluminaReadName {
-    type Err = ();
+    type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let segments: Vec<&str> = s.split(':').collect();
@@ -43,7 +58,7 @@ impl FromStr for IlluminaReadName {
                 x: segments[5].into(),
                 y: segments[6].into(),
             }),
-            _ => Err(()),
+            _ => Err(String::from("invalid number of segments for read name")),
         }
     }
 }

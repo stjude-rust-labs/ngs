@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs plot cohort` subcommand.
+
 pub mod gc_content_distribution;
 
 use anyhow::Context;
@@ -11,8 +13,9 @@ use crate::{
     qc::results::Results,
 };
 
+/// Clap arguments for the `ngs plot cohort` subcommand.
 #[derive(Args)]
-pub struct CohortArgs {
+pub struct PlotCohortArgs {
     /// `ngs qc` results files for which to generate the plot(s).
     #[arg(required = true, value_name = "JSON")] // required implies one or more
     pub src: Vec<PathBuf>,
@@ -22,7 +25,8 @@ pub struct CohortArgs {
     pub output_directory: Option<PathBuf>,
 }
 
-pub fn plot(args: CohortArgs) -> anyhow::Result<()> {
+/// Main method for the `ngs plot cohort` subcommand.
+pub fn plot(args: PlotCohortArgs) -> anyhow::Result<()> {
     //========//
     // Source //
     //========//

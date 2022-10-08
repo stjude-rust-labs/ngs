@@ -1,10 +1,11 @@
-//! A simple histogram class that can only be incremented. Bins are considered
-//! to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
-//! starting at zero because that is all this package needs.
+//! A simple histogram class that can only be incremented.
 #![allow(dead_code)]
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
+/// A simple histogram class that can only be incremented. Bins are considered
+/// to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
+/// starting at zero because that is all this package needs.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SimpleHistogram {
     // Vec-backed value store for the histogram.
@@ -15,6 +16,8 @@ pub struct SimpleHistogram {
     range_stop: usize,
 }
 
+/// An error that occurs if we try to increment a bin of the histogram that is
+/// out-of-bounds for that histogram.
 #[derive(Debug, PartialEq, Eq)]
 pub struct BinOutOfBoundsError;
 

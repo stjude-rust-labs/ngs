@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs plot sample` subcommand.
+
 pub mod gc_content_distribution;
 pub mod quality_score_distribution;
 
@@ -12,8 +14,9 @@ use crate::{
     qc::results::Results,
 };
 
+/// Clap arguments for the `ngs plot sample` subcommand.
 #[derive(Args)]
-pub struct SampleArgs {
+pub struct PlotSampleArgs {
     /// `ngs qc` results file for which to generate the plot(s).
     #[arg(value_name = "JSON")]
     pub src: PathBuf,
@@ -23,7 +26,8 @@ pub struct SampleArgs {
     pub output_directory: Option<PathBuf>,
 }
 
-pub fn plot(args: SampleArgs) -> anyhow::Result<()> {
+/// Main method for the `ngs plot sample` subcommand.
+pub fn plot(args: PlotSampleArgs) -> anyhow::Result<()> {
     //========//
     // Source //
     //========//

@@ -1,3 +1,5 @@
+//! Combines the flowcell and instrument checks into a single workflow.
+
 use std::collections::{HashMap, HashSet};
 
 use regex::Regex;
@@ -6,43 +8,62 @@ use tracing::info;
 
 use super::{flowcells, instruments};
 
+/// Generalized struct for holding instrument detection results.
 #[derive(Debug, Default, Serialize)]
 pub struct InstrumentDetectionResults {
+    /// The possible instruments contained within this result set.
     pub possible_instruments: Option<HashSet<String>>,
+    /// Whether or not at least one machine has been detected.
     pub detected_at_least_one_machine: bool,
 }
 
 impl InstrumentDetectionResults {
-    pub fn update_instruments(&mut self, results: &HashSet<String>) {
+    /// Updates the `InstrumentDetectionResults` with a set of instruments that
+    /// have been detected.
+    pub fn update_instruments(&mut self, instruments: &HashSet<String>) {
         self.possible_instruments = Some(match &self.possible_instruments {
             // An initial base set has already been established, so take the
             // intersection of the existing possible instruments set and the
             // set being passed into the update function.
-            Some(r) => r.intersection(results).cloned().collect(),
+            Some(r) => r.intersection(instruments).cloned().collect(),
             // This is the first iteration, so we need to set our base set as
             // the first detected set of results.
-            None => results.clone(),
+            None => instruments.clone(),
         });
 
         // After we've updated the sets, we need to keep track of if we have
         // detected at least one machine to distinguish conflicting machines
         // from no machines detected at all.
-        if !results.is_empty() {
+        if !instruments.is_empty() {
             self.detected_at_least_one_machine = true;
         }
     }
 }
 
+/// Struct holding the final results for an `ngs derive instrument` subcommand
+/// call.
 #[derive(Debug, Serialize)]
 pub struct DerivedInstrumentResult {
+    /// Whether or not the `ngs derive instrument` subcommand succeeded.
     pub succeeded: bool,
+
+    /// The possible instruments detected by `ngs derive instrument`, if
+    /// available.
     pub instruments: Option<HashSet<String>>,
+
+    /// The level of confidence that the tool has concerning these results.
     pub confidence: String,
+
+    /// Status of the evidence that supports (or lack thereof) these predicted
+    /// instruments, if available.  
     pub evidence: Option<String>,
+
+    /// A general comment field, if available.
     pub comment: Option<String>,
 }
 
 impl DerivedInstrumentResult {
+    /// Creates a new [`DerivedInstrumentResult`].
     pub fn new(
         succeeded: bool,
         instruments: Option<HashSet<String>>,
@@ -61,11 +82,15 @@ impl DerivedInstrumentResult {
 }
 
 /// Computes the full set of possible instruments that could have generated the
-/// value passed to the function. The `lookup_table` passed to this function is
-/// constructed as a set of regex keys that map to machine that could have
-/// generated a query that matches that regex. Effectively, this method iterates
-/// through all of the keys, checks if the query matches the regex, and extends
-/// the result HashSet with the values for that key if it does.
+/// value passed to the function given the lookup table. This is intended to be
+/// a general purpose method that will work with both flowcells and instrument
+/// ids.
+///
+/// The `lookup_table` passed to this function is constructed as a set of regex
+/// keys that map to machine that could have generated a query that matches that
+/// regex. Effectively, this method iterates through all of the keys, checks if
+/// the query matches the regex, and extends the result HashSet with the values
+/// for that key if it does.
 ///
 /// # Arguments
 ///
@@ -125,6 +150,8 @@ pub fn predict_instrument(
     result
 }
 
+/// Combines evidence from the instrument id detection and flowcell id detection
+/// to produce a final [`DerivedInstrumentResult`].
 pub fn resolve_instrument_prediction(
     iid_results: InstrumentDetectionResults,
     fcid_results: InstrumentDetectionResults,
@@ -191,7 +218,7 @@ pub fn resolve_instrument_prediction(
         );
     }
 
-    // (3) Same as the block above, except now we are evaluating the opposite
+    // (5) Same as the block above, except now we are evaluating the opposite
     // (only the iid results contained some predicted machine).
     if possible_instruments_by_fcid.is_empty() {
         let instruments = possible_instruments_by_iid;
@@ -239,7 +266,7 @@ pub fn resolve_instrument_prediction(
 
 /// Main method to evaluate the detected instrument names and flowcell names and
 /// return a result for the derived instruments. This may fail, and the
-/// resulting `DerivedInstrumentResult` should be evaluated accordingly.
+/// resulting [`DerivedInstrumentResult`] should be evaluated accordingly.
 pub fn predict(
     instrument_names: HashSet<String>,
     flowcell_names: HashSet<String>,

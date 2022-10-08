@@ -1,3 +1,5 @@
+//! Functionality related to the Features quality control facet.
+
 use std::{collections::HashMap, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
@@ -7,7 +9,7 @@ use sam::{alignment::Record, Header};
 use tracing::debug;
 
 pub mod metrics;
-pub mod name_strand;
+pub mod utils;
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet},
@@ -19,7 +21,7 @@ use crate::{
 
 pub use self::{
     metrics::{Metrics, SummaryMetrics},
-    name_strand::FeatureNameStrand,
+    utils::FeatureNameStrand,
 };
 
 //=================//
@@ -29,14 +31,24 @@ pub use self::{
 /// A utility struct for passing feature name arguments from the command line
 /// around more easily.
 pub struct FeatureNames {
+    /// Name of the 5' UTR region feature for the gene model used.
     pub five_prime_utr_feature_name: String,
+
+    /// Name of the 3' UTR region feature for the gene model used.
     pub three_prime_utr_feature_name: String,
+
+    /// Name of the coding sequence region feature for the gene model used.
     pub coding_sequence_feature_name: String,
+
+    /// Name of the exon region feature for the gene model used.
     pub exon_feature_name: String,
+
+    /// Name of the gene region feature for the gene model used.
     pub gene_feature_name: String,
 }
 
 impl FeatureNames {
+    /// Creates a new [`FeatureNames`].
     pub fn new<I>(
         five_prime_utr_feature_name: I,
         three_prime_utr_feature_name: I,
@@ -61,13 +73,28 @@ impl FeatureNames {
 // Genomic Features Facet //
 //========================//
 
+/// Main struct for the Features quality control facet.
 pub struct GenomicFeaturesFacet<'a> {
-    exonic_translation_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
-    gene_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
-    feature_names: &'a FeatureNames,
-    header: &'a Header,
-    metrics: Metrics,
-    primary_chromosome_names: Vec<String>,
+    /// Store of the cached exonic translation regions.
+    pub exonic_translation_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
+
+    /// Store of the cached gene regions.
+    pub gene_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
+
+    /// Feature names that correspond to the respective features in the gene
+    /// model. These are passed in on the command line.
+    pub feature_names: &'a FeatureNames,
+
+    /// The SAM header. Useful for looking up sequence ids for records during
+    /// processing.
+    pub header: &'a Header,
+
+    /// The main metric counting struct.
+    pub metrics: Metrics,
+
+    /// Cached set of primary chromosomes (for ignoring records aligned to
+    /// non-primary sequences).
+    pub primary_chromosome_names: Vec<String>,
 }
 
 impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
@@ -227,11 +254,13 @@ impl<'a> RecordBasedQualityCheckFacet for GenomicFeaturesFacet<'a> {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_features(self.metrics.clone())
+        results.features = Some(self.metrics.clone())
     }
 }
 
 impl<'a> GenomicFeaturesFacet<'a> {
+    /// Tries to create a [`GenomicFeaturesFacet`] from a set of provided
+    /// arguments. May fail if there are issues opening the GFF file.
     pub fn try_from(
         src: PathBuf,
         feature_names: &'a FeatureNames,

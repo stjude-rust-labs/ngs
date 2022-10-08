@@ -1,8 +1,13 @@
+//! This reference genome represents the hg38 no alt analysis set provided by
+//! Microsoft Genomics Service. Currently, this reference genome is not publicly
+//! available for download at any link—you must email Microsoft to get a copy of
+//! it.
 use crate::{
     sequence,
     utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
 };
 
+/// Main struct for the hg38m1x reference genome.
 #[derive(Debug)]
 pub struct HG38M1X;
 

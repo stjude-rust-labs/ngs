@@ -1,5 +1,8 @@
+//! Utilities related to CIGAR string processing.
+
 use noodles::sam::record::cigar::op::Kind;
 
+/// Reports whether a CIGAR operation consumes a reference base.
 pub fn consumes_reference(kind: Kind) -> bool {
     matches!(
         kind,
@@ -7,6 +10,7 @@ pub fn consumes_reference(kind: Kind) -> bool {
     )
 }
 
+/// Reports whether a CIGAR operation consumes a sequence base.
 pub fn consumes_sequence(kind: Kind) -> bool {
     matches!(
         kind,

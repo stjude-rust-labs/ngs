@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs qc` command itself.
+
 use std::{fs::File, path::PathBuf, rc::Rc};
 
 use anyhow::{bail, Context};
@@ -32,8 +34,15 @@ use super::{
 // Command line parsing utility types //
 //====================================//
 
+/// Utility enum to designate whether we are reviewing all records in the file
+/// or just some of them. TODO: this may be generally useful, so we may want to
+/// pull this out into its own utility module.
 pub enum NumberOfRecords {
+    /// Designates that we should review _all_ of the records in the file.
     All,
+
+    /// Designates that we should review _some_ of the records in the file. The
+    /// exact count of records is stored in the `usize`.
     Some(usize),
 }
 
@@ -41,6 +50,7 @@ pub enum NumberOfRecords {
 // Command line arguments //
 //========================//
 
+/// Clap arguments for the `ngs qc` subcommand.
 #[derive(Args)]
 pub struct QcArgs {
     /// Source BAM file.
@@ -134,16 +144,15 @@ pub fn get_record_based_qc_facets<'a>(
 /// invocation of the command line tool.
 pub fn get_sequence_based_qc_facets<'a>(
     reference_fasta: Option<PathBuf>,
-    header: &'a Header,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet<'a> + 'a>>> {
+) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityCheckFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet<'_>>> =
+    let mut facets: Vec<Box<dyn SequenceBasedQualityCheckFacet>> =
         vec![Box::new(CoverageFacet::new(reference_genome))];
 
     // Optionally load the Edits facet if a reference FASTA is provided.
     if let Some(fasta) = reference_fasta {
-        facets.push(Box::new(EditsFacet::try_from(fasta, header)?))
+        facets.push(Box::new(EditsFacet::try_from(fasta)?))
     }
 
     Ok(facets)
@@ -379,7 +388,7 @@ fn app(
     //============================================================//
 
     let mut sequence_facets =
-        get_sequence_based_qc_facets(reference_fasta, &header, Rc::clone(&reference_genome))?;
+        get_sequence_based_qc_facets(reference_fasta, Rc::clone(&reference_genome))?;
     info!("Second pass with the following facets enabled:");
     for facet in &sequence_facets {
         info!("  [*] {}, {:?}", facet.name(), facet.computational_load());

@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs generate` subcommand itself.
+
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -11,6 +13,8 @@ use crate::{
     utils::formats,
 };
 
+/// Utility method to parse the error rate passed in on the command line and
+/// ensure the rate is within the range [0.0, 1.0].
 pub fn error_rate_in_range(error_rate_raw: &str) -> Result<f32, String> {
     let error_rate: f32 = error_rate_raw
         .parse()
@@ -22,6 +26,7 @@ pub fn error_rate_in_range(error_rate_raw: &str) -> Result<f32, String> {
     }
 }
 
+/// Command line arguments for `ngs generate`.
 #[derive(Args)]
 #[command(group(ArgGroup::new("record-count").required(true).args(["coverage", "num_records"])))]
 pub struct GenerateArgs {
@@ -49,6 +54,7 @@ pub struct GenerateArgs {
     coverage: Option<usize>,
 }
 
+/// Main function for the `ngs generate` subcommand.
 pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
     // (0) Parse arguments needed for subcommand.
     let result: anyhow::Result<Vec<_>> = args
@@ -101,10 +107,10 @@ pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
     let mut i = 0;
     while i < total_reads {
         let selected_genome = reference_providers
-            .choose_weighted(&mut rng, |x| x.weight())
+            .choose_weighted(&mut rng, |x| x.weight)
             .unwrap();
         let read_pair = selected_genome.generate_read_pair(
-            format!("ngs:{}", selected_genome.name()),
+            format!("ngs:{}", selected_genome.filename),
             (i + 1).to_string(),
         );
         writer_read_one

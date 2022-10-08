@@ -1,3 +1,5 @@
+//! Functionality related to the Quality Scores quality control facet.
+
 use std::collections::HashMap;
 
 use noodles::sam::alignment::Record;
@@ -8,21 +10,19 @@ use crate::{
     utils::histogram::SimpleHistogram,
 };
 
+/// Main struct for the Quality Scores quality control facet.
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
 pub struct QualityScoreFacet {
-    scores: HashMap<usize, SimpleHistogram>,
+    /// Distribution of quality scores for each position in the records observed.
+    pub scores: HashMap<usize, SimpleHistogram>,
 }
 
-impl QualityScoreFacet {
-    pub fn scores(&self) -> &HashMap<usize, SimpleHistogram> {
-        &self.scores
-    }
-}
-
-const MAX_SCORE: usize = 93;
-// Hopefully in the future, we can do something like this if `noodles` makes
-// this a public accessible const.
-// const MAX_SCORE: usize = sam::record::quality_scores::score::MAX as usize;
+/// Maximum quality score supported by the SAM specification.
+///
+/// Hopefully in the future, we can do something like this if `noodles` makes
+/// this a public accessible const.
+/// `const MAX_SCORE: usize = sam::record::quality_scores::score::MAX as usize;`
+pub const MAX_SCORE: usize = 93;
 
 impl RecordBasedQualityCheckFacet for QualityScoreFacet {
     fn name(&self) -> &'static str {
@@ -55,6 +55,6 @@ impl RecordBasedQualityCheckFacet for QualityScoreFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_quality_scores(self.clone());
+        results.quality_scores = Some(self.clone());
     }
 }

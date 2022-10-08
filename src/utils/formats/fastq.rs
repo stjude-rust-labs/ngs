@@ -1,3 +1,5 @@
+//! Utilities related to opening and manipulating FASTQ files.
+
 use std::{
     fs::File,
     io::{BufWriter, Write},
@@ -8,6 +10,7 @@ use anyhow::bail;
 use flate2::{write::GzEncoder, Compression};
 use noodles::fastq;
 
+/// Attempts to open a FASTQ file from a given source.
 pub fn writer<P>(src: P) -> anyhow::Result<fastq::Writer<Box<dyn Write>>>
 where
     P: AsRef<Path>,

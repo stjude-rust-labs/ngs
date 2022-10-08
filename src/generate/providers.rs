@@ -1,3 +1,5 @@
+//! Base functionality pertaining to sequence providers in the `ngs generate` subcommand.
+
 use super::utils::PairedRead;
 
 use rand::{prelude::*, seq::SliceRandom};
@@ -10,6 +12,7 @@ pub mod reference_provider;
 /// simulates reads read from that genome. Other sequence providers could be
 /// contaminates from various sources.
 pub trait SequenceProvider {
+    /// Generates a read pair for the given [`SequenceProvider`].
     fn generate_read_pair(&self, read_prefix: String, read_number: String) -> PairedRead;
 }
 

@@ -1,4 +1,4 @@
-//! Functionality related to computing template lenght and related metrics.
+//! Functionality related to the Template Length quality control facet.
 
 use noodles::sam::alignment::Record;
 use serde::{Deserialize, Serialize};
@@ -8,39 +8,52 @@ use crate::{
     utils::histogram::SimpleHistogram,
 };
 
+/// Summary statistics for the Template Length quality control facet.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SummaryMetrics {
-    template_length_unknown_pct: f64,
-    template_length_out_of_range_pct: f64,
+    /// Percentage of records for which the template length was unknown (zero).
+    pub template_length_unknown_pct: f64,
+
+    /// Percentage of records for which the template length was greater than our
+    /// histogram could support.
+    pub template_length_out_of_range_pct: f64,
 }
 
+/// General metrics regarding records collected in the quality control facet.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct RecordMetrics {
-    // Number of records that were processed (and, as such, had template lengths
-    // that fell within our histogram's range).
-    processed: usize,
+    /// Number of records that were processed (and, as such, had template lengths
+    /// that fell within our histogram's range).
+    pub processed: usize,
 
-    // Number of records that were ignored (and, as such, had template lengths
-    // that fell outside of our histogram's range).
-    ignored: usize,
+    /// Number of records that were ignored (and, as such, had template lengths
+    /// that fell outside of our histogram's range).
+    pub ignored: usize,
 }
 
-/// Primary struct used to compile stats regarding template length. Within this
-/// struct, the histogram represents the distribution of records with a particular
-/// template length up to a certain threshold. Any records that fall outside of
-/// that range are ignored (as tallied in the `ignored` field). Similarly,
-/// records that are processed are tallied in the `processed` field.
+/// Main struct for the Template Length quality control facet.
+///
+/// Within this struct, the histogram represents the distribution of records
+/// with a particular template length up to a certain threshold. Any records
+/// that fall outside of that range are ignored (as tallied in the `ignored`
+/// field). Similarly, records that are processed are tallied in the `processed`
+/// field.
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct TemplateLengthFacet {
-    // Histogram that represents the number of records that have a given
-    // template length (up to the specified threshold).
-    histogram: SimpleHistogram,
-    records: RecordMetrics,
-    summary: Option<SummaryMetrics>,
+    /// Histogram that represents the number of records that have a given
+    /// template length (up to the specified threshold).
+    pub histogram: SimpleHistogram,
+
+    /// General record metrics
+    pub records: RecordMetrics,
+
+    /// Summary statistics for the Template Length quality control facet.
+    pub summary: Option<SummaryMetrics>,
 }
 
 impl TemplateLengthFacet {
-    /// Creates a new `TemplateLengthHistogram` with default values.
+    /// Creates a new [`TemplateLengthFacet`] with a specified capacity and
+    /// otherwise default values.
     pub fn with_capacity(capacity: usize) -> Self {
         Self {
             histogram: SimpleHistogram::zero_based_with_capacity(capacity),
@@ -50,24 +63,6 @@ impl TemplateLengthFacet {
             },
             summary: None,
         }
-    }
-
-    /// Gets a value for the given bin within the histogram.
-    #[allow(dead_code)]
-    pub fn get(&self, bin: usize) -> usize {
-        self.histogram.get(bin)
-    }
-
-    #[allow(dead_code)]
-    /// Gets the number of processed records.
-    pub fn get_processed_count(&self) -> usize {
-        self.records.processed
-    }
-
-    /// Gets the number of ignored records.
-    #[allow(dead_code)]
-    pub fn get_ignored_count(&self) -> usize {
-        self.records.ignored
     }
 }
 
@@ -104,6 +99,6 @@ impl RecordBasedQualityCheckFacet for TemplateLengthFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_template_length(self.clone());
+        results.template_length = Some(self.clone());
     }
 }

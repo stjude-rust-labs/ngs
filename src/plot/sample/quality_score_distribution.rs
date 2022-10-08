@@ -1,3 +1,5 @@
+//! Quality score distribution plot for a single sample.
+
 use anyhow::bail;
 use itertools::Itertools;
 use plotly::{
@@ -8,6 +10,7 @@ use plotly::{
 
 use crate::plot::command::{FilepathResults, SamplePlot};
 
+/// Struct that represents a quality score distribution plot for a single sample.
 pub struct QualityScoreDistributionPlot;
 
 impl SamplePlot for QualityScoreDistributionPlot {
@@ -26,7 +29,7 @@ impl SamplePlot for QualityScoreDistributionPlot {
         // (1) Check to make sure that the results files have the necessary
         // keys to plot the data. If they don't then we need to fail as there
         // will be nothing to plot.
-        let quality_scores = match results.quality_scores() {
+        let quality_scores = match &results.quality_scores {
             Some(qs) => qs,
             None => bail!(
                 "File {} has no quality score information!",
@@ -35,7 +38,7 @@ impl SamplePlot for QualityScoreDistributionPlot {
         };
 
         // (2) Tally up the quality scores and configure the plot.
-        let scores = quality_scores.scores();
+        let scores = &quality_scores.scores;
         let mut x = Vec::new();
         let mut y = Vec::new();
         let mut error_plus = Vec::new();

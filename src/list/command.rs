@@ -1,3 +1,5 @@
+//! Functionality related to the `ngs list` command itself.
+
 use anyhow::bail;
 use clap::{builder::PossibleValuesParser, Args};
 
@@ -5,6 +7,11 @@ use prettytable::{row, Table};
 
 use crate::utils::genome::get_all_reference_genomes;
 
+//========================//
+// Command-line arguments //
+//========================//
+
+/// Command line arguments for `ngs list`.
 #[derive(Args)]
 pub struct ListArgs {
     /// The subject which you want to list values for.
@@ -12,6 +19,11 @@ pub struct ListArgs {
     subject: String,
 }
 
+//==============//
+// Main command //
+//==============//
+
+/// Main method for the `ngs list` subcommand.
 pub fn list(args: ListArgs) -> anyhow::Result<()> {
     match args.subject.as_str() {
         "reference-genomes" => {

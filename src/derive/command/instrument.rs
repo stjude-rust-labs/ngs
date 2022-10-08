@@ -1,3 +1,5 @@
+//! Functionality relating to the `ngs derive instrument` subcommand itself.
+
 use anyhow::bail;
 use std::{collections::HashSet, fs::File, path::PathBuf, thread};
 
@@ -7,8 +9,9 @@ use tracing::info;
 
 use crate::derive::instrument::{compute, reads::IlluminaReadName};
 
+/// Clap arguments for the `ngs derive instrument` subcommand.
 #[derive(Args)]
-pub struct Instrument {
+pub struct DeriveInstrumentArgs {
     // Source BAM.
     #[arg(value_name = "BAM")]
     src: PathBuf,
@@ -22,7 +25,8 @@ pub struct Instrument {
     threads: Option<usize>,
 }
 
-pub fn derive(args: Instrument) -> anyhow::Result<()> {
+/// Entrypoint for the `ngs derive instrument` subcommand.
+pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
     let first_n_reads: Option<usize> = args.num_records;
     let threads = match args.threads {
         Some(t) => t,
@@ -41,6 +45,7 @@ pub fn derive(args: Instrument) -> anyhow::Result<()> {
     rt.block_on(app(args.src, first_n_reads))
 }
 
+/// Main function for the `ngs derive instrument` subcommand.
 async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();

@@ -1,3 +1,5 @@
+//! GC content distribution plot for a cohort of samples.
+
 use plotly::{
     common::{Line, LineShape, Mode, Title},
     layout::Axis,
@@ -7,6 +9,7 @@ use tracing::error;
 
 use crate::plot::command::{CohortPlot, FilepathResults};
 
+/// Struct that represents a GC content distribution plot for a cohort.
 pub struct GCContentDistributionPlot;
 
 impl CohortPlot for GCContentDistributionPlot {
@@ -25,7 +28,7 @@ impl CohortPlot for GCContentDistributionPlot {
             // (1) Check to make sure that the results files have the necessary
             // keys to plot the data. If they don't then we can ignore that
             // result and continue on.
-            let gc_content = match result.gc_content() {
+            let gc_content = match &result.gc_content {
                 Some(gc) => gc,
                 None => {
                     error!(

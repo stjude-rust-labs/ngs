@@ -1,5 +1,9 @@
+//! Utilities related to displaying things.
+
 use std::fmt;
 
+/// Utility struct for displays percentages. The first item in the struct is the
+/// numerator and the second item in the struct is the denominator.
 pub struct PercentageFormat(pub u64, pub u64);
 
 impl fmt::Display for PercentageFormat {

@@ -1,3 +1,5 @@
+//! Utilities related to alignment of sequences.
+
 use noodles::sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
 use super::cigar::{consumes_reference, consumes_sequence};
@@ -29,6 +31,7 @@ pub struct ReferenceRecordStepThrough<'a> {
 }
 
 impl<'a> ReferenceRecordStepThrough<'a> {
+    /// Creates a new [`ReferenceRecordStepThrough`].
     pub fn new(reference_seq: &'a [u8], record_seq: &'a [Base], cigar: Cigar) -> Self {
         Self {
             reference_seq,
@@ -37,6 +40,8 @@ impl<'a> ReferenceRecordStepThrough<'a> {
         }
     }
 
+    /// Calculates the number of edits in the [`ReferenceRecordStepThrough`] by
+    /// stepping through the genome and counting up all of the mismatched M's.
     pub fn edits(&self) -> usize {
         let mut edits = 0;
         let mut record_ptr = 0;

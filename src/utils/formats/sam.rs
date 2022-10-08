@@ -1,3 +1,5 @@
+//! Utilities related to opening and manipulating SAM files.
+
 use noodles::sam;
 use regex::{Captures, Regex};
 

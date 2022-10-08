@@ -16,6 +16,7 @@ use crate::{
     utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
 };
 
+/// Main struct for the hg37d5 reference genome.
 #[derive(Debug)]
 pub struct HS37D5;
 

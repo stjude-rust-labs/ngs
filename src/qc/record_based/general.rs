@@ -1,11 +1,21 @@
+//! Functionality related to the General quality control facet.
+
 use noodles::sam;
 use sam::alignment::Record;
 
 use crate::qc::{results, ComputationalLoad, RecordBasedQualityCheckFacet};
 
-pub use self::metrics::{GeneralMetricsFacet, SummaryMetrics};
+use self::metrics::GeneralMetrics;
+pub use self::metrics::SummaryMetrics;
 
 pub mod metrics;
+
+/// Main struct for the General quality control facet.
+#[derive(Clone, Debug, Default)]
+pub struct GeneralMetricsFacet {
+    /// The main metric counting struct.
+    pub metrics: GeneralMetrics,
+}
 
 impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
@@ -140,6 +150,6 @@ impl RecordBasedQualityCheckFacet for GeneralMetricsFacet {
     }
 
     fn aggregate(&self, results: &mut results::Results) {
-        results.set_general(self.clone())
+        results.general = Some(self.metrics.clone())
     }
 }

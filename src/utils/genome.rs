@@ -1,3 +1,5 @@
+//! Utilities related to reference genomes.
+
 pub mod microsoft;
 pub mod ncbi;
 pub mod one_thousand_genomes;
@@ -93,13 +95,30 @@ pub fn get_all_sequences(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Vec<
 // Types of sequences //
 //====================//
 
+/// A kind of sequence that can be included in a reference genome.
 #[derive(Clone)]
 pub enum SequenceKind {
+    /// A canonical sequence containing species-specific DNA.
     Chromosome,
+
+    /// A sequence representing mitochondrial DNA.
     Mitochondrion,
+
+    /// A sequence reprsenting the Epstein-Barr virus.
     EpsteinBarrVirus,
+
+    /// A sequence representing an unlocalized contig. It is generally known
+    /// which chromosome these belong to, but not their exact position within
+    /// the chromosome.
     Unlocalized,
+
+    /// A sequence representing an unplaced contig. These are generally known to
+    /// be part of a species's DNA, but not their exact position or chromosome.
     Unplaced,
+
+    /// A sequence that is not part of the species canonical DNA. These are
+    /// typically inserted to clean up results in variant calling and remove
+    /// contaminants.
     Decoy,
 }
 
@@ -123,6 +142,8 @@ impl FromStr for SequenceKind {
 // Sequences //
 //===========//
 
+/// A sequence contained within a reference genome, including the name and the
+/// kind of the sequence.
 #[derive(Clone)]
 pub struct Sequence {
     name: &'static str,
@@ -131,16 +152,19 @@ pub struct Sequence {
 }
 
 impl Sequence {
+    /// Creates a new [`Sequence`].
     pub fn new(name: &'static str, kind: SequenceKind) -> Self {
         Self { name, kind }
     }
 
+    /// Gives the name of the [`Sequence`].
     pub fn name(&self) -> &str {
         self.name
     }
 }
 
-/// Expands the provided arguments into a new Sequence.
+/// Expands the provided arguments into a new Sequence. This is provided for
+/// convenience when specifying large reference genomes.
 #[macro_export]
 macro_rules! sequence {
     ($name:expr,$kind:expr) => {
@@ -152,9 +176,15 @@ macro_rules! sequence {
 // Genome Basis //
 //==============//
 
+/// The basis upon which a reference genome is created. These are generally
+/// revisions of the Genome Reference Consortiums regular releases of the
+/// reference genome.
 #[derive(Debug)]
 pub enum GenomeBasis {
+    /// GRCh37-based reference genomes
     GRCh37,
+
+    /// GRCh38-based reference genomes
     GRCh38,
 }
 
@@ -171,17 +201,42 @@ impl fmt::Display for GenomeBasis {
 // Reference Genomes //
 //===================//
 
+/// A struct is [`ReferenceGenome`] if it represents a reference genome that is
+/// supported by this tool.
 pub trait ReferenceGenome: Debug {
+    /// Name of the reference genome.
     fn name(&self) -> &'static str;
+
+    /// Center that produced this reference genome.
     fn source(&self) -> &'static str;
+
+    /// Build upon which this reference genome is based.
     fn basis(&self) -> GenomeBasis;
+
+    /// Url where this reference genome is available.
     fn url(&self) -> &'static str;
 
+    /// If available, the autosomes included in this reference genome.
     fn autosomes(&self) -> Option<Vec<Sequence>>;
+
+    /// If available, the sex chromosomes included in this reference genome.
     fn sex_chromosomes(&self) -> Option<Vec<Sequence>>;
+
+    /// If available, the mitochondrial DNA included in this reference genome.
     fn mitochondrion_chromosome(&self) -> Option<Sequence>;
+
+    /// If available, the epstein-barr virus DNA included in this reference
+    /// genome.
     fn ebv_chromosome(&self) -> Option<Sequence>;
+
+    /// If available, a number of unlocalized sequences included in this
+    /// reference genome.
     fn unlocalized_sequences(&self) -> Option<Vec<Sequence>>;
+
+    /// If available, a number of unplaced sequences included in this reference
+    /// genome.
     fn unplaced_sequences(&self) -> Option<Vec<Sequence>>;
+
+    /// If available, any decoy sequences included in this reference genome.
     fn decoy_sequences(&self) -> Option<Vec<Sequence>>;
 }

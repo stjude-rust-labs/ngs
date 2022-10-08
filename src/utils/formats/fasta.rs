@@ -1,3 +1,5 @@
+//! Utilities related to opening and manipulating FASTA files.
+
 use std::{fs::File, io::BufReader, path::Path};
 
 use anyhow::bail;

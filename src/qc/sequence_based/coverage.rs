@@ -1,3 +1,5 @@
+//! Functionality related to the Coverage quality control facet.
+
 use std::{collections::HashMap, rc::Rc};
 
 use noodles::sam::{
@@ -15,43 +17,72 @@ use crate::{
     },
 };
 
+//=========//
+// Metrics //
+//=========//
+
+/// Metrics related to ignored records or positions in the genome.
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct IgnoredMetrics {
-    nonsensical_records: usize,
-    pileup_too_large_positions: HashMap<String, usize>,
+    /// The number of records that were considered non-sensical by this quality
+    /// control facet.
+    pub nonsensical_records: usize,
+
+    /// The number of positions which had coverage that was too high such that
+    /// it did not fit into our histogram.
+    pub pileup_too_large_positions: HashMap<String, usize>,
 }
 
+/// Primary struct used to compile stats regarding coverage.
 #[derive(Clone, Default, Serialize, Deserialize)]
 pub struct CoverageMetrics {
-    mean_coverage: HashMap<String, f64>,
-    median_coverage: HashMap<String, f64>,
-    median_over_mean_coverage: HashMap<String, f64>,
-    ignored: IgnoredMetrics,
-    histograms: HashMap<String, SimpleHistogram>,
+    /// Hashmap containing the mean coverage for each sequence in the reference
+    /// genome.
+    pub mean_coverage: HashMap<String, f64>,
+
+    /// Hashmap containing the median coverage for each sequence in the
+    /// reference genome.
+    pub median_coverage: HashMap<String, f64>,
+
+    /// Hashmap containing the median over mean coverage for each sequence in
+    /// the reference genome.
+    pub median_over_mean_coverage: HashMap<String, f64>,
+
+    /// Metrics recording various records or positions that were ignored during
+    /// the analysis.
+    pub ignored: IgnoredMetrics,
+
+    /// Coverage distribution as a histogram per sequence.
+    pub coverage_distribution_per_sequence: HashMap<String, SimpleHistogram>,
 }
 
-#[derive(Default)]
-pub struct CoverageHistograms<'a> {
-    storage: HashMap<&'a str, SimpleHistogram>,
-}
+/// Main struct for the Coverage quality control facet.
+pub struct CoverageFacet {
+    /// Data structure for tallying up coverage across position for every
+    /// sequence in the reference genome. This is eventually discarded in favor
+    /// of a coverage distribution for the sequence.
+    coverage_per_position: HashMap<String, SimpleHistogram>,
 
-pub struct CoverageFacet<'a> {
-    by_position: CoverageHistograms<'a>,
+    /// Metrics related to the Coverage quality control facet.
     metrics: CoverageMetrics,
+
+    /// Struct for caching all of the sequences considered part of the primary
+    /// assembly.
     primary_assembly: Vec<Sequence>,
 }
 
-impl<'a> CoverageFacet<'a> {
+impl CoverageFacet {
+    /// Creates a new [`CoverageFacet`].
     pub fn new(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Self {
         Self {
-            by_position: CoverageHistograms::default(),
+            coverage_per_position: HashMap::default(),
             metrics: CoverageMetrics::default(),
             primary_assembly: get_primary_assembly(reference_genome),
         }
     }
 }
 
-impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
+impl SequenceBasedQualityCheckFacet for CoverageFacet {
     fn name(&self) -> &'static str {
         "Coverage Metrics"
     }
@@ -75,14 +106,10 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         &mut self,
         seq: &'b Map<ReferenceSequence>,
         record: &Record,
-    ) -> anyhow::Result<()>
-    where
-        'b: 'a,
-    {
+    ) -> anyhow::Result<()> {
         let h = self
-            .by_position
-            .storage
-            .entry(seq.name().as_str())
+            .coverage_per_position
+            .entry(seq.name().to_string())
             .or_insert_with(|| {
                 SimpleHistogram::zero_based_with_capacity(usize::from(seq.length()))
             });
@@ -111,7 +138,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
     }
 
     fn teardown(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()> {
-        let positions = match self.by_position.storage.get(sequence.name().as_str()) {
+        let positions = match self.coverage_per_position.get(sequence.name().as_str()) {
             Some(s) => s,
             // In the None case, no records were inserted for this sequence.
             // This may be because the file is a mini-SAM/BAM/CRAM. If that's
@@ -133,7 +160,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
         let median_over_mean = median / mean;
 
         // Removed to save memory.
-        self.by_position.storage.remove(sequence.name().as_str());
+        self.coverage_per_position.remove(sequence.name().as_str());
 
         // Saved for reporting.
         self.metrics
@@ -146,7 +173,7 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
             .median_over_mean_coverage
             .insert(sequence.name().to_string(), median_over_mean);
         self.metrics
-            .histograms
+            .coverage_distribution_per_sequence
             .insert(sequence.name().to_string(), coverages);
         self.metrics
             .ignored
@@ -157,6 +184,6 @@ impl<'a> SequenceBasedQualityCheckFacet<'a> for CoverageFacet<'a> {
     }
 
     fn aggregate(&mut self, results: &mut results::Results) {
-        results.set_coverage(self.metrics.clone());
+        results.coverage = Some(self.metrics.clone());
     }
 }

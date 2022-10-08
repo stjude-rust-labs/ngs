@@ -1,3 +1,5 @@
+//! Utilities related to opening and manipulating GFF files.
+
 use anyhow::bail;
 use flate2::read::MultiGzDecoder;
 use noodles::gff;
@@ -7,6 +9,7 @@ use std::{
     path::Path,
 };
 
+/// Attempts to open a GFF file from a given source.
 pub fn open<P>(src: P) -> anyhow::Result<gff::Reader<Box<dyn BufRead>>>
 where
     P: AsRef<Path>,
