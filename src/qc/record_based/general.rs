@@ -126,7 +126,8 @@ impl RecordBasedQualityControlFacet for GeneralMetricsFacet {
             duplication_pct: self.metrics.records.duplicate as f64
                 / self.metrics.records.total as f64
                 * 100.0,
-            unmapped_pct: self.metrics.records.unmapped as f64 / self.metrics.records.total as f64
+            mapped_pct: (1.0
+                - self.metrics.records.unmapped as f64 / self.metrics.records.total as f64)
                 * 100.0,
             mate_reference_sequence_id_mismatch_pct: self
                 .metrics

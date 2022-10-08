@@ -108,8 +108,8 @@ pub struct SummaryMetrics {
     /// Percentage of records that were marked as duplicate.
     pub duplication_pct: f64,
 
-    /// Percentage of records that were marked as unmapped.
-    pub unmapped_pct: f64,
+    /// Percentage of records that were marked as mapped.
+    pub mapped_pct: f64,
 
     /// Percentage of records that qualified as
     /// `mate_reference_sequence_id_mismatch`.
