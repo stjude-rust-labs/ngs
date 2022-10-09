@@ -13,7 +13,7 @@ use std::{fs::File, io, path::PathBuf};
 use tracing::{debug, info};
 
 use crate::utils::formats::sam::parse_header;
-use crate::utils::path::AppendExtension;
+use crate::utils::pathbuf::AppendExtension;
 
 //==================================//
 // Individual indexing methods: BAM //

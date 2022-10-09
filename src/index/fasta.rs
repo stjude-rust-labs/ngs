@@ -4,7 +4,7 @@
 //! noodles. You can find that source code in the `fasta_index.rs` example of the
 //! `noodles_fasta` crate at commit 44b7d19.
 
-use crate::utils::path::AppendExtension;
+use crate::utils::pathbuf::AppendExtension;
 use std::{fs::File, path::PathBuf};
 
 use anyhow::{bail, Context};

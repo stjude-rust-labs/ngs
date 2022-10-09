@@ -13,7 +13,7 @@ pub trait AppendExtension {
     ///
     /// ```
     /// use std::path::PathBuf;
-    /// use ngs::utils::path::AppendExtension;
+    /// use ngs::utils::pathbuf::AppendExtension;
     ///
     /// let bam = PathBuf::from("~/test.bam");
     /// let bai = bam.append_extension("bai").unwrap();
