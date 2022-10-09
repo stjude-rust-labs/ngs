@@ -147,7 +147,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let mut coverages = Histogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
-        for i in positions.get_range_start()..=positions.get_range_stop() {
+        for i in positions.range_start()..=positions.range_stop() {
             if coverages.increment(positions.get(i)).is_err() {
                 ignored += 1;
             }

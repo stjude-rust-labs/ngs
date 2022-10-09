@@ -1,11 +1,152 @@
-//! A simple histogram class that can only be incremented.
-#![allow(dead_code)]
+//! Histogram used as the basis for statistics counting in many quality control
+//! facets.
+//!
+//! # Overview
+//!
+//! [Histograms] are a common way to make sense of a distribution of data.
+//! Briefly, data along a continuous (or sometimes discrete) distribution is
+//! partitioned into bins of a predetermined size. Bins are generally
+//! consecutive and are non-overlapping in nature. This straightforward model
+//! helps to easily visualize and make sense of sometimes complex data.
+//!
+//! In this module, we implement a very simple histogram that represents the
+//! minimum viable histogram needed for the `ngs` command line tool. Commonly,
+//! this is to count discrete data that falls within a particular numerical
+//! distribution. Simply put, the histogram follows these rules:
+//!
+//! 1. Only discrete numbers are considered as bins. In other words, bins
+//!    represent values in the range of `[0, 1, 2, 3, ..., n]`.
+//! 2. The range of numerical values always starts at zero and ends at the
+//!    capacity specified in the constructor. This is because all of the metrics
+//!    we have collected within a histogram (to this point) should include zero
+//!    as a valid bin.
+//!
+//! As we continue to develop the `ngs` command line tool, these characteristics
+//! may change—please treat these contracts as transient!
+//!
+//! # Usage
+//!
+//! You can create a histogram with only one initialization function:
+//! [`zero_based_with_capacity`][Histogram::zero_based_with_capacity]. This
+//! design is intentional for now, we only want you creating histograms that
+//! start at zero!
+//!
+//! After you have a [`Histogram`], you can start doing things with it!
+//! Commonly, you'll want to increment bins within a histogram: you can
+//! increment a bin by one (essentially, a `+= 1`) with the
+//! [`increment`][`Histogram::increment`] method. If you need to increment the
+//! bin by more than one at a time, you can use the
+//! [`increment_by`][Histogram::increment_by] method.
+//!
+//! ```
+//! use ngs::utils::histogram::Histogram;
+//! let mut hist = Histogram::zero_based_with_capacity(10);
+//!
+//! // Increments the zero bin by one.
+//! let result = hist.increment(0);
+//! assert!(result.is_ok());
+//!
+//! // Increments the one bin by fourty-two.
+//! let result = hist.increment_by(1, 42);
+//! assert!(result.is_ok());
+//!
+//! // Ensure that we actually recorded these values.
+//! assert_eq!(hist.get(0), 1);
+//! assert_eq!(hist.get(1), 42);
+//! ```
+//!
+//! If necessary, you can examine the range of the histogram:
+//!
+//! ```
+//! use ngs::utils::histogram::Histogram;
+//! let mut hist = Histogram::zero_based_with_capacity(10);
+//!
+//! // Remember, this includes zero!
+//! assert_eq!(hist.range_len(), 11);
+//! assert_eq!(hist.range_start(), 0);
+//! assert_eq!(hist.range_stop(), 10);
+//! ```
+//!
+//! You can even check if a value falls within the range of the [`Histogram`]!
+//!
+//! ```
+//! use ngs::utils::histogram::Histogram;
+//! let mut hist = Histogram::zero_based_with_capacity(10);
+//!
+//! assert!(hist.in_range(0));
+//! assert!(hist.in_range(5));
+//! assert!(hist.in_range(10));
+//! assert!(!hist.in_range(11));
+//! ```
+//!
+//! Note that if you try to increment the [`Histogram`] within a bin that falls
+//! outside its range, you will get a [`BinOutOfBoundsError`].
+//!
+//! ```
+//! use ngs::utils::histogram::Histogram;
+//! use ngs::utils::histogram::BinOutOfBoundsError;
+//! let mut hist = Histogram::zero_based_with_capacity(10);
+//!
+//! let result = hist.increment(11);
+//! assert_eq!(result.unwrap_err(), BinOutOfBoundsError);
+//! ```
+//!
+//! Finally, if all you want are the values out of the histogram (whether raw or
+//! normalized), you can use the [`values`][Histogram::values] and
+//! [`values_normalized`][Histogram::values_normalized] methods respectively:
+//!
+//! ```
+//! use ngs::utils::histogram::Histogram;
+//! let mut hist = Histogram::zero_based_with_capacity(3);
+//!
+//! hist.increment_by(0, 2).unwrap();
+//! hist.increment(1).unwrap();
+//! hist.increment(2).unwrap();
+//!
+//! assert_eq!(hist.values(), [2, 1, 1, 0]);
+//! assert_eq!(hist.values_normalized(), [0.5, 0.25, 0.25, 0.0]);
+//! ```
+//!
+//! You can do other various operations, such as:
+//!
+//! - Find the mean of the distribution ([`mean`][Histogram::mean]).
+//! - Find an arbitrary percentile of the distribution ([`percentile`][Histogram::percentile]).
+//! - Find the first quartile of the distribution ([`first_quartile`][Histogram::first_quartile]).
+//! - Find the median (second quartile) of the distribution ([`median`][Histogram::median]).
+//! - Find the third quartile of the distribution ([`third_quartile`][Histogram::third_quartile]).
+//! - Find the interquartile range of the distribution ([`interquartile_range`][Histogram::interquartile_range]).
+//! - Find the sum of all counts within the distribution ([`sum`][Histogram::sum]).
+//!
+//! [Histograms]: https://en.wikipedia.org/wiki/Histogram
+//!
+//! ## Why not the pre-existing `histogram` crate?
+//!
+//! Some consideration was given to using the (seemingly) quite good
+//! [`histogram`] crate that is already published on [crates.io]. When it boiled
+//! down to it, the authors choices were:
+//!
+//! 1. Go and make a PR to add `Serialize` and `Deserialize` to the existing
+//!    crate.
+//! 2. Create our own customized histogram, or
+//!
+//! The first option had no guarantee of working out—especially since the last
+//! commit date was over two years ago from the time of writing. Further, the
+//! layout of the struct they used did not seem to be optimal for our
+//! serialization/deserialization needs. Thus, although that crate has many
+//! methods that are similar (and sometimes inspired our approach within this
+//! module), we ultimately decided just to roll our own.
+//!
+//! [`histogram`]: https://docs.rs/histogram/latest/histogram/
+//! [crates.io]: https://crates.io
+
 use anyhow::bail;
 use serde::{Deserialize, Serialize};
 
-/// A simple histogram class that can only be incremented. Bins are considered
-/// to be 1-based ([0, 1, 2, 3, 4, etc]). Currently, the histogram only supports
-/// starting at zero because that is all this package needs.
+/// Histogram used as the basis for statistics counting in many quality control
+/// facets. For more in depth information, please see the [module-level
+/// documentation].
+///
+/// [module-level documentation]: self
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct Histogram {
     // Vec-backed value store for the histogram.
@@ -22,6 +163,10 @@ pub struct Histogram {
 pub struct BinOutOfBoundsError;
 
 impl Histogram {
+    //=================//
+    // Initializations //
+    //=================//
+
     /// Creates a zero-based histogram with a given capacity.
     pub fn zero_based_with_capacity(capacity: usize) -> Self {
         Self {
@@ -29,6 +174,15 @@ impl Histogram {
             range_start: 0,
             range_stop: capacity,
         }
+    }
+
+    //=================================//
+    // Getting and incrementing values //
+    //=================================//
+
+    /// Increments a particular bin in the histogram by one.
+    pub fn increment(&mut self, bin: usize) -> Result<(), BinOutOfBoundsError> {
+        self.increment_by(bin, 1)
     }
 
     /// Increments a particular bin in the histogram by the specified value.
@@ -41,31 +195,6 @@ impl Histogram {
         Ok(())
     }
 
-    /// Increments a particular bin in the histogram by one.
-    pub fn increment(&mut self, bin: usize) -> Result<(), BinOutOfBoundsError> {
-        self.increment_by(bin, 1)
-    }
-
-    /// Gives the length of the open range for the histogram.
-    pub fn range_len(&self) -> usize {
-        self.range_stop - self.range_start + 1
-    }
-
-    /// Gives the starting position for the open range of the histogram.
-    pub fn get_range_start(&self) -> usize {
-        self.range_start
-    }
-
-    /// Gives the stopping position for the open range of the histogram.
-    pub fn get_range_stop(&self) -> usize {
-        self.range_stop
-    }
-
-    /// Gives the stopping position for the open range of the histogram.
-    pub fn in_range(&self, value: usize) -> bool {
-        self.range_start <= value && value <= self.range_stop
-    }
-
     /// Gets a value for a bin within a histogram.
     pub fn get(&self, bin: usize) -> usize {
         *self.values.get(bin).unwrap_or_else(|| {
@@ -75,6 +204,54 @@ impl Histogram {
             )
         })
     }
+
+    /// Simply returns the values in the distribution by ref.
+    pub fn values(&self) -> &[usize] {
+        self.values.as_ref()
+    }
+
+    /// Normalizes the values so that they sum to one and returns them as a Vec.
+    pub fn values_normalized(&self) -> Vec<f64> {
+        let total = self.sum() as f64;
+        self.values.iter().map(|x| *x as f64 / total).collect()
+    }
+
+    //=======//
+    // Range //
+    //=======//
+
+    /// Gives the length of the open range for the histogram.
+    pub fn range_len(&self) -> usize {
+        self.range_stop - self.range_start + 1
+    }
+
+    /// Gives the starting position for the open range of the histogram.
+    pub fn range_start(&self) -> usize {
+        self.range_start
+    }
+
+    /// Gives the stopping position for the open range of the histogram.
+    pub fn range_stop(&self) -> usize {
+        self.range_stop
+    }
+
+    /// Indicates whether a particular value falls within the range of the histogram.
+    ///
+    /// ```
+    /// use ngs::utils::histogram::Histogram;
+    /// let mut hist = Histogram::zero_based_with_capacity(100);
+    ///
+    /// assert!(hist.in_range(0));
+    /// assert!(hist.in_range(100));
+    /// assert!(!hist.in_range(101));
+    /// ```
+    pub fn in_range(&self, value: usize) -> bool {
+        (self.range_start..=self.range_stop).contains(&value)
+    }
+
+    //========================//
+    // Numerical computations //
+    //========================//
 
     /// Computes the mean of all values within the histogram.
     pub fn mean(&self) -> f64 {
@@ -188,17 +365,6 @@ impl Histogram {
     pub fn sum(&self) -> usize {
         self.values.iter().sum()
     }
-
-    /// Simply returns the values in the distribution by ref.
-    pub fn values(&self) -> &[usize] {
-        self.values.as_ref()
-    }
-
-    /// Normalizes the values so that they sum to one and returns them as a Vec.
-    pub fn values_normalized(&self) -> Vec<f64> {
-        let total = self.sum() as f64;
-        self.values.iter().map(|x| *x as f64 / total).collect()
-    }
 }
 
 impl Default for Histogram {
@@ -216,8 +382,8 @@ mod tests {
     pub fn test_initialization() {
         let s = Histogram::zero_based_with_capacity(100);
         assert_eq!(s.range_len(), 101);
-        assert_eq!(s.get_range_start(), 0);
-        assert_eq!(s.get_range_stop(), 100);
+        assert_eq!(s.range_start(), 0);
+        assert_eq!(s.range_stop(), 100);
     }
 
     #[test]
@@ -285,8 +451,8 @@ mod tests {
         // from 0 to 100. If you wish to change the default, be sure to update
         // that QC facet accordingly.
         let default = Histogram::default();
-        assert_eq!(default.get_range_start(), 0);
-        assert_eq!(default.get_range_stop(), 512);
+        assert_eq!(default.range_start(), 0);
+        assert_eq!(default.range_stop(), 512);
         assert_eq!(default.range_len(), 513);
     }
 
