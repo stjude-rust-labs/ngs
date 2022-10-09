@@ -1,13 +1,43 @@
-//! Utilities related to path manipulation.
+//! Extensions to and utilities concerning [`PathBuf`]s.
+//!
+//! # Overview
+//!
+//! [`PathBuf`][std::path::PathBuf] leaves a decent amount to be desired by way
+//! of ergonomics. This module implements some commonly used methods within the
+//! `ngs` command line tool. We recommend you read through the provided
+//! functionality carefully and use these methods in place of rolling your own.
+//!
+//! # Examples
+//!
+//! For example, one very common task when working with genomic file formats is
+//! to create an index for that file. By convention, the indices are generally
+//! of the form `<filename>.<extra index>`. Thus, it's desirable to have a
+//! method to easily append to an existing [`PathBuf`][std::path::PathBuf].
+//!
+//! In this module, we provide such a function ([`AppendExtension`] and the
+//! respective [`append_extension`][AppendExtension::append_extension] function).
+//!
+//! ```
+//! use std::path::PathBuf;
+//! // Trait must be in scope to use it.
+//! use ngs::utils::pathbuf::AppendExtension;
+//!
+//! assert_eq!(
+//!     PathBuf::from("hello.txt")
+//!         .append_extension("world")
+//!         .unwrap(),
+//!     PathBuf::from("hello.txt.world"))
+//! ```
 
 use std::{ffi::OsStr, path::PathBuf};
 
 use anyhow::bail;
 
-/// A trait that is intended to add a `append_extension` method to [`PathBuf`].
-/// This makes it significantly more ergonomic to work with things like index
-/// files where the filename is simply the target file name with some extra
-/// extension.
+/// A trait that is intended to add a
+/// [`append_extension`][AppendExtension::append_extension] method to
+/// [`PathBuf`]. This makes it significantly more ergonomic to work with things
+/// like index files where the filename is simply the target file name with some
+/// extra extension.
 pub trait AppendExtension {
     /// Appends an extension with the specified futher extension.
     ///
