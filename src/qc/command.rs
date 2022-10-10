@@ -435,7 +435,7 @@ fn app(
             if processed % 1_000_000 == 0 {
                 info!(
                     "  [*] Processed {} records for this sequence.",
-                    record_count.to_formatted_string(&Locale::en),
+                    processed.to_formatted_string(&Locale::en),
                 );
             }
         }
