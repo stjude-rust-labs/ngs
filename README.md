@@ -101,9 +101,10 @@ Contributions, issues and feature requests are welcome! Feel free to check
 
 ## 📝 License
 
-Copyright © 2021-Present 
-[St. Jude Children's Research Hospital](https://github.com/stjude). This 
-project is [MIT][license-md] licensed.
+Copyright © 2021-Present [St. Jude Children's Research
+Hospital](https://github.com/stjude). This project is licensed as either [Apache
+2.0][license-apache] or [MIT][license-mit] at your discretion.
 
 [contributing-md]: https://github.com/stjude-rust-labs/ngs/blob/master/CONTRIBUTING.md
-[license-md]: https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE.md
+[license-apache]: https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-APACHE
+[license-mit]: https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-MIT
