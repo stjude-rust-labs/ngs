@@ -8,7 +8,7 @@ use std::fmt;
 use std::{fmt::Debug, rc::Rc, str::FromStr};
 
 use self::microsoft::hg38m1x::HG38M1X;
-use self::ncbi::grch38_no_alt::GRCh38NoAlt;
+use self::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
 use self::one_thousand_genomes::hs37d5::HS37D5;
 
 //=================//
@@ -18,7 +18,11 @@ use self::one_thousand_genomes::hs37d5::HS37D5;
 /// Gets all of the supported reference genomes for the tool. When new reference
 /// genomes are added, this needs to be updated.
 pub fn get_all_reference_genomes() -> Vec<Box<dyn ReferenceGenome>> {
-    vec![Box::new(HS37D5), Box::new(GRCh38NoAlt), Box::new(HG38M1X)]
+    vec![
+        Box::new(HS37D5),
+        Box::new(GRCh38NoAltAnalysisSet),
+        Box::new(HG38M1X),
+    ]
 }
 
 /// Utility method to map a string (generally passed on the command line) to a
@@ -229,11 +233,11 @@ pub trait ReferenceGenome: Debug {
     /// # Examples
     ///
     /// ```
-    /// use ngs::utils::genome::ncbi::grch38_no_alt::GRCh38NoAlt;
+    /// use ngs::utils::genome::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
     /// // Trait must be in scope to use the `triplet_id` method.
     /// use crate::ngs::utils::genome::ReferenceGenome;
-    /// let reference = GRCh38NoAlt;
-    /// assert_eq!(reference.triplet_id(), "GRCh38NoAlt-none-GRCh38.p0")
+    /// let reference = GRCh38NoAltAnalysisSet;
+    /// assert_eq!(reference.triplet_id(), "GRCh38_no_alt_AnalysisSet-none-GRCh38.p0")
     /// ```
     fn triplet_id(&self) -> String {
         // (1) Colloquial name

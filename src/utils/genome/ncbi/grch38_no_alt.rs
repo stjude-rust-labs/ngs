@@ -12,13 +12,13 @@ use crate::{
     utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
 };
 
-/// Main struct for the GRCh38NoAlt reference genome.
+/// Main struct for the GRCh38NoAltAnalysisSet reference genome.
 #[derive(Debug)]
-pub struct GRCh38NoAlt;
+pub struct GRCh38NoAltAnalysisSet;
 
-impl ReferenceGenome for GRCh38NoAlt {
+impl ReferenceGenome for GRCh38NoAltAnalysisSet {
     fn name(&self) -> &'static str {
-        "GRCh38NoAlt"
+        "GRCh38_no_alt_AnalysisSet"
     }
 
     fn version(&self) -> Option<&'static str> {
@@ -286,49 +286,49 @@ mod tests {
 
     #[test]
     pub fn it_has_the_correct_number_of_autosomes() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert_eq!(grch38_no_alt.autosomes().unwrap().len(), 22);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_sex_chromosomes() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert_eq!(grch38_no_alt.sex_chromosomes().unwrap().len(), 2);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_sequence_in_the_primary_assembly() {
-        let grch38_no_alt: Rc<Box<dyn ReferenceGenome>> = Rc::new(Box::new(GRCh38NoAlt));
+        let grch38_no_alt: Rc<Box<dyn ReferenceGenome>> = Rc::new(Box::new(GRCh38NoAltAnalysisSet));
         assert_eq!(get_primary_assembly(grch38_no_alt).len(), 193);
     }
 
     #[test]
     pub fn it_contains_the_mitochodrion_chromosome() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert!(grch38_no_alt.mitochondrion_chromosome().is_some());
     }
 
     #[test]
     pub fn it_contains_the_epstein_barr_virus() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert!(grch38_no_alt.ebv_chromosome().is_some());
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_unlocalized_sequences() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert_eq!(grch38_no_alt.unlocalized_sequences().unwrap().len(), 42);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_unplaced_sequences() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert_eq!(grch38_no_alt.unplaced_sequences().unwrap().len(), 127);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_decoy_sequences() {
-        let grch38_no_alt = GRCh38NoAlt;
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert!(grch38_no_alt.decoy_sequences().is_none());
     }
 }
