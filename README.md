@@ -97,7 +97,7 @@ The minimum supported Rust version for this project is 1.64.0.
 ## 🤝 Contributing
 
 Contributions, issues and feature requests are welcome! Feel free to check
-[issues page](https://github.com/stjudecloud/oliver/issues).
+[issues page](https://github.com/stjude-rust-labs/ngs/issues).
 
 ## 📝 License
 
