@@ -29,10 +29,11 @@ pub fn list(args: ListArgs) -> anyhow::Result<()> {
         "reference-genomes" => {
             let mut table = Table::new();
 
-            table.add_row(row!["Name", "Source", "Basis"]);
+            table.add_row(row!["Name", "Triplet ID", "Source", "Basis"]);
             for reference in get_all_reference_genomes() {
                 table.add_row(row![
                     reference.name(),
+                    reference.triplet_id(),
                     reference.source(),
                     reference.basis(),
                 ]);

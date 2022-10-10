@@ -207,14 +207,53 @@ pub trait ReferenceGenome: Debug {
     /// Name of the reference genome.
     fn name(&self) -> &'static str;
 
+    /// If available, the version of the reference genome.
+    fn version(&self) -> Option<&'static str>;
+
     /// Center that produced this reference genome.
     fn source(&self) -> &'static str;
 
     /// Build upon which this reference genome is based.
     fn basis(&self) -> GenomeBasis;
 
+    /// If available, the patch of the reference genome upon which this genome is based.
+    fn patch(&self) -> Option<usize>;
+
     /// If available, url where this reference genome is available.
     fn url(&self) -> Option<&'static str>;
+
+    /// A triplet id uniquely identifies a reference genome with respect to its
+    /// colloquial name, the version of the release, and the reference genome it
+    /// is based off of.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use ngs::utils::genome::ncbi::grch38_no_alt::GRCh38NoAlt;
+    /// // Trait must be in scope to use the `triplet_id` method.
+    /// use crate::ngs::utils::genome::ReferenceGenome;
+    /// let reference = GRCh38NoAlt;
+    /// assert_eq!(reference.triplet_id(), "GRCh38NoAlt-none-GRCh38.p0")
+    /// ```
+    fn triplet_id(&self) -> String {
+        // (1) Colloquial name
+        let mut result = String::from(self.name());
+        result.push('-');
+
+        // (2) Version, if available
+        let version = self.version().unwrap_or("none");
+        result.push_str(version);
+        result.push('-');
+
+        // (3) Basis, with patch if available
+        result.push_str(&self.basis().to_string());
+        if let Some(patch) = self.patch() {
+            result.push_str(".p");
+            result.push_str(&patch.to_string());
+        }
+
+        result
+    }
 
     /// If available, the autosomes included in this reference genome.
     fn autosomes(&self) -> Option<Vec<Sequence>>;

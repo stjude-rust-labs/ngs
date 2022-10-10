@@ -21,12 +21,22 @@ impl ReferenceGenome for GRCh38NoAlt {
         "GRCh38NoAlt"
     }
 
+    fn version(&self) -> Option<&'static str> {
+        None
+    }
+
     fn source(&self) -> &'static str {
         "NCBI"
     }
 
     fn basis(&self) -> GenomeBasis {
         GenomeBasis::GRCh38
+    }
+
+    fn patch(&self) -> Option<usize> {
+        // The NCBI's GRCh38_no_alt_AnalysisSet is based on the first patch
+        // (patch zero) of the GRCh38 reference genome.
+        Some(0)
     }
 
     fn url(&self) -> Option<&'static str> {

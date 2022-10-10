@@ -16,12 +16,22 @@ impl ReferenceGenome for HG38M1X {
         "hg38m1x"
     }
 
+    fn version(&self) -> Option<&'static str> {
+        None
+    }
+
     fn source(&self) -> &'static str {
         "Microsoft Genomics"
     }
 
     fn basis(&self) -> GenomeBasis {
         GenomeBasis::GRCh38
+    }
+
+    fn patch(&self) -> Option<usize> {
+        // Based on the NCBI's GRCh38_no_alt_AnalysisSet, which is based on the
+        // first patch (patch 0) of GRCh38.
+        Some(0)
     }
 
     fn url(&self) -> Option<&'static str> {

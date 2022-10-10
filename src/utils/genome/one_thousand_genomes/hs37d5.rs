@@ -25,12 +25,23 @@ impl ReferenceGenome for HS37D5 {
         "hs37d5"
     }
 
+    fn version(&self) -> Option<&'static str> {
+        None
+    }
+
     fn source(&self) -> &'static str {
         "1000 Genomes Project"
     }
 
     fn basis(&self) -> GenomeBasis {
         GenomeBasis::GRCh37
+    }
+
+    fn patch(&self) -> Option<usize> {
+        // According to the README at
+        // https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/README_human_reference_20110707,
+        // this reference genome is based off of patch four of GRCh37.
+        Some(4)
     }
 
     fn url(&self) -> Option<&'static str> {
