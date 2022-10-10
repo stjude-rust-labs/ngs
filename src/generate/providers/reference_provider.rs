@@ -291,7 +291,6 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
 
         let mut selected_sequence: Option<String> = None;
         let mut forward_start_position: Option<Position> = None;
-        let mut reverse_start_position: Option<Position> = None;
 
         // Generating a read pair can run into a variety of issues. Thus, we loop here
         // until a proper read pair is generated and allow any errors to just reset the
@@ -336,8 +335,6 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
 
                                     selected_sequence = Some(seq.clone());
                                     forward_start_position = Some(start_pos);
-                                    reverse_start_position =
-                                        Position::new(usize::from(end_pos) - self.read_length);
                                 }
                             }
                         }
@@ -357,7 +354,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
             "{}:{}:{}:{}/2",
             &read_prefix,
             selected_sequence.unwrap(),
-            reverse_start_position.unwrap(),
+            forward_start_position.unwrap(),
             &read_number
         );
 
