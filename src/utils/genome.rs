@@ -3,6 +3,7 @@
 pub mod microsoft;
 pub mod ncbi;
 pub mod one_thousand_genomes;
+pub mod t2t_consortium;
 
 use std::fmt;
 use std::{fmt::Debug, rc::Rc, str::FromStr};
@@ -10,6 +11,7 @@ use std::{fmt::Debug, rc::Rc, str::FromStr};
 use self::microsoft::hg38m1x::HG38M1X;
 use self::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
 use self::one_thousand_genomes::hs37d5::HS37D5;
+use self::t2t_consortium::t2t_chm13::T2T_CHM13;
 
 //=================//
 // Utility methods //
@@ -22,6 +24,7 @@ pub fn get_all_reference_genomes() -> Vec<Box<dyn ReferenceGenome>> {
         Box::new(HS37D5),
         Box::new(GRCh38NoAltAnalysisSet),
         Box::new(HG38M1X),
+        Box::new(T2T_CHM13),
     ]
 }
 
@@ -190,6 +193,9 @@ pub enum GenomeBasis {
 
     /// GRCh38-based reference genomes
     GRCh38,
+
+    /// T2T-based reference genomes
+    T2tChm13,
 }
 
 impl fmt::Display for GenomeBasis {
@@ -197,6 +203,7 @@ impl fmt::Display for GenomeBasis {
         match self {
             Self::GRCh37 => write!(f, "GRCh37"),
             Self::GRCh38 => write!(f, "GRCh38"),
+            Self::T2tChm13 => write!(f, "T2tChm13"),
         }
     }
 }
