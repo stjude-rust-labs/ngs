@@ -142,7 +142,7 @@ impl SequenceBasedQualityControlFacet for EditsFacet {
             let record_seq = record_seq_sequence.as_ref();
 
             let rrs = ReferenceRecordStepThrough::new(reference_seq, record_seq, cigar.clone());
-            let edits = rrs.edits();
+            let edits = rrs.edits()?;
 
             if record.flags().is_first_segment() {
                 self.metrics.read_one_edits.increment(edits).unwrap();

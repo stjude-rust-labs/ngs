@@ -1,5 +1,6 @@
 //! Utilities related to alignment of sequences.
 
+use anyhow::bail;
 use noodles::sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
 use super::cigar::{consumes_reference, consumes_sequence};
@@ -42,7 +43,9 @@ impl<'a> ReferenceRecordStepThrough<'a> {
 
     /// Calculates the number of edits in the [`ReferenceRecordStepThrough`] by
     /// stepping through the genome and counting up all of the mismatched M's.
-    pub fn edits(&self) -> usize {
+    /// Errors can occur if the reference or the sequence are not all the way
+    /// consumed.
+    pub fn edits(&self) -> anyhow::Result<usize> {
         let mut edits = 0;
         let mut record_ptr = 0;
         let mut reference_ptr = 0;
@@ -65,6 +68,12 @@ impl<'a> ReferenceRecordStepThrough<'a> {
             }
         }
 
-        edits
+        if self.reference_seq.len() != reference_ptr {
+            bail!("reference sequence was not fully consumed");
+        } else if self.record_seq.len() != record_ptr {
+            bail!("record sequence was not fully consumed");
+        }
+
+        Ok(edits)
     }
 }
