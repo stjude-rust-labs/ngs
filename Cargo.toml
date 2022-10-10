@@ -5,7 +5,7 @@ license = "MIT"
 name = "ngs"
 publish = true
 description = "Command line tool for processing next-generation sequencing data."
-version = "0.2.0"
+version = "0.3.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
