@@ -17,16 +17,7 @@ futures = "0.3.21"
 git-testament = "0.2.1"
 indicatif = "0.16.2"
 itertools = "0.10.5"
-noodles = { version = "0.27.0", features = [
-    "bam",
-    "bgzf",
-    "csi",
-    "core",
-    "fasta",
-    "fastq",
-    "gff",
-    "sam",
-] }
+noodles = { version = "0.27.0", features = ["bam", "bgzf", "csi", "core", "fasta", "fastq", "gff", "sam", "cram"] }
 num-format = "0.4.0"
 plotly = "0.8.1"
 prettytable-rs = "0.9.0"

@@ -13,7 +13,7 @@ use clap::Args;
 #[derive(Args)]
 pub struct IndexArgs {
     /// Path to the file to index.
-    #[arg(value_name = "BAM/FASTA")]
+    #[arg(value_name = "BAM/CRAM/FASTA")]
     src: PathBuf,
 }
 
@@ -27,6 +27,7 @@ pub fn index(args: IndexArgs) -> anyhow::Result<()> {
 
     match &src.extension().and_then(OsStr::to_str) {
         Some("bam") => super::bam::index(src),
+        Some("cram") => super::cram::index(src),
         Some("fasta") | Some("fna") | Some("fa") => super::fasta::index(src),
         Some(ext) => {
             bail!(
