@@ -11,7 +11,10 @@
       <img alt="crates.io version" src="https://img.shields.io/crates/v/ngs">
     </a>
     <img alt="crates.io downloads" src="https://img.shields.io/crates/d/ngs">
-    <a href="https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE.md" target="_blank">
+    <a href="https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-APACHE" target="_blank">
+      <img alt="License: Apache 2.0" src="https://img.shields.io/badge/license-Apache 2.0-blue.svg" />
+    </a>
+    <a href="https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-MIT" target="_blank">
       <img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-blue.svg" />
     </a>
   </p>
