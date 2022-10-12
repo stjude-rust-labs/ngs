@@ -6,10 +6,10 @@ use anyhow::{bail, Context};
 use clap::Args;
 use noodles::bam::{self as bam, bai};
 use noodles::core::{Position, Region};
-use noodles::sam::Header;
 use num_format::{Locale, ToFormattedString};
 use tracing::{debug, info};
 
+use crate::qc::{get_record_based_qc_facets, get_sequence_based_qc_facets};
 use crate::{
     qc::results::Results,
     utils::{
@@ -18,17 +18,7 @@ use crate::{
     },
 };
 
-use super::{
-    record_based::{
-        features::{FeatureNames, GenomicFeaturesFacet},
-        gc_content::GCContentFacet,
-        general::GeneralMetricsFacet,
-        quality_scores::QualityScoreFacet,
-        template_length::TemplateLengthFacet,
-    },
-    sequence_based::{coverage::CoverageFacet, edits::EditsFacet},
-    RecordBasedQualityControlFacet, SequenceBasedQualityControlFacet,
-};
+use super::record_based::features::FeatureNames;
 
 //====================================//
 // Command line parsing utility types //
@@ -105,57 +95,6 @@ pub struct QcArgs {
     /// Defaults to the repective GENCODE feature name.
     #[arg(long, value_name = "STRING", default_value = "gene")]
     gene_feature_name: String,
-}
-
-//==============================================//
-// Dynamic allocation of quality control facets //
-//==============================================//
-
-/// Dynamically compiles the record-based quality control facets that should be
-/// run for this invocation of the command line tool.
-pub fn get_record_based_qc_facets<'a>(
-    features_gff: Option<PathBuf>,
-    feature_names: &'a FeatureNames,
-    header: &'a Header,
-    reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityControlFacet + 'a>>> {
-    // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn RecordBasedQualityControlFacet>> = vec![
-        Box::new(GeneralMetricsFacet::default()),
-        Box::new(TemplateLengthFacet::with_capacity(1024)),
-        Box::new(GCContentFacet::default()),
-        Box::new(QualityScoreFacet::default()),
-    ];
-
-    // Optionally load the Genomic Features facet if the GFF file is provided.
-    if let Some(s) = features_gff {
-        facets.push(Box::new(GenomicFeaturesFacet::try_from(
-            s,
-            feature_names,
-            header,
-            reference_genome,
-        )?));
-    }
-
-    Ok(facets)
-}
-
-/// Dynamically compiles the sequence-based quality control facets that should
-/// be run for this invocation of the command line tool.
-pub fn get_sequence_based_qc_facets<'a>(
-    reference_fasta: Option<PathBuf>,
-    reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityControlFacet + 'a>>> {
-    // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityControlFacet>> =
-        vec![Box::new(CoverageFacet::new(reference_genome))];
-
-    // Optionally load the Edits facet if a reference FASTA is provided.
-    if let Some(fasta) = reference_fasta {
-        facets.push(Box::new(EditsFacet::try_from(fasta)?))
-    }
-
-    Ok(facets)
 }
 
 //==============================//
