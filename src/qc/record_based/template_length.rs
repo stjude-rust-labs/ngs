@@ -68,7 +68,7 @@ impl TemplateLengthFacet {
 
 impl RecordBasedQualityControlFacet for TemplateLengthFacet {
     fn name(&self) -> &'static str {
-        "Template Length Metrics"
+        "Template Length"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

@@ -84,7 +84,7 @@ impl CoverageFacet {
 
 impl SequenceBasedQualityControlFacet for CoverageFacet {
     fn name(&self) -> &'static str {
-        "Coverage Metrics"
+        "Coverage"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

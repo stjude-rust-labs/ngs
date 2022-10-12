@@ -19,7 +19,7 @@ pub struct GeneralMetricsFacet {
 
 impl RecordBasedQualityControlFacet for GeneralMetricsFacet {
     fn name(&self) -> &'static str {
-        "General Metrics"
+        "General"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

@@ -26,7 +26,7 @@ pub struct GCContentFacet {
 
 impl RecordBasedQualityControlFacet for GCContentFacet {
     fn name(&self) -> &'static str {
-        "GC Content Metrics"
+        "GC Content"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

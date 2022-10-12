@@ -9,7 +9,7 @@ use noodles::core::{Position, Region};
 use num_format::{Locale, ToFormattedString};
 use tracing::{debug, info};
 
-use crate::qc::{get_record_based_qc_facets, get_sequence_based_qc_facets};
+use crate::qc::get_qc_facets;
 use crate::{
     qc::results::Results,
     utils::{
@@ -70,6 +70,10 @@ pub struct QcArgs {
     /// Reference FASTA file (some metrics only supported if present).
     #[arg(short = 'r', long, value_name = "PATH")]
     reference_fasta: Option<PathBuf>,
+
+    /// Only process one QC facet (specify the name of the facet).
+    #[arg(long = "only", value_name = "FACET")]
+    only_facet: Option<String>,
 
     /// Name of the feature that represents a five prime UTR region in the GFF
     /// file. Defaults to the respective GENCODE feature name.
@@ -180,6 +184,13 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
+    //============//
+    // Only Facet //
+    //============//
+
+    let only_facet = args.only_facet;
+    debug!("  [*] Only facet: {:?}", only_facet);
+
     //===================//
     // Number of Records //
     //===================//
@@ -204,6 +215,7 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
         output_directory,
         num_records,
         feature_names,
+        only_facet,
     )
 }
 
@@ -222,6 +234,7 @@ fn app(
     output_directory: PathBuf,
     num_records: NumberOfRecords,
     feature_names: FeatureNames,
+    only_facet: Option<String>,
 ) -> anyhow::Result<()> {
     //=====================================================//
     // Preprocessing: set up file handles and prepare file //
@@ -264,127 +277,140 @@ fn app(
         }
     }
 
-    //===========================================================//
-    // First pass: print out which facets we're going to analyze //
-    //===========================================================//
+    //=================================================================//
+    // Preprocessing: calculate which quality check facets we will run //
+    //=================================================================//
 
-    let mut record_facets = get_record_based_qc_facets(
+    let (mut record_facets, mut sequence_facets) = get_qc_facets(
         features_gff,
-        &feature_names,
-        &header,
+        Some(&feature_names),
+        Some(&header),
+        reference_fasta,
         Rc::clone(&reference_genome),
+        only_facet,
     )?;
-    info!("First pass with the following facets enabled:");
-    for facet in &record_facets {
-        info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
-    }
 
-    //====================================================================//
-    // First pass: processes every record, accumulating QC stats as we go //
-    //====================================================================//
+    if !record_facets.is_empty() {
+        //===========================================================//
+        // First pass: print out which facets we're going to analyze //
+        //===========================================================//
 
-    debug!("Starting first pass for QC stats.");
-    let mut record_count = 0;
-
-    for result in reader.records() {
-        let record = result?;
-
-        for facet in &mut record_facets {
-            facet.process(&record)?;
+        info!("First pass with the following facets enabled:");
+        for facet in &record_facets {
+            info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
         }
 
-        record_count += 1;
-        if record_count % 1_000_000 == 0 {
-            info!(
-                "  [*] Processed {} records.",
-                record_count.to_formatted_string(&Locale::en),
-            );
-        }
+        //====================================================================//
+        // First pass: processes every record, accumulating QC stats as we go //
+        //====================================================================//
 
-        if let NumberOfRecords::Some(n) = num_records {
-            if record_count > n {
-                break;
-            }
-        }
-    }
+        debug!("Starting first pass for QC stats.");
+        let mut record_count = 0;
 
-    info!(
-        "Processed {} records in the first pass.",
-        record_count.to_formatted_string(&Locale::en)
-    );
-
-    //================================//
-    // First pass: summarize qc stats //
-    //================================//
-
-    info!("Summarizing quality control facets for the first pass.");
-    for facet in &mut record_facets {
-        facet.summarize()?;
-    }
-
-    //============================================================//
-    // Second pass: print out which facets we're going to analyze //
-    //============================================================//
-
-    let mut sequence_facets =
-        get_sequence_based_qc_facets(reference_fasta, Rc::clone(&reference_genome))?;
-    info!("Second pass with the following facets enabled:");
-    for facet in &sequence_facets {
-        info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
-    }
-
-    //===================================================//
-    // Second pass: set up file handles and prepare file //
-    //===================================================//
-
-    let mut reader = File::open(&src).map(bam::Reader::new)?;
-    let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
-
-    for (name, seq) in header.reference_sequences() {
-        let start = Position::MIN;
-        let end = Position::try_from(usize::from(seq.length()))?;
-
-        info!("Starting sequence {} ", name);
-        let mut processed = 0;
-
-        debug!("  [*] Setting up sequence.");
-        for facet in &mut sequence_facets {
-            if facet.supports_sequence_name(name) {
-                facet.setup(seq)?;
-            }
-        }
-
-        let query = reader.query(
-            header.reference_sequences(),
-            &index,
-            &Region::new(name, start..=end),
-        )?;
-
-        debug!("  [*] Processing records from sequence.");
-        for result in query {
+        for result in reader.records() {
             let record = result?;
+
+            for facet in &mut record_facets {
+                facet.process(&record)?;
+            }
+
+            record_count += 1;
+            if record_count % 1_000_000 == 0 {
+                info!(
+                    "  [*] Processed {} records.",
+                    record_count.to_formatted_string(&Locale::en),
+                );
+            }
+
+            if let NumberOfRecords::Some(n) = num_records {
+                if record_count > n {
+                    break;
+                }
+            }
+        }
+
+        info!(
+            "Processed {} records in the first pass.",
+            record_count.to_formatted_string(&Locale::en)
+        );
+
+        //================================//
+        // First pass: summarize qc stats //
+        //================================//
+
+        info!("Summarizing quality control facets for the first pass.");
+        for facet in &mut record_facets {
+            facet.summarize()?;
+        }
+    } else {
+        info!("No facets specified that require first pass. Skipping...");
+    }
+
+    if !sequence_facets.is_empty() {
+        //============================================================//
+        // Second pass: print out which facets we're going to analyze //
+        //============================================================//
+
+        info!("Second pass with the following facets enabled:");
+        for facet in &sequence_facets {
+            info!("  [*] {}, {:?}", facet.name(), facet.computational_load());
+        }
+
+        //===================================================//
+        // Second pass: set up file handles and prepare file //
+        //===================================================//
+
+        let mut reader = File::open(&src).map(bam::Reader::new)?;
+        let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
+
+        for (name, seq) in header.reference_sequences() {
+            let start = Position::MIN;
+            let end = Position::try_from(usize::from(seq.length()))?;
+
+            info!("Starting sequence {} ", name);
+            let mut processed = 0;
+
+            debug!("  [*] Setting up sequence.");
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
-                    facet.process(seq, &record)?;
+                    facet.setup(seq)?;
                 }
             }
 
-            processed += 1;
+            let query = reader.query(
+                header.reference_sequences(),
+                &index,
+                &Region::new(name, start..=end),
+            )?;
 
-            if processed % 1_000_000 == 0 {
-                info!(
-                    "  [*] Processed {} records for this sequence.",
-                    processed.to_formatted_string(&Locale::en),
-                );
+            debug!("  [*] Processing records from sequence.");
+            for result in query {
+                let record = result?;
+                for facet in &mut sequence_facets {
+                    if facet.supports_sequence_name(name) {
+                        facet.process(seq, &record)?;
+                    }
+                }
+
+                processed += 1;
+
+                if processed % 1_000_000 == 0 {
+                    info!(
+                        "  [*] Processed {} records for this sequence.",
+                        processed.to_formatted_string(&Locale::en),
+                    );
+                }
+            }
+
+            debug!("  [*] Tearing down sequence.");
+            for facet in &mut sequence_facets {
+                if facet.supports_sequence_name(name) {
+                    facet.teardown(seq)?;
+                }
             }
         }
-
-        debug!("  [*] Tearing down sequence.");
-        for facet in &mut sequence_facets {
-            if facet.supports_sequence_name(name) {
-                facet.teardown(seq)?;
-            }
-        }
+    } else {
+        info!("No facets specified that require second pass. Skipping...");
     }
 
     //=====================================//

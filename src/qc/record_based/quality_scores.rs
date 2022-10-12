@@ -26,7 +26,7 @@ pub const MAX_SCORE: usize = 93;
 
 impl RecordBasedQualityControlFacet for QualityScoreFacet {
     fn name(&self) -> &'static str {
-        "Quality Score Metrics"
+        "Quality Score"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

@@ -99,7 +99,7 @@ pub struct GenomicFeaturesFacet<'a> {
 
 impl<'a> RecordBasedQualityControlFacet for GenomicFeaturesFacet<'a> {
     fn name(&self) -> &'static str {
-        "Genomic Features Metrics"
+        "Genomic Features"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

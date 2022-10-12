@@ -82,7 +82,7 @@ impl EditsFacet {
 
 impl SequenceBasedQualityControlFacet for EditsFacet {
     fn name(&self) -> &'static str {
-        "Edit Metrics"
+        "Edit"
     }
 
     fn computational_load(&self) -> ComputationalLoad {

@@ -2,6 +2,8 @@
 
 use std::{path::PathBuf, rc::Rc};
 
+use anyhow::bail;
+use itertools::Itertools;
 use noodles::sam::{
     self,
     header::record::value::{map::ReferenceSequence, Map},
@@ -31,16 +33,32 @@ pub mod sequence_based;
 // Dynamic allocation of quality control facets //
 //==============================================//
 
-/// Dynamically compiles the record-based quality control facets that should be
+type RecordBasedQualityControlFacetBoxedVec<'a> = Vec<Box<dyn RecordBasedQualityControlFacet + 'a>>;
+type SequenceBasedQualityControlFacetBoxedVec<'a> =
+    Vec<Box<dyn SequenceBasedQualityControlFacet + 'a>>;
+
+/// Dynamically compiles the all of the quality control facets that should be
 /// run for this invocation of the command line tool.
-pub fn get_record_based_qc_facets<'a>(
+///
+/// This method starts by defining the base set of QC facets that will be run
+/// based on the arguments provided on the command line. Next, filtering is done
+/// based on the arguments provided on the command line.
+pub fn get_qc_facets<'a>(
     features_gff: Option<PathBuf>,
-    feature_names: &'a FeatureNames,
-    header: &'a Header,
+    feature_names: Option<&'a FeatureNames>,
+    header: Option<&'a Header>,
+    reference_fasta: Option<PathBuf>,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn RecordBasedQualityControlFacet + 'a>>> {
+    only_facet: Option<String>,
+) -> anyhow::Result<(
+    RecordBasedQualityControlFacetBoxedVec<'_>,
+    SequenceBasedQualityControlFacetBoxedVec<'_>,
+)> {
+    // (1) Define the full list of facets that are supported for the
+    // record-based quality control facets.
+
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn RecordBasedQualityControlFacet>> = vec![
+    let mut record_based_facets: Vec<Box<dyn RecordBasedQualityControlFacet>> = vec![
         Box::new(GeneralMetricsFacet::default()),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
         Box::new(GCContentFacet::default()),
@@ -48,34 +66,61 @@ pub fn get_record_based_qc_facets<'a>(
     ];
 
     // Optionally load the Genomic Features facet if the GFF file is provided.
-    if let Some(s) = features_gff {
-        facets.push(Box::new(GenomicFeaturesFacet::try_from(
-            s,
-            feature_names,
-            header,
-            reference_genome,
-        )?));
+    if let Some(features_src) = features_gff {
+        if let Some(feature_names) = feature_names {
+            if let Some(header) = header {
+                record_based_facets.push(Box::new(GenomicFeaturesFacet::try_from(
+                    features_src,
+                    feature_names,
+                    header,
+                    Rc::clone(&reference_genome),
+                )?));
+            }
+        }
     }
 
-    Ok(facets)
-}
+    // (2) Define the full list of facets that are supported for the
+    // sequence-based quality control facets.
 
-/// Dynamically compiles the sequence-based quality control facets that should
-/// be run for this invocation of the command line tool.
-pub fn get_sequence_based_qc_facets<'a>(
-    reference_fasta: Option<PathBuf>,
-    reference_genome: Rc<Box<dyn ReferenceGenome>>,
-) -> anyhow::Result<Vec<Box<dyn SequenceBasedQualityControlFacet + 'a>>> {
     // Default facets that are loaded within the qc subcommand.
-    let mut facets: Vec<Box<dyn SequenceBasedQualityControlFacet>> =
-        vec![Box::new(CoverageFacet::new(reference_genome))];
+    let mut sequence_based_facets: Vec<Box<dyn SequenceBasedQualityControlFacet>> =
+        vec![Box::new(CoverageFacet::new(Rc::clone(&reference_genome)))];
 
     // Optionally load the Edits facet if a reference FASTA is provided.
     if let Some(fasta) = reference_fasta {
-        facets.push(Box::new(EditsFacet::try_from(fasta)?))
+        sequence_based_facets.push(Box::new(EditsFacet::try_from(fasta)?))
     }
 
-    Ok(facets)
+    // (3) If `only_facet` is provided, we need to (a) filter out all of the
+    // quality control facets except the one that is provided, (b) error out if
+    // no quality control facets match the provided argument, and (c) return
+    // with the limited list otherwise.
+
+    if let Some(only) = only_facet {
+        let record_based_filtered = record_based_facets
+            .into_iter()
+            .filter(|x| x.name().eq(&only))
+            .collect_vec();
+
+        let sequence_based_filtered = sequence_based_facets
+            .into_iter()
+            .filter(|x| x.name().eq(&only))
+            .collect_vec();
+
+        let selected_facets_count = record_based_filtered.len() + sequence_based_filtered.len();
+
+        match selected_facets_count {
+            0 => bail!("No facets matched the specified `--only` flag: {}", only),
+            1 => return Ok((record_based_filtered, sequence_based_filtered)),
+            _ => bail!(
+                "Too many facets matched the specified `--only` flag: {}. This is a \
+                very strange error, and it should be reported on the Github issues page.",
+                only
+            ),
+        }
+    }
+
+    Ok((record_based_facets, sequence_based_facets))
 }
 
 //====================//
@@ -170,4 +215,45 @@ pub trait SequenceBasedQualityControlFacet {
     /// Adds the results of this quality control facet to the global
     /// [`results::Results`] object for writing to a file.
     fn aggregate(&mut self, results: &mut results::Results);
+}
+
+#[cfg(test)]
+mod tests {
+
+    use crate::utils::genome::get_reference_genome;
+
+    use super::*;
+
+    #[test]
+    pub fn it_returns_the_correct_number_of_facets_by_default() {
+        let (record_based, sequence_based) = get_qc_facets(
+            None,
+            None,
+            None,
+            None,
+            Rc::new(get_reference_genome("GRCh38_no_alt_AnalysisSet").unwrap()),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(record_based.len(), 4);
+        assert_eq!(sequence_based.len(), 1);
+    }
+
+    #[test]
+    pub fn it_returns_the_correct_number_of_facets_when_only_is_specified() {
+        let (record_based, sequence_based) = get_qc_facets(
+            None,
+            None,
+            None,
+            None,
+            Rc::new(get_reference_genome("GRCh38_no_alt_AnalysisSet").unwrap()),
+            Some(String::from("GC Content")),
+        )
+        .unwrap();
+
+        assert_eq!(record_based.len(), 1);
+        assert_eq!(sequence_based.len(), 0);
+        assert!(record_based.get(0).unwrap().name() == "GC Content");
+    }
 }
