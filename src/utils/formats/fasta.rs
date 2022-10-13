@@ -23,8 +23,7 @@ where
             files. Please unzip your FASTA file and try again."
         ),
         Some(BioinformaticsFileFormat::FASTA) => {
-            let reader = file.map(BufReader::new)?;
-            Ok(fasta::Reader::new(reader))
+            Ok(file.map(BufReader::new).map(fasta::Reader::new)?)
         }
         Some(format) => bail!("incompatible formats: required FASTA, found {}", format),
         None => {
