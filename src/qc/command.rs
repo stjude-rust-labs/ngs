@@ -304,7 +304,7 @@ fn app(
         // First pass: processes every record, accumulating QC stats as we go //
         //====================================================================//
 
-        debug!("Starting first pass for QC stats.");
+        info!("Starting first pass for QC stats.");
         let mut record_count = 0;
 
         for result in reader.records() {
@@ -360,6 +360,7 @@ fn app(
         // Second pass: set up file handles and prepare file //
         //===================================================//
 
+        info!("Starting second pass for QC stats.");
         let mut reader = File::open(&src).map(bam::Reader::new)?;
         let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
@@ -367,10 +368,10 @@ fn app(
             let start = Position::MIN;
             let end = Position::try_from(usize::from(seq.length()))?;
 
-            info!("Starting sequence {} ", name);
+            info!("  [*] Starting sequence {} ", name);
             let mut processed = 0;
 
-            debug!("  [*] Setting up sequence.");
+            debug!("    [*] Setting up sequence.");
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
                     facet.setup(seq)?;
@@ -383,7 +384,7 @@ fn app(
                 &Region::new(name, start..=end),
             )?;
 
-            debug!("  [*] Processing records from sequence.");
+            debug!("    [*] Processing records from sequence.");
             for result in query {
                 let record = result?;
                 for facet in &mut sequence_facets {
@@ -396,13 +397,13 @@ fn app(
 
                 if processed % 1_000_000 == 0 {
                     info!(
-                        "  [*] Processed {} records for this sequence.",
+                        "    [*] Processed {} records for this sequence.",
                         processed.to_formatted_string(&Locale::en),
                     );
                 }
             }
 
-            debug!("  [*] Tearing down sequence.");
+            debug!("    [*] Tearing down sequence.");
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
                     facet.teardown(seq)?;
