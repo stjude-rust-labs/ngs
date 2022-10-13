@@ -10,6 +10,8 @@ use anyhow::bail;
 use flate2::{write::GzEncoder, Compression};
 use noodles::fastq;
 
+use super::BioinformaticsFileFormat;
+
 /// Attempts to open a FASTQ file from a given source.
 pub fn writer<P>(src: P) -> anyhow::Result<fastq::Writer<Box<dyn Write>>>
 where
@@ -17,17 +19,26 @@ where
 {
     let path = src.as_ref();
     let file = File::create(path);
-    match path.extension().and_then(|x| x.to_str()) {
-        Some("gz") => {
+
+    match BioinformaticsFileFormat::try_detect(path) {
+        Some(BioinformaticsFileFormat::FASTQ_GZ) => {
             let writer = file
                 .map(|f| GzEncoder::new(f, Compression::default()))
                 .map(BufWriter::new)?;
             Ok(fastq::Writer::new(Box::new(writer)))
         }
-        Some("fq") | Some("fastq") => {
+        Some(BioinformaticsFileFormat::FASTQ) => {
             let writer = file.map(BufWriter::new)?;
             Ok(fastq::Writer::new(Box::new(writer)))
         }
-        _ => bail!("Unknown extension for FASTQ file."),
+        Some(format) => bail!("incompatible formats: required FASTQ, found {}", format),
+        None => {
+            let ext = path
+                .extension()
+                .expect("file extension to exist")
+                .to_str()
+                .expect("extension to be convertible to &str");
+            bail!("Not able to determine filetype for extension: {}", ext)
+        }
     }
 }

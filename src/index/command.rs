@@ -1,9 +1,11 @@
 //! Functionality related to the `ngs index` command itself.
 
-use std::{ffi::OsStr, path::PathBuf};
+use std::path::PathBuf;
 
 use anyhow::bail;
 use clap::Args;
+
+use crate::utils::formats::BioinformaticsFileFormat;
 
 //========================//
 // Command-line arguments //
@@ -25,22 +27,25 @@ pub struct IndexArgs {
 pub fn index(args: IndexArgs) -> anyhow::Result<()> {
     let src = args.src;
 
-    match &src.extension().and_then(OsStr::to_str) {
-        Some("bam") => super::bam::index(src),
-        Some("cram") => super::cram::index(src),
-        Some("fasta") | Some("fna") | Some("fa") => super::fasta::index(src),
-        Some(ext) => {
+    match BioinformaticsFileFormat::try_detect(&src) {
+        Some(BioinformaticsFileFormat::BAM) => super::bam::index(src),
+        Some(BioinformaticsFileFormat::CRAM) => super::cram::index(src),
+        Some(BioinformaticsFileFormat::FASTA) => super::fasta::index(src),
+        Some(format) => {
             bail!(
                 "{} files are not supported by this command. This may be \
                 because we haven't supported this file format yet or because \
-                the file format is not a next-generation sequencing file. \
+                it does not make sense to index a file of this kind. \
                 If you believe this format should be supported, please search \
                 for and upvote the related issue on Github (or file a new one).",
-                ext.to_ascii_uppercase()
+                format
             )
         }
         None => {
-            bail!("Filepaths without an extension are not supported.")
+            bail!(
+                "Not able to determine bioinformatics file type for path: {}",
+                src.display()
+            )
         }
     }?;
     Ok(())
