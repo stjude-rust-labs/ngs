@@ -2,7 +2,9 @@
 
 use std::path::PathBuf;
 
+use anyhow::bail;
 use clap::{command, Args, Subcommand};
+use itertools::Itertools;
 
 use crate::qc::results::Results;
 
@@ -75,11 +77,26 @@ pub trait CohortPlot {
 //==============//
 
 /// Gets all of the supported single-sample plots.
-pub fn get_all_sample_plots() -> Vec<Box<dyn SamplePlot>> {
-    vec![
+pub fn get_all_sample_plots(
+    only_graph: Option<String>,
+) -> anyhow::Result<Vec<Box<dyn SamplePlot>>> {
+    let mut results: Vec<Box<dyn SamplePlot>> = vec![
         Box::new(sample::quality_score_distribution::QualityScoreDistributionPlot),
         Box::new(sample::gc_content_distribution::GCContentDistributionPlot),
-    ]
+    ];
+
+    if let Some(only) = only_graph {
+        results = results
+            .into_iter()
+            .filter(|x| x.name().eq_ignore_ascii_case(&only))
+            .collect_vec();
+
+        if results.is_empty() {
+            bail!("No plots matched the specified `--only` flag: {}", only);
+        }
+    }
+
+    Ok(results)
 }
 
 //==============//
@@ -87,8 +104,23 @@ pub fn get_all_sample_plots() -> Vec<Box<dyn SamplePlot>> {
 //==============//
 
 /// Gets all of the supported cohort-level plots.
-pub fn get_all_cohort_plots() -> Vec<Box<dyn CohortPlot>> {
-    vec![Box::new(
+pub fn get_all_cohort_plots(
+    only_graph: Option<String>,
+) -> anyhow::Result<Vec<Box<dyn CohortPlot>>> {
+    let mut results: Vec<Box<dyn CohortPlot>> = vec![Box::new(
         cohort::gc_content_distribution::GCContentDistributionPlot,
-    )]
+    )];
+
+    if let Some(only) = only_graph {
+        results = results
+            .into_iter()
+            .filter(|x| x.name().eq_ignore_ascii_case(&only))
+            .collect_vec();
+
+        if results.is_empty() {
+            bail!("No plots matched the specified `--only` flag: {}", only);
+        }
+    }
+
+    Ok(results)
 }

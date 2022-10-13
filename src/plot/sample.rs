@@ -24,6 +24,10 @@ pub struct PlotSampleArgs {
     /// The directory to output all files within.
     #[arg(short, long, value_name = "PATH")]
     pub output_directory: Option<PathBuf>,
+
+    /// If provided, only prepares the plot specified (by plot name).
+    #[arg(long = "only")]
+    pub only_graph: Option<String>,
 }
 
 /// Main method for the `ngs plot sample` subcommand.
@@ -49,7 +53,7 @@ pub fn plot(args: PlotSampleArgs) -> anyhow::Result<()> {
     };
     debug!("  [*] Output directory: {}", output_directory.display());
 
-    let plots = get_all_sample_plots();
+    let plots = get_all_sample_plots(args.only_graph)?;
     for p in plots {
         let plot = p.generate(&filepath_results)?;
 

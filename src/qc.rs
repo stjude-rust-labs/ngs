@@ -99,12 +99,12 @@ pub fn get_qc_facets<'a>(
     if let Some(only) = only_facet {
         let record_based_filtered = record_based_facets
             .into_iter()
-            .filter(|x| x.name().eq(&only))
+            .filter(|x| x.name().eq_ignore_ascii_case(&only))
             .collect_vec();
 
         let sequence_based_filtered = sequence_based_facets
             .into_iter()
-            .filter(|x| x.name().eq(&only))
+            .filter(|x| x.name().eq_ignore_ascii_case(&only))
             .collect_vec();
 
         let selected_facets_count = record_based_filtered.len() + sequence_based_filtered.len();
