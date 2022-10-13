@@ -128,7 +128,7 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
         None => bail!(
             "reference genome is not supported: {}. \
             Did you set the correct reference genome?. \
-            Use the `list reference-genomes` subcommand to see supported reference genomes.",
+            Use the `list genomes` subcommand to see supported reference genomes.",
             provided_reference_genome,
         ),
     };

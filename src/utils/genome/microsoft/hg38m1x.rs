@@ -37,7 +37,7 @@ impl ReferenceGenome for HG38M1X {
     fn url(&self) -> Option<&'static str> {
         // Download from the Azure Open Datasets bucket. You can learn more
         // about which reference genomes they host at
-        // https://learn.microsoft.com/en-us/azure/open-datasets/dataset-human-reference-genomes?tabs=azure-storage
+        // https://learn.microsoft.com/en-us/azure/open-datasets/dataset-human-genomes?tabs=azure-storage
         Some("https://datasetmsgen.blob.core.windows.net/dataset/hg38m1x/hg38m1x.fa?sv=2020-10-02&si=prod&sr=c&sig=rIK0VRz7ZbYdcNhvwMMc3M1hr%2BgI0zgEG0Shbblc3nc%3D")
     }
 

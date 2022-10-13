@@ -15,7 +15,7 @@ use crate::utils::genome::get_all_reference_genomes;
 #[derive(Args)]
 pub struct ListArgs {
     /// The subject which you want to list values for.
-    #[arg(value_parser = PossibleValuesParser::new(["reference-genomes"]))]
+    #[arg(value_parser = PossibleValuesParser::new(["genomes"]))]
     subject: String,
 }
 
@@ -26,7 +26,7 @@ pub struct ListArgs {
 /// Main method for the `ngs list` subcommand.
 pub fn list(args: ListArgs) -> anyhow::Result<()> {
     match args.subject.as_str() {
-        "reference-genomes" => {
+        "genomes" => {
             let mut table = Table::new();
 
             table.add_row(row!["Name", "Triplet ID", "Source", "Basis"]);
