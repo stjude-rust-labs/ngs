@@ -12,7 +12,10 @@ pub mod metrics;
 pub mod utils;
 
 use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
+    qc::{
+        record_based::features::utils::Strand, results, ComputationalLoad,
+        RecordBasedQualityControlFacet,
+    },
     utils::{
         formats,
         genome::{get_primary_assembly, ReferenceGenome},
@@ -298,8 +301,10 @@ impl<'a> GenomicFeaturesFacet<'a> {
                     let start: usize = record.start().into();
                     let stop: usize = record.end().into();
 
-                    let feature_name_strand =
-                        FeatureNameStrand::new(ty.to_string(), strand.to_string());
+                    let feature_name_strand = FeatureNameStrand::new(
+                        ty.to_string(),
+                        strand.to_string().parse::<Strand>()?,
+                    );
 
                     let interval = Interval {
                         start,
