@@ -18,6 +18,10 @@ impl SamplePlot for QualityScoreDistributionPlot {
         "Quality Score Distribution"
     }
 
+    fn description(&self) -> &'static str {
+        "Shows the distribution of quality scores for each position across a read."
+    }
+
     fn filename(&self) -> &'static str {
         "quality-score-distribution"
     }

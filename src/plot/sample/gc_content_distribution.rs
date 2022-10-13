@@ -17,6 +17,11 @@ impl SamplePlot for GCContentDistributionPlot {
         "GC Content Distribution"
     }
 
+    fn description(&self) -> &'static str {
+        "Shows the GC content for randomly sampled stretches of nucleobases \
+        for records within a file."
+    }
+
     fn filename(&self) -> &'static str {
         "gc-content-distribution"
     }

@@ -5,7 +5,10 @@ use clap::{builder::PossibleValuesParser, Args};
 
 use prettytable::{row, Table};
 
-use crate::utils::genome::get_all_reference_genomes;
+use crate::{
+    plot::command::{get_all_cohort_plots, get_all_sample_plots},
+    utils::genome::get_all_reference_genomes,
+};
 
 //========================//
 // Command-line arguments //
@@ -15,7 +18,7 @@ use crate::utils::genome::get_all_reference_genomes;
 #[derive(Args)]
 pub struct ListArgs {
     /// The subject which you want to list values for.
-    #[arg(value_parser = PossibleValuesParser::new(["genomes"]))]
+    #[arg(value_parser = PossibleValuesParser::new(["genomes", "plots"]))]
     subject: String,
 }
 
@@ -40,6 +43,39 @@ pub fn list(args: ListArgs) -> anyhow::Result<()> {
             }
 
             table.printstd();
+
+            Ok(())
+        }
+        "plots" => {
+            let mut sample_table = Table::new();
+            sample_table.add_row(row!["Name", "Type", "Description"]);
+
+            for sample_plot in get_all_sample_plots(None)? {
+                sample_table.add_row(row![
+                    sample_plot.name(),
+                    "Sample",
+                    sample_plot.description()
+                ]);
+            }
+
+            println!("Sample Plots:");
+            println!();
+            sample_table.printstd();
+            println!();
+
+            let mut cohort_table = Table::new();
+            cohort_table.add_row(row!["Name", "Type", "Description"]);
+            for cohort_plot in get_all_cohort_plots(None)? {
+                cohort_table.add_row(row![
+                    cohort_plot.name(),
+                    "Cohort",
+                    cohort_plot.description()
+                ]);
+            }
+
+            println!("Cohort Plots:");
+            println!();
+            cohort_table.printstd();
 
             Ok(())
         }

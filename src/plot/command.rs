@@ -49,6 +49,9 @@ pub trait SamplePlot {
     /// The name of this plot.
     fn name(&self) -> &'static str;
 
+    /// Short description for the plot.
+    fn description(&self) -> &'static str;
+
     /// The filename to output for this plot.
     fn filename(&self) -> &'static str;
 
@@ -64,6 +67,9 @@ pub trait SamplePlot {
 pub trait CohortPlot {
     /// The name of this plot.
     fn name(&self) -> &'static str;
+
+    /// Short description for the plot.
+    fn description(&self) -> &'static str;
 
     /// The filename to output for this plot.
     fn filename(&self) -> &'static str;
@@ -92,7 +98,11 @@ pub fn get_all_sample_plots(
             .collect_vec();
 
         if results.is_empty() {
-            bail!("No plots matched the specified `--only` flag: {}", only);
+            bail!(
+                "No plots matched the specified `--only` flag: {}. Use `ngs \
+            list plots` to see the full list of plots supported.",
+                only
+            );
         }
     }
 
@@ -118,7 +128,11 @@ pub fn get_all_cohort_plots(
             .collect_vec();
 
         if results.is_empty() {
-            bail!("No plots matched the specified `--only` flag: {}", only);
+            bail!(
+                "No plots matched the specified `--only` flag: {}. Use `ngs \
+            list plots` to see the full list of plots supported.",
+                only
+            );
         }
     }
 
