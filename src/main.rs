@@ -4,7 +4,7 @@
 use clap::{Parser, Subcommand};
 
 use git_testament::{git_testament, render_testament};
-use ngs::{derive, generate, index, list, plot, qc};
+use ngs::{derive, generate, index, list, plot, qc, view};
 
 #[derive(Parser)]
 #[command(author, version = render_testament!(TESTAMENT), propagate_version = true, about, long_about = None)]
@@ -40,6 +40,9 @@ enum Subcommands {
 
     /// Generates quality control metrics for BAM files.
     Qc(qc::command::QcArgs),
+
+    /// Views various next-generation sequencing files, sometimes with a query region.
+    View(view::command::ViewArgs),
 }
 
 git_testament!(TESTAMENT);
@@ -83,6 +86,7 @@ fn main() -> anyhow::Result<()> {
             plot::command::PlotSubcommand::Sample(args) => plot::sample::plot(args)?,
         },
         Subcommands::Qc(args) => qc::command::qc(args)?,
+        Subcommands::View(args) => view::command::view(args)?,
     };
 
     Ok(())

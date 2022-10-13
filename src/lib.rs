@@ -17,3 +17,4 @@ pub mod list;
 pub mod plot;
 pub mod qc;
 pub mod utils;
+pub mod view;
