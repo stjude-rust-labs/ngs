@@ -47,6 +47,5 @@ pub fn index(args: IndexArgs) -> anyhow::Result<()> {
                 src.display()
             )
         }
-    }?;
-    Ok(())
+    }
 }
