@@ -5,6 +5,7 @@ use std::path::PathBuf;
 use anyhow::bail;
 use clap::{command, Args, Subcommand};
 use itertools::Itertools;
+use plotly::common::Title;
 
 use crate::qc::results::Results;
 
@@ -56,7 +57,11 @@ pub trait SamplePlot {
     fn filename(&self) -> &'static str;
 
     /// Generates the plot given a loaded results file.
-    fn generate(&self, filepath_results: &FilepathResults) -> anyhow::Result<plotly::Plot>;
+    fn generate(
+        &self,
+        filepath_results: &FilepathResults,
+        title: Title,
+    ) -> anyhow::Result<plotly::Plot>;
 }
 
 //===================//

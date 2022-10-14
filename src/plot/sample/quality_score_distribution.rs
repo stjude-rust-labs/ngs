@@ -26,7 +26,11 @@ impl SamplePlot for QualityScoreDistributionPlot {
         "quality-score-distribution"
     }
 
-    fn generate(&self, filepath_results: &FilepathResults) -> anyhow::Result<plotly::Plot> {
+    fn generate(
+        &self,
+        filepath_results: &FilepathResults,
+        title: Title,
+    ) -> anyhow::Result<plotly::Plot> {
         let mut plot = plotly::Plot::new();
         let FilepathResults(filepath, results) = filepath_results;
 
@@ -89,7 +93,7 @@ impl SamplePlot for QualityScoreDistributionPlot {
 
         // (5) Configure the graph for plotting and return.
         let layout = Layout::new()
-            .title(Title::new(self.name()))
+            .title(title)
             .x_axis(Axis::new().title(Title::new("Position")).auto_range(true))
             .y_axis(
                 Axis::new()

@@ -7,6 +7,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::Args;
+use plotly::common::Title;
 use tracing::{debug, info};
 
 use crate::{
@@ -25,6 +26,10 @@ pub struct PlotSampleArgs {
     #[arg(short, long, value_name = "PATH")]
     pub output_directory: Option<PathBuf>,
 
+    /// If provided, the name of the sample being processed.
+    #[arg(short, long = "sample")]
+    pub sample_name: Option<String>,
+
     /// If provided, only prepares the plot specified (by plot name).
     #[arg(long = "only")]
     pub only_graph: Option<String>,
@@ -42,6 +47,12 @@ pub fn plot(args: PlotSampleArgs) -> anyhow::Result<()> {
     let filepath_results = FilepathResults(args.src.clone(), results);
     debug!("  [*] Source: {}", args.src.display());
 
+    //=============//
+    // Sample name //
+    //=============//
+
+    let sample_name = args.sample_name;
+
     //==================//
     // Output Directory //
     //==================//
@@ -55,8 +66,16 @@ pub fn plot(args: PlotSampleArgs) -> anyhow::Result<()> {
 
     let plots = get_all_sample_plots(args.only_graph)?;
     for p in plots {
-        let plot = p.generate(&filepath_results)?;
+        // (1) Determine what the title should be.
+        let title = match sample_name {
+            Some(ref sample) => Title::new(&format!("{} - {}", p.name(), sample)),
+            None => Title::new(p.name()),
+        };
 
+        // (2) Generate the plot in question.
+        let plot = p.generate(&filepath_results, title)?;
+
+        // (3) Write the plot to the appropriate output file.
         let mut filename = output_directory.clone();
         filename.push(String::from(p.filename()) + ".sample.html");
 
