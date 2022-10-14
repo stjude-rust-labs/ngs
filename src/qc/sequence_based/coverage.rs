@@ -1,6 +1,6 @@
 //! Functionality related to the Coverage quality control facet.
 
-use std::{collections::HashMap, rc::Rc};
+use std::{collections::HashMap, num::NonZeroUsize, rc::Rc};
 
 use noodles::sam::{
     alignment::Record,
@@ -40,6 +40,9 @@ pub struct CoverageMetrics {
     /// genome.
     pub mean_coverage: HashMap<String, f64>,
 
+    /// Hashmap containing the mean coverage for each bin within this sequence.
+    pub mean_coverage_per_bin: HashMap<String, Vec<f64>>,
+
     /// Hashmap containing the median coverage for each sequence in the
     /// reference genome.
     pub median_coverage: HashMap<String, f64>,
@@ -69,15 +72,19 @@ pub struct CoverageFacet {
     /// Struct for caching all of the sequences considered part of the primary
     /// assembly.
     primary_assembly: Vec<Sequence>,
+
+    /// Size of bins within which to calculate mean coverage
+    bin_size: NonZeroUsize,
 }
 
 impl CoverageFacet {
     /// Creates a new [`CoverageFacet`].
-    pub fn new(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Self {
+    pub fn new(reference_genome: Rc<Box<dyn ReferenceGenome>>, bin_size: NonZeroUsize) -> Self {
         Self {
             coverage_per_position: HashMap::default(),
             metrics: CoverageMetrics::default(),
             primary_assembly: get_primary_assembly(reference_genome),
+            bin_size,
         }
     }
 }
@@ -147,10 +154,41 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let mut coverages = Histogram::zero_based_with_capacity(1024);
         let mut ignored = 0;
 
+        let mut total_coverage_for_bin = 0;
+        let coverage_per_bin_vec = self
+            .metrics
+            .mean_coverage_per_bin
+            .entry(sequence.name().to_string())
+            .or_default();
+
         for i in positions.range_start()..=positions.range_stop() {
-            if coverages.increment(positions.get(i)).is_err() {
+            let coverage_at_position = positions.get(i);
+
+            // (a) increment the coverage histogram for the coverage found at
+            // this position.
+            if coverages.increment(coverage_at_position).is_err() {
                 ignored += 1;
             }
+
+            // (b) calculate the coverage for the current bin we are within.
+            total_coverage_for_bin += coverage_at_position;
+            if i % self.bin_size == 0 {
+                let mean = total_coverage_for_bin as f64 / usize::from(self.bin_size) as f64;
+                coverage_per_bin_vec.push(mean);
+                total_coverage_for_bin = 0;
+            }
+        }
+
+        // If the position is not divisible by the bin size, then we still need
+        // to add the last bit of the mean coverage bins to the vec.
+        let modulo = positions.range_stop() % self.bin_size;
+        if modulo != 0 {
+            let mean = total_coverage_for_bin as f64 / modulo as f64;
+            println!(
+                "Modulo: {}, Total: {}, Mean: {}",
+                modulo, total_coverage_for_bin, mean
+            );
+            coverage_per_bin_vec.push(mean);
         }
 
         let mean = coverages.mean();

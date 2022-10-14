@@ -1,6 +1,6 @@
 //! Functionality related to the `ngs qc` subcommand.
 
-use std::{path::PathBuf, rc::Rc};
+use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use anyhow::bail;
 use itertools::Itertools;
@@ -84,7 +84,10 @@ pub fn get_qc_facets<'a>(
 
     // Default facets that are loaded within the qc subcommand.
     let mut sequence_based_facets: Vec<Box<dyn SequenceBasedQualityControlFacet>> =
-        vec![Box::new(CoverageFacet::new(Rc::clone(&reference_genome)))];
+        vec![Box::new(CoverageFacet::new(
+            Rc::clone(&reference_genome),
+            NonZeroUsize::new(50_000).unwrap(),
+        ))];
 
     // Optionally load the Edits facet if a reference FASTA is provided.
     if let Some(fasta) = reference_fasta {
