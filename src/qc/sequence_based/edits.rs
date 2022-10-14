@@ -1,6 +1,7 @@
 //! Functionality related to the Edits quality control facet.
 
-use std::{fs::File, io::BufReader, path::PathBuf};
+use std::io::BufRead;
+use std::path::PathBuf;
 
 use anyhow::{bail, Context};
 use fasta::record::Sequence;
@@ -53,7 +54,7 @@ pub struct EditsFacet {
     /// reviewed as processing occurs (recall that this is a sequence-based
     /// quailty check facet, so all of the sequences cannot be held in memory at
     /// the same time).
-    pub fasta: fasta::Reader<BufReader<File>>,
+    pub fasta: fasta::Reader<Box<dyn BufRead>>,
 
     /// The sequence currently being processed by the quality control facet.
     /// This is updated over time as the
