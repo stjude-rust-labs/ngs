@@ -3,3 +3,7 @@
 
 *.json
 *.html
+
+# Ignoring test data
+*.bam
+*.bai

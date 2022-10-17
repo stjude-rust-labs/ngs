@@ -1,0 +1,36 @@
+name: Docker Release
+
+on:
+  workflow_dispatch:
+
+# Ensure single workflow runs at a time
+# Runs that are already underway will be canceled when a new job is queued
+# See <https://docs.github.com/en/actions/reference/workflow-syntax-for-github-actions#concurrency>
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: checkout
+        uses: actions/checkout@v3
+      - name: qemu setup
+        uses: docker/setup-qemu-action@v2
+      - name: login
+        run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: buildx setup
+        uses: docker/setup-buildx-action@v2
+      - name: build
+        run: |
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            --tag ghcr.io/${{ github.repository }}:latest \
+            --tag ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
+            --pull \
+            --load \
+            --no-cache \
+            .
+      - name: push
+        run: docker push ghcr.io/${{ github.repository }} --all-tags

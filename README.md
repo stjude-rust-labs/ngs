@@ -70,6 +70,19 @@ To install the latest version on `main`, you can use the following command.
 cargo install --locked --git https://github.com/stjude-rust-labs/ngs.git
 ```
 
+### Using Docker
+
+```bash
+docker pull ghcr.io/stjude-rust-labs/ngs
+docker run -it --rm --volume "$(pwd)":/data ghcr.io/stjude-rust-labs/ngs
+```
+
+`/data` is the working directory of the docker image. Running this command from the directory with your data will allow
+the continer to act on those files.
+
+Note: Currently the `latest` tag refers to the latest release of `ngs` and not the most recent code changes in this
+repository.
+
 ## 🖥️ Development
 
 To bootstrap a development environment, please use the following commands.

@@ -12,3 +12,4 @@
   * [ ] Publish the new crate: `cargo publish`.
   * [ ] Go to the Releases page in Github, create a Release for this tag, and
     copy the notes from the `CHANGELOG.md` file.
+  * [ ] Run docker release workflow from release tag branch.
