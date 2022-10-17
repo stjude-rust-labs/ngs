@@ -6,10 +6,13 @@
 
 FROM rust:1.64-slim-buster AS builder
 
+RUN apt-get update && apt-get install -y git
+
 WORKDIR /usr/src/ngs
 
 COPY Cargo.toml .
 COPY Cargo.lock .
+COPY .cargo ./.cargo
 COPY src ./src
 
 RUN cargo install --path .
