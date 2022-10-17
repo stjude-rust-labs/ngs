@@ -16,8 +16,6 @@ jobs:
     steps:
       - name: checkout
         uses: actions/checkout@v3
-      - name: qemu setup
-        uses: docker/setup-qemu-action@v2
       - name: login
         run: echo ${{ secrets.GITHUB_TOKEN }} | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: buildx setup
