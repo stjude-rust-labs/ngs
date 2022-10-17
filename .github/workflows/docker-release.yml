@@ -27,8 +27,6 @@ jobs:
             --tag ghcr.io/${{ github.repository }}:latest \
             --tag ghcr.io/${{ github.repository }}:${{ github.ref_name }} \
             --pull \
-            --load \
+            --push \
             --no-cache \
             .
-      - name: push
-        run: docker push ghcr.io/${{ github.repository }} --all-tags
