@@ -29,7 +29,8 @@
 //!     PathBuf::from("hello.txt.world"))
 //! ```
 
-use std::{ffi::OsStr, path::PathBuf};
+use std::ffi::OsStr;
+use std::path::PathBuf;
 
 use anyhow::bail;
 
