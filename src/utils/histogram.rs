@@ -140,7 +140,8 @@
 //! [crates.io]: https://crates.io
 
 use anyhow::bail;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Histogram used as the basis for statistics counting in many quality control
 /// facets. For more in depth information, please see the [module-level
