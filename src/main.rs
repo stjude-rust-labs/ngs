@@ -1,10 +1,19 @@
 #![warn(rust_2018_idioms)]
 #![warn(rust_2021_compatibility)]
 
-use clap::{Parser, Subcommand};
+use clap::Parser;
+use clap::Subcommand;
 
-use git_testament::{git_testament, render_testament};
-use ngs::{derive, generate, index, list, plot, qc, view};
+use git_testament::git_testament;
+use git_testament::render_testament;
+
+use ngs::derive;
+use ngs::generate;
+use ngs::index;
+use ngs::list;
+use ngs::plot;
+use ngs::qc;
+use ngs::view;
 
 #[derive(Parser)]
 #[command(author, version = render_testament!(TESTAMENT), propagate_version = true, about, long_about = None)]
