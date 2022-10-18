@@ -1,6 +1,7 @@
 //! Metrics related to the Features quality control facet.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Metrics related to the tallying of records in exonic translation regions
 /// (five prime UTR regions, three prime UTR regions, coding sequence regions).
