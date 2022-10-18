@@ -2,13 +2,18 @@
 
 use anyhow::bail;
 use itertools::Itertools;
-use plotly::{
-    common::{ErrorData, ErrorType, Line, LineShape, Mode, Title},
-    layout::Axis,
-    Layout, Scatter,
-};
+use plotly::common::ErrorData;
+use plotly::common::ErrorType;
+use plotly::common::Line;
+use plotly::common::LineShape;
+use plotly::common::Mode;
+use plotly::common::Title;
+use plotly::layout::Axis;
+use plotly::Layout;
+use plotly::Scatter;
 
-use crate::plot::command::{FilepathResults, SamplePlot};
+use crate::plot::command::FilepathResults;
+use crate::plot::command::SamplePlot;
 
 /// Struct that represents a quality score distribution plot for a single sample.
 pub struct QualityScoreDistributionPlot;
