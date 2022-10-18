@@ -2,10 +2,11 @@
 //! Microsoft Genomics Service. Currently, this reference genome is not publicly
 //! available for download at any link—you must email Microsoft to get a copy of
 //! it.
-use crate::{
-    sequence,
-    utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
-};
+
+use crate::sequence;
+use crate::utils::genome::GenomeBasis;
+use crate::utils::genome::ReferenceGenome;
+use crate::utils::genome::Sequence;
 
 /// Main struct for the hg38m1x reference genome.
 #[derive(Debug)]
