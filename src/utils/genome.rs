@@ -6,7 +6,9 @@ pub mod one_thousand_genomes;
 pub mod t2t_consortium;
 
 use std::fmt;
-use std::{fmt::Debug, rc::Rc, str::FromStr};
+use std::fmt::Debug;
+use std::rc::Rc;
+use std::str::FromStr;
 
 use self::microsoft::hg38m1x::HG38M1X;
 use self::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
