@@ -4,25 +4,22 @@ use std::{num::NonZeroUsize, path::PathBuf, rc::Rc};
 
 use anyhow::bail;
 use itertools::Itertools;
-use noodles::sam::{
-    self,
-    header::record::value::{map::ReferenceSequence, Map},
-    Header,
-};
+use noodles::sam;
+use noodles::sam::header::record::value::map::ReferenceSequence;
+use noodles::sam::header::record::value::Map;
+use noodles::sam::Header;
 use sam::alignment::Record;
 
 use crate::utils::genome::ReferenceGenome;
 
-use self::{
-    record_based::{
-        features::{FeatureNames, GenomicFeaturesFacet},
-        gc_content::GCContentFacet,
-        general::GeneralMetricsFacet,
-        quality_scores::QualityScoreFacet,
-        template_length::TemplateLengthFacet,
-    },
-    sequence_based::{coverage::CoverageFacet, edits::EditsFacet},
-};
+use self::record_based::features::FeatureNames;
+use self::record_based::features::GenomicFeaturesFacet;
+use self::record_based::gc_content::GCContentFacet;
+use self::record_based::general::GeneralMetricsFacet;
+use self::record_based::quality_scores::QualityScoreFacet;
+use self::record_based::template_length::TemplateLengthFacet;
+use self::sequence_based::coverage::CoverageFacet;
+use self::sequence_based::edits::EditsFacet;
 
 pub mod command;
 pub mod record_based;
