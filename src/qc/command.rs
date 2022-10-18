@@ -1,20 +1,28 @@
 //! Functionality related to the `ngs qc` command itself.
 
-use std::{fs::File, path::PathBuf, rc::Rc};
+use std::fs::File;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
+use anyhow::Context;
 use clap::Args;
-use noodles::bam::{self as bam, bai};
-use noodles::core::{Position, Region};
-use num_format::{Locale, ToFormattedString};
-use tracing::{debug, info};
+use noodles::bam;
+use noodles::bam::bai;
+use noodles::core::Position;
+use noodles::core::Region;
+use num_format::Locale;
+use num_format::ToFormattedString;
+use tracing::debug;
+use tracing::info;
 
 use crate::qc::get_qc_facets;
-use crate::utils::formats::bam::{IndexCheck, ParsedBAMFile};
-use crate::{
-    qc::results::Results,
-    utils::genome::{get_all_sequences, get_reference_genome, ReferenceGenome},
-};
+use crate::qc::results::Results;
+use crate::utils::formats::bam::IndexCheck;
+use crate::utils::formats::bam::ParsedBAMFile;
+use crate::utils::genome::get_all_sequences;
+use crate::utils::genome::get_reference_genome;
+use crate::utils::genome::ReferenceGenome;
 
 use super::record_based::features::FeatureNames;
 
