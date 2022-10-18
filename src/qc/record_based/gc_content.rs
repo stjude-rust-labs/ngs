@@ -4,14 +4,16 @@ pub mod metrics;
 
 use noodles::sam;
 use rand::prelude::*;
-use sam::{alignment::Record, record::sequence::Base};
+use sam::alignment::Record;
+use sam::record::sequence::Base;
 
-use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
-    utils::histogram::Histogram,
-};
+use crate::qc::results;
+use crate::qc::ComputationalLoad;
+use crate::qc::RecordBasedQualityControlFacet;
+use crate::utils::histogram::Histogram;
 
-use self::metrics::{GCContentMetrics, SummaryMetrics};
+use self::metrics::GCContentMetrics;
+use self::metrics::SummaryMetrics;
 
 /// Truncates reads that are longer than this value by randomly selecting a
 /// substring of this size.
