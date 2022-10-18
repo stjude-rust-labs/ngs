@@ -2,7 +2,8 @@
 
 use std::collections::HashMap;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 /// Metrics related to tallying read designations (primary, secondary,
 /// supplementary).
