@@ -1,13 +1,13 @@
 //! Utilities related to opening and manipulating FASTQ files.
 
-use std::{
-    fs::File,
-    io::{BufWriter, Write},
-    path::Path,
-};
+use std::fs::File;
+use std::io::BufWriter;
+use std::io::Write;
+use std::path::Path;
 
 use anyhow::bail;
-use flate2::{write::GzEncoder, Compression};
+use flate2::write::GzEncoder;
+use flate2::Compression;
 use noodles::fastq;
 
 use super::BioinformaticsFileFormat;
