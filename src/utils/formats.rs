@@ -1,6 +1,7 @@
 //! Utilities related to bioinformatics file formats.
 
-use std::{fmt::Display, path::PathBuf};
+use std::fmt::Display;
+use std::path::PathBuf;
 
 pub mod bam;
 pub mod fasta;
