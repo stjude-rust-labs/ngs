@@ -1,4 +1,6 @@
-use std::{convert::TryFrom, error, fmt};
+use std::convert::TryFrom;
+use std::error;
+use std::fmt;
 
 //========================//
 // Phred Conversion Error //
