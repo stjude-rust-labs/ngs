@@ -1,6 +1,7 @@
 //! Knowledge about which flowcells map to which machine types.
 
-use std::collections::{HashMap, HashSet};
+use std::collections::HashMap;
+use std::collections::HashSet;
 
 /// Encapsulates the knowledge we currently have on which flowcell patterns map
 /// to which machine types as a [`HashMap`].
