@@ -3,7 +3,8 @@
 use anyhow::bail;
 use noodles::sam::record::{cigar::op::Kind, sequence::Base, Cigar};
 
-use super::cigar::{consumes_reference, consumes_sequence};
+use super::cigar::consumes_reference;
+use super::cigar::consumes_sequence;
 
 /// Turns a condensed Cigar representation into a flattened representation. For
 /// example, 10M will become a Vec of length 10 comprised completely of
