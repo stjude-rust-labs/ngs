@@ -1,21 +1,22 @@
 //! CRAM viewing
 
-use std::{
-    fs::File,
-    io::{self as io, Write},
-    path::PathBuf,
-};
+use std::fs::File;
+use std::io;
+use std::io::Write;
+use std::path::PathBuf;
 
-use anyhow::{bail, Context};
-use noodles::{
-    cram::{self, crai},
-    fasta::{self, repository::adapters::IndexedReader},
-    sam::{self, AlignmentWriter},
-};
-
+use anyhow::bail;
+use anyhow::Context;
+use noodles::cram;
+use noodles::cram::crai;
+use noodles::fasta;
+use noodles::fasta::repository::adapters::IndexedReader;
+use noodles::sam;
+use noodles::sam::AlignmentWriter;
 use tracing::debug;
 
-use crate::utils::{formats::sam::parse_header, pathbuf::AppendExtension};
+use crate::utils::formats::sam::parse_header;
+use crate::utils::pathbuf::AppendExtension;
 
 /// Main method for BAM viewing.
 pub fn view(
