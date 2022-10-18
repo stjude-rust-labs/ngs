@@ -4,15 +4,22 @@
 //! noodles. You can find that source code in the `bam_index.rs` example of the
 //! `noodles_bam` crate at commit 0a709087934d.
 
-use anyhow::{bail, Context};
+use anyhow::bail;
+use anyhow::Context;
 use noodles::bam::bai;
 use noodles::csi::index::reference_sequence::bin::Chunk;
-use noodles::sam::{self as sam, alignment::Record, header::record::value::map::header::SortOrder};
-use num_format::{Locale, ToFormattedString};
-use std::{fs::File, path::PathBuf};
-use tracing::{debug, info};
+use noodles::sam;
+use noodles::sam::alignment::Record;
+use noodles::sam::header::record::value::map::header::SortOrder;
+use num_format::Locale;
+use num_format::ToFormattedString;
+use std::fs::File;
+use std::path::PathBuf;
+use tracing::debug;
+use tracing::info;
 
-use crate::utils::formats::bam::{IndexCheck, ParsedBAMFile};
+use crate::utils::formats::bam::IndexCheck;
+use crate::utils::formats::bam::ParsedBAMFile;
 
 //==================================//
 // Individual indexing methods: BAM //
