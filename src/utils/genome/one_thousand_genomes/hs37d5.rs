@@ -11,10 +11,10 @@
 //! Link:
 //! https://ftp.1000genomes.ebi.ac.uk/vol1/ftp/technical/reference/phase2_reference_assembly_sequence/hs37d5.fa.gz
 
-use crate::{
-    sequence,
-    utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
-};
+use crate::sequence;
+use crate::utils::genome::GenomeBasis;
+use crate::utils::genome::ReferenceGenome;
+use crate::utils::genome::Sequence;
 
 /// Main struct for the hg37d5 reference genome.
 #[derive(Debug)]
