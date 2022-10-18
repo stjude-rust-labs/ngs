@@ -9,12 +9,12 @@ use std::path::PathBuf;
 use anyhow::Context;
 use clap::Args;
 use plotly::common::Title;
-use tracing::{debug, info};
+use tracing::debug;
+use tracing::info;
 
-use crate::{
-    plot::command::{get_all_sample_plots, FilepathResults},
-    qc::results::Results,
-};
+use crate::plot::command::get_all_sample_plots;
+use crate::plot::command::FilepathResults;
+use crate::qc::results::Results;
 
 /// Clap arguments for the `ngs plot sample` subcommand.
 #[derive(Args)]
