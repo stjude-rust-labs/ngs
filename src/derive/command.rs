@@ -2,7 +2,8 @@
 
 pub mod instrument;
 
-use clap::{Args, Subcommand};
+use clap::Args;
+use clap::Subcommand;
 
 //===============//
 // Command setup //
