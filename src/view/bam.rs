@@ -1,18 +1,17 @@
 //! BAM viewing
 
-use std::{
-    io::{self as io, Write},
-    path::PathBuf,
-};
+use std::io;
+use std::io::Write;
+use std::path::PathBuf;
 
 use anyhow::Context;
-use noodles::{
-    bam::bai,
-    sam::{self, AlignmentWriter},
-};
+use noodles::bam::bai;
+use noodles::sam;
+use noodles::sam::AlignmentWriter;
 use tracing::debug;
 
-use crate::utils::formats::bam::{IndexCheck, ParsedBAMFile};
+use crate::utils::formats::bam::IndexCheck;
+use crate::utils::formats::bam::ParsedBAMFile;
 
 /// Main method for BAM viewing.
 pub fn view(src: PathBuf, query: Option<String>, show_header: bool) -> anyhow::Result<()> {
