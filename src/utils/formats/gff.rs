@@ -3,11 +3,10 @@
 use anyhow::bail;
 use flate2::read::MultiGzDecoder;
 use noodles::gff;
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::path::Path;
 
 use super::BioinformaticsFileFormat;
 
