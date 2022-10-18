@@ -1,6 +1,7 @@
 //! Metrics related to the GC content quality control facet.
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::utils::histogram::Histogram;
 
