@@ -1,10 +1,14 @@
 //! CRAM indexing
 
-use std::{fs::File, path::PathBuf};
+use std::fs::File;
+use std::path::PathBuf;
 
-use anyhow::{bail, Context};
-use noodles::cram::{self as cram, crai};
-use tracing::{debug, info};
+use anyhow::bail;
+use anyhow::Context;
+use noodles::cram;
+use noodles::cram::crai;
+use tracing::debug;
+use tracing::info;
 
 use crate::utils::pathbuf::AppendExtension;
 
