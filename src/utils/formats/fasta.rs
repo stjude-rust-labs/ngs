@@ -1,6 +1,8 @@
 //! Utilities related to opening and manipulating FASTA files.
 
-use std::{fs::File, io::BufReader, path::Path};
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
 
 use anyhow::bail;
 use noodles::fasta;
