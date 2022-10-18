@@ -1,13 +1,16 @@
 //! GC content distribution plot for a cohort of samples.
 
-use plotly::{
-    common::{Line, LineShape, Mode, Title},
-    layout::Axis,
-    Layout, Scatter,
-};
+use plotly::common::Line;
+use plotly::common::LineShape;
+use plotly::common::Mode;
+use plotly::common::Title;
+use plotly::layout::Axis;
+use plotly::Layout;
+use plotly::Scatter;
 use tracing::error;
 
-use crate::plot::command::{CohortPlot, FilepathResults};
+use crate::plot::command::CohortPlot;
+use crate::plot::command::FilepathResults;
 
 /// Struct that represents a GC content distribution plot for a cohort.
 pub struct GCContentDistributionPlot;
