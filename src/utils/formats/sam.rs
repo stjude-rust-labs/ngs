@@ -1,14 +1,15 @@
 //! Utilities related to opening and manipulating Sequence Alignment Map (SAM) files.
 
-use std::{
-    fs::File,
-    io::{BufRead, BufReader},
-    path::Path,
-};
+use std::fs::File;
+use std::io::BufRead;
+use std::io::BufReader;
+use std::path::Path;
 
 use anyhow::bail;
-use noodles::sam::{self, Header};
-use regex::{Captures, Regex};
+use noodles::sam;
+use noodles::sam::Header;
+use regex::Captures;
+use regex::Regex;
 
 use super::BioinformaticsFileFormat;
 
