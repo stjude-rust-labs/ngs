@@ -4,14 +4,14 @@ pub mod gc_content_distribution;
 
 use anyhow::Context;
 use std::path::PathBuf;
-use tracing::{debug, info};
+use tracing::debug;
+use tracing::info;
 
 use clap::Args;
 
-use crate::{
-    plot::command::{get_all_cohort_plots, FilepathResults},
-    qc::results::Results,
-};
+use crate::plot::command::get_all_cohort_plots;
+use crate::plot::command::FilepathResults;
+use crate::qc::results::Results;
 
 /// Clap arguments for the `ngs plot cohort` subcommand.
 #[derive(Args)]
