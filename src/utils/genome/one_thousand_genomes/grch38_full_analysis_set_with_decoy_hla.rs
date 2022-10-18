@@ -3,10 +3,10 @@
 //! some additions (notably, decoy sequences and HLA contigs).
 use std::vec;
 
-use crate::{
-    sequence,
-    utils::genome::{GenomeBasis, ReferenceGenome, Sequence},
-};
+use crate::sequence;
+use crate::utils::genome::GenomeBasis;
+use crate::utils::genome::ReferenceGenome;
+use crate::utils::genome::Sequence;
 
 /// Main struct for the GRCh38FullAnalysisSetWithDecoyHLA reference genome.
 #[derive(Debug)]
