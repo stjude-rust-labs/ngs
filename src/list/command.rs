@@ -1,14 +1,15 @@
 //! Functionality related to the `ngs list` command itself.
 
 use anyhow::bail;
-use clap::{builder::PossibleValuesParser, Args};
+use clap::builder::PossibleValuesParser;
+use clap::Args;
 
-use prettytable::{row, Table};
+use prettytable::row;
+use prettytable::Table;
 
-use crate::{
-    plot::command::{get_all_cohort_plots, get_all_sample_plots},
-    utils::genome::get_all_reference_genomes,
-};
+use crate::plot::command::get_all_cohort_plots;
+use crate::plot::command::get_all_sample_plots;
+use crate::utils::genome::get_all_reference_genomes;
 
 //========================//
 // Command-line arguments //
