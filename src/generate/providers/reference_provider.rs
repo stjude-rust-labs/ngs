@@ -3,27 +3,31 @@
 //! FASTA format). In general, the goal is to simulate the sequencing of the
 //! provided reference genome.
 
-use std::{
-    collections::HashMap,
-    fmt::Display,
-    path::{Path, PathBuf},
-    str::FromStr,
-};
+use std::collections::HashMap;
+use std::fmt::Display;
+use std::path::Path;
+use std::path::PathBuf;
+use std::str::FromStr;
 
 use anyhow::bail;
 use fasta::record::Sequence;
 use noodles::core::Position;
 use noodles::fasta;
 use noodles::fastq;
-use rand::{rngs::ThreadRng, Rng};
-use rand_distr::{Distribution, Normal, WeightedIndex};
+use rand::rngs::ThreadRng;
+use rand::Rng;
+use rand_distr::Distribution;
+use rand_distr::Normal;
+use rand_distr::WeightedIndex;
 
-use crate::{
-    generate::utils::{self, NormalDistributionParams, PairedRead, SeqLen},
-    utils::formats,
-};
+use crate::generate::utils;
+use crate::generate::utils::NormalDistributionParams;
+use crate::generate::utils::PairedRead;
+use crate::generate::utils::SeqLen;
+use crate::utils::formats;
 
-use super::{simulate_errors, SequenceProvider};
+use super::simulate_errors;
+use super::SequenceProvider;
 
 //========================================//
 // Primary implementation and Constructor //
