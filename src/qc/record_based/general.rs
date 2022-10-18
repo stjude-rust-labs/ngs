@@ -3,7 +3,9 @@
 use noodles::sam;
 use sam::alignment::Record;
 
-use crate::qc::{results, ComputationalLoad, RecordBasedQualityControlFacet};
+use crate::qc::results;
+use crate::qc::ComputationalLoad;
+use crate::qc::RecordBasedQualityControlFacet;
 
 use self::metrics::GeneralMetrics;
 pub use self::metrics::SummaryMetrics;
