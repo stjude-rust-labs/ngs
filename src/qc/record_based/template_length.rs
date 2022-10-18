@@ -1,12 +1,13 @@
 //! Functionality related to the Template Length quality control facet.
 
 use noodles::sam::alignment::Record;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use crate::{
-    qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
-    utils::histogram::Histogram,
-};
+use crate::qc::results;
+use crate::qc::ComputationalLoad;
+use crate::qc::RecordBasedQualityControlFacet;
+use crate::utils::histogram::Histogram;
 
 /// Summary statistics for the Template Length quality control facet.
 #[derive(Clone, Debug, Serialize, Deserialize)]
