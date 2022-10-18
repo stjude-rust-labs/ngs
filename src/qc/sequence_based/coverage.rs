@@ -1,21 +1,23 @@
 //! Functionality related to the Coverage quality control facet.
 
-use std::{collections::HashMap, num::NonZeroUsize, rc::Rc};
+use std::collections::HashMap;
+use std::num::NonZeroUsize;
+use std::rc::Rc;
 
-use noodles::sam::{
-    alignment::Record,
-    header::record::value::{map::ReferenceSequence, Map},
-};
-use serde::{Deserialize, Serialize};
+use noodles::sam::alignment::Record;
+use noodles::sam::header::record::value::map::Map;
+use noodles::sam::header::record::value::map::ReferenceSequence;
+use serde::Deserialize;
+use serde::Serialize;
 use tracing::error;
 
-use crate::{
-    qc::{results, ComputationalLoad, SequenceBasedQualityControlFacet},
-    utils::{
-        genome::{get_primary_assembly, ReferenceGenome, Sequence},
-        histogram::Histogram,
-    },
-};
+use crate::qc::results;
+use crate::qc::ComputationalLoad;
+use crate::qc::SequenceBasedQualityControlFacet;
+use crate::utils::genome::get_primary_assembly;
+use crate::utils::genome::ReferenceGenome;
+use crate::utils::genome::Sequence;
+use crate::utils::histogram::Histogram;
 
 //=========//
 // Metrics //
