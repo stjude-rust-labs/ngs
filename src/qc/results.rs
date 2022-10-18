@@ -1,18 +1,23 @@
 //! Functionality related to the aggregation of results across all quality
 //! control facets.
 
-use std::{
-    fs::{self, File},
-    io::{self, Write},
-    path::{Path, PathBuf},
-};
+use std::fs;
+use std::fs::File;
+use std::io;
+use std::io::Write;
+use std::path::Path;
+use std::path::PathBuf;
 
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
-use super::{
-    record_based::{features, gc_content, general, quality_scores, template_length},
-    sequence_based::{coverage, edits},
-};
+use super::record_based::features;
+use super::record_based::gc_content;
+use super::record_based::general;
+use super::record_based::quality_scores;
+use super::record_based::template_length;
+use super::sequence_based::coverage;
+use super::sequence_based::edits;
 
 /// Main struct for collecting _all_ quality control facet results.
 #[derive(Default, Serialize, Deserialize)]
