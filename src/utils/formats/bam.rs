@@ -1,10 +1,9 @@
 //! Utilities related to opening and manipulating Binary Alignment Map (BAM) files.
 
-use std::{
-    fs::File,
-    io::BufReader,
-    path::{Path, PathBuf},
-};
+use std::fs::File;
+use std::io::BufReader;
+use std::path::Path;
+use std::path::PathBuf;
 
 use anyhow::bail;
 use anyhow::Context;
