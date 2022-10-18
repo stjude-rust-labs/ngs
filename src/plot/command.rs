@@ -3,16 +3,18 @@
 use std::path::PathBuf;
 
 use anyhow::bail;
-use clap::{command, Args, Subcommand};
+use clap::command;
+use clap::Args;
+use clap::Subcommand;
 use itertools::Itertools;
 use plotly::common::Title;
 
 use crate::qc::results::Results;
 
-use super::{
-    cohort::{self, PlotCohortArgs},
-    sample::{self, PlotSampleArgs},
-};
+use super::cohort;
+use super::cohort::PlotCohortArgs;
+use super::sample;
+use super::sample::PlotSampleArgs;
 
 //===============//
 // Command setup //
