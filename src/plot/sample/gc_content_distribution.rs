@@ -1,13 +1,16 @@
 //! GC content distribution plot for a single sample.
 
 use anyhow::bail;
-use plotly::{
-    common::{Line, LineShape, Mode, Title},
-    layout::Axis,
-    Layout, Scatter,
-};
+use plotly::common::Line;
+use plotly::common::LineShape;
+use plotly::common::Mode;
+use plotly::common::Title;
+use plotly::layout::Axis;
+use plotly::Layout;
+use plotly::Scatter;
 
-use crate::plot::command::{FilepathResults, SamplePlot};
+use crate::plot::command::FilepathResults;
+use crate::plot::command::SamplePlot;
 
 /// Struct that represents a GC content distribution plot for a single sample.
 pub struct GCContentDistributionPlot;
