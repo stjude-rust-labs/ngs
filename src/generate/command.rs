@@ -3,15 +3,16 @@
 use std::path::PathBuf;
 
 use anyhow::Context;
-use clap::{ArgGroup, Args};
-use indicatif::{ProgressBar, ProgressStyle};
+use clap::ArgGroup;
+use clap::Args;
+use indicatif::ProgressBar;
+use indicatif::ProgressStyle;
 use rand::prelude::*;
 use tracing::info;
 
-use crate::{
-    generate::providers::{reference_provider::ReferenceGenomeSequenceProvider, SequenceProvider},
-    utils::formats,
-};
+use crate::generate::providers::reference_provider::ReferenceGenomeSequenceProvider;
+use crate::generate::providers::SequenceProvider;
+use crate::utils::formats;
 
 /// Utility method to parse the error rate passed in on the command line and
 /// ensure the rate is within the range [0.0, 1.0].
