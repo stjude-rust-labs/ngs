@@ -1,31 +1,32 @@
 //! Functionality related to the Features quality control facet.
 
-use std::{collections::HashMap, path::PathBuf, rc::Rc};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use std::rc::Rc;
 
-use anyhow::{bail, Context};
+use anyhow::bail;
+use anyhow::Context;
 use noodles::sam;
-use rust_lapper::{Interval, Lapper};
-use sam::{alignment::Record, Header};
+use rust_lapper::Interval;
+use rust_lapper::Lapper;
+use sam::alignment::Record;
+use sam::Header;
 use tracing::debug;
 
 pub mod metrics;
 pub mod utils;
 
-use crate::{
-    qc::{
-        record_based::features::utils::Strand, results, ComputationalLoad,
-        RecordBasedQualityControlFacet,
-    },
-    utils::{
-        formats,
-        genome::{get_primary_assembly, ReferenceGenome},
-    },
-};
+use crate::qc::record_based::features::utils::Strand;
+use crate::qc::results;
+use crate::qc::ComputationalLoad;
+use crate::qc::RecordBasedQualityControlFacet;
+use crate::utils::formats;
+use crate::utils::genome::get_primary_assembly;
+use crate::utils::genome::ReferenceGenome;
 
-pub use self::{
-    metrics::{Metrics, SummaryMetrics},
-    utils::FeatureNameStrand,
-};
+pub use self::metrics::Metrics;
+pub use self::metrics::SummaryMetrics;
+pub use self::utils::FeatureNameStrand;
 
 //=================//
 // Utility structs //
