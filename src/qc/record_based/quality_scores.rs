@@ -3,7 +3,8 @@
 use std::collections::HashMap;
 
 use noodles::sam::alignment::Record;
-use serde::{Deserialize, Serialize};
+use serde::Deserialize;
+use serde::Serialize;
 
 use crate::{
     qc::{results, ComputationalLoad, RecordBasedQualityControlFacet},
