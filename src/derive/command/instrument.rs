@@ -1,7 +1,9 @@
 //! Functionality relating to the `ngs derive instrument` subcommand itself.
 
 use anyhow::bail;
-use std::{collections::HashSet, path::PathBuf, thread};
+use std::collections::HashSet;
+use std::path::PathBuf;
+use std::thread;
 
 use clap::Args;
 use tracing::info;
