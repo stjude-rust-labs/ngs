@@ -86,6 +86,10 @@ impl ReferenceGenome for HS37D5 {
         Some(sequence!("MT", "mitochondrion"))
     }
 
+    fn alternative_contig_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
+
     fn ebv_chromosome(&self) -> Option<Sequence> {
         Some(sequence!("NC_007605", "ebv"))
     }
@@ -162,6 +166,10 @@ impl ReferenceGenome for HS37D5 {
     fn decoy_sequences(&self) -> Option<Vec<Sequence>> {
         Some(vec![sequence!("hs37d5", "decoy")])
     }
+
+    fn other_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -198,6 +206,12 @@ mod tests {
     }
 
     #[test]
+    pub fn it_does_not_contain_any_alternative_contigs() {
+        let hs37d5 = HS37D5;
+        assert!(hs37d5.alternative_contig_sequences().is_none());
+    }
+
+    #[test]
     pub fn it_contains_the_epstein_barr_virus() {
         let hs37d5 = HS37D5;
         assert!(hs37d5.ebv_chromosome().is_some());
@@ -219,5 +233,11 @@ mod tests {
     pub fn it_has_the_correct_number_of_decoy_sequences() {
         let hs37d5 = HS37D5;
         assert_eq!(hs37d5.decoy_sequences().unwrap().len(), 1);
+    }
+
+    #[test]
+    pub fn it_has_the_correct_number_of_other_sequences() {
+        let hs37d5 = HS37D5;
+        assert!(hs37d5.other_sequences().is_none());
     }
 }

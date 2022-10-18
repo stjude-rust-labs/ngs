@@ -10,6 +10,7 @@ use std::{fmt::Debug, rc::Rc, str::FromStr};
 
 use self::microsoft::hg38m1x::HG38M1X;
 use self::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
+use self::one_thousand_genomes::grch38_full_analysis_set_with_decoy_hla::GRCh38FullAnalysisSetWithDecoyHLA;
 use self::one_thousand_genomes::hs37d5::HS37D5;
 use self::t2t_consortium::t2t_chm13::T2T_CHM13;
 
@@ -22,6 +23,7 @@ use self::t2t_consortium::t2t_chm13::T2T_CHM13;
 pub fn get_all_reference_genomes() -> Vec<Box<dyn ReferenceGenome>> {
     vec![
         Box::new(HS37D5),
+        Box::new(GRCh38FullAnalysisSetWithDecoyHLA),
         Box::new(GRCh38NoAltAnalysisSet),
         Box::new(HG38M1X),
         Box::new(T2T_CHM13),
@@ -38,9 +40,9 @@ pub fn get_reference_genome(s: &str) -> Option<Box<dyn ReferenceGenome>> {
         .find(|genome| s.eq_ignore_ascii_case(genome.name()))
 }
 
-/// Gets the primary assembly for a given reference genome (as defined by the
-/// autosomes, the sex chromosomes, the unlocalized sequences, and the unplaced
-/// sequences).
+/// Gets the primary assembly for a given reference genome (as defined by the autosomes,
+/// the sex chromosomes, the alternative_contigs, the unlocalized sequences, and the
+/// unplaced sequences).
 pub fn get_primary_assembly(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Vec<Sequence> {
     let mut primary: Vec<Sequence> = Vec::new();
 
@@ -50,6 +52,10 @@ pub fn get_primary_assembly(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> V
 
     if let Some(sex_chromosomes) = reference_genome.sex_chromosomes() {
         primary.extend(sex_chromosomes);
+    }
+
+    if let Some(alternative_contig_sequences) = reference_genome.alternative_contig_sequences() {
+        primary.extend(alternative_contig_sequences);
     }
 
     if let Some(unlocalized) = reference_genome.unlocalized_sequences() {
@@ -79,6 +85,10 @@ pub fn get_all_sequences(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Vec<
         all.push(mitochondrion_chromosome);
     }
 
+    if let Some(alternative_contig_sequences) = reference_genome.alternative_contig_sequences() {
+        all.extend(alternative_contig_sequences);
+    }
+
     if let Some(ebv_chromosome) = reference_genome.ebv_chromosome() {
         all.push(ebv_chromosome);
     }
@@ -93,6 +103,10 @@ pub fn get_all_sequences(reference_genome: Rc<Box<dyn ReferenceGenome>>) -> Vec<
 
     if let Some(decoy_sequences) = reference_genome.decoy_sequences() {
         all.extend(decoy_sequences);
+    }
+
+    if let Some(other_sequences) = reference_genome.other_sequences() {
+        all.extend(other_sequences);
     }
 
     all
@@ -111,6 +125,9 @@ pub enum SequenceKind {
     /// A sequence representing mitochondrial DNA.
     Mitochondrion,
 
+    /// An alternative contig.
+    AlternativeContig,
+
     /// A sequence reprsenting the Epstein-Barr virus.
     EpsteinBarrVirus,
 
@@ -127,6 +144,9 @@ pub enum SequenceKind {
     /// typically inserted to clean up results in variant calling and remove
     /// contaminants.
     Decoy,
+
+    /// A sequence that doesn't fall neatly into the categories above.
+    Other,
 }
 
 impl FromStr for SequenceKind {
@@ -136,10 +156,12 @@ impl FromStr for SequenceKind {
         match s.to_lowercase().as_ref() {
             "chromosome" => Ok(SequenceKind::Chromosome),
             "mitochondrion" => Ok(SequenceKind::Mitochondrion),
+            "alt" => Ok(SequenceKind::AlternativeContig),
             "ebv" => Ok(SequenceKind::EpsteinBarrVirus),
             "unlocalized" => Ok(SequenceKind::Unlocalized),
             "unplaced" => Ok(SequenceKind::Unplaced),
             "decoy" => Ok(SequenceKind::Decoy),
+            "other" => Ok(SequenceKind::Other),
             s => Err(format!("Unknown sequence kind: {}", s)),
         }
     }
@@ -275,6 +297,9 @@ pub trait ReferenceGenome: Debug {
     /// If available, the mitochondrial DNA included in this reference genome.
     fn mitochondrion_chromosome(&self) -> Option<Sequence>;
 
+    /// Alternative contigs that were included in this reference genome.
+    fn alternative_contig_sequences(&self) -> Option<Vec<Sequence>>;
+
     /// If available, the epstein-barr virus DNA included in this reference
     /// genome.
     fn ebv_chromosome(&self) -> Option<Sequence>;
@@ -289,4 +314,8 @@ pub trait ReferenceGenome: Debug {
 
     /// If available, any decoy sequences included in this reference genome.
     fn decoy_sequences(&self) -> Option<Vec<Sequence>>;
+
+    /// Sequences that don't fit neatly into the categories included above but that
+    /// should still be considered as part of the reference genome.
+    fn other_sequences(&self) -> Option<Vec<Sequence>>;
 }

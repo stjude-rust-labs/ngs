@@ -2,6 +2,7 @@
 
 pub mod gc_content_distribution;
 pub mod quality_score_distribution;
+pub mod vaf_distribution;
 
 use std::path::PathBuf;
 

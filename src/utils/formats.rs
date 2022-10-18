@@ -2,6 +2,7 @@
 
 use std::{fmt::Display, path::PathBuf};
 
+pub mod bam;
 pub mod fasta;
 pub mod fastq;
 pub mod gff;

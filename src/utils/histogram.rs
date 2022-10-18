@@ -365,6 +365,29 @@ impl Histogram {
     pub fn sum(&self) -> usize {
         self.values.iter().sum()
     }
+
+    /// Counts from the bottom of the histogram up until a certain bin.
+    pub fn count_from_bottom_until(&self, bin: usize) -> usize {
+        let mut sum = 0;
+        for i in self.range_start()..=bin {
+            sum += self.get(i)
+        }
+
+        sum
+    }
+
+    /// Counts from the top of the histogram down until a certain bin.
+    ///
+    /// More accurately, we technically walk from the specified bin up to the
+    /// top of the histogram, but this provides the same results.
+    pub fn count_from_top_until(&self, bin: usize) -> usize {
+        let mut sum = 0;
+        for i in bin..=self.range_stop() {
+            sum += self.get(i)
+        }
+
+        sum
+    }
 }
 
 impl Default for Histogram {
@@ -472,5 +495,29 @@ mod tests {
         histogram.increment(2).unwrap();
         histogram.increment_by(3, 3).unwrap();
         assert_eq!(histogram.values_normalized(), [0.0, 0.2, 0.2, 0.6]);
+    }
+
+    #[test]
+    pub fn test_count_values_from_bottom() {
+        let mut histogram = Histogram::zero_based_with_capacity(3);
+        histogram.increment_by(0, 5).unwrap();
+        histogram.increment_by(1, 3).unwrap();
+        histogram.increment_by(2, 6).unwrap();
+        assert_eq!(histogram.count_from_bottom_until(0), 5);
+        assert_eq!(histogram.count_from_bottom_until(1), 8);
+        assert_eq!(histogram.count_from_bottom_until(2), 14);
+        assert_eq!(histogram.count_from_bottom_until(3), 14);
+    }
+
+    #[test]
+    pub fn test_count_values_from_top() {
+        let mut histogram = Histogram::zero_based_with_capacity(3);
+        histogram.increment_by(0, 5).unwrap();
+        histogram.increment_by(1, 3).unwrap();
+        histogram.increment_by(2, 6).unwrap();
+        assert_eq!(histogram.count_from_top_until(3), 0);
+        assert_eq!(histogram.count_from_top_until(2), 6);
+        assert_eq!(histogram.count_from_top_until(1), 9);
+        assert_eq!(histogram.count_from_top_until(0), 14);
     }
 }

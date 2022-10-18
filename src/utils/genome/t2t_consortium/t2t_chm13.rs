@@ -77,6 +77,10 @@ impl ReferenceGenome for T2T_CHM13 {
         None
     }
 
+    fn alternative_contig_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
+
     fn ebv_chromosome(&self) -> Option<crate::utils::genome::Sequence> {
         None
     }
@@ -92,6 +96,10 @@ impl ReferenceGenome for T2T_CHM13 {
     fn decoy_sequences(&self) -> Option<Vec<crate::utils::genome::Sequence>> {
         None
     }
+
+    fn other_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -105,49 +113,61 @@ mod tests {
 
     #[test]
     pub fn it_has_the_correct_number_of_autosomes() {
-        let grch38_no_alt = T2T_CHM13;
-        assert_eq!(grch38_no_alt.autosomes().unwrap().len(), 22);
+        let t2t_chm13 = T2T_CHM13;
+        assert_eq!(t2t_chm13.autosomes().unwrap().len(), 22);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_sex_chromosomes() {
-        let grch38_no_alt = T2T_CHM13;
-        assert_eq!(grch38_no_alt.sex_chromosomes().unwrap().len(), 2);
+        let t2t_chm13 = T2T_CHM13;
+        assert_eq!(t2t_chm13.sex_chromosomes().unwrap().len(), 2);
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_sequence_in_the_primary_assembly() {
-        let grch38_no_alt: Rc<Box<dyn ReferenceGenome>> = Rc::new(Box::new(T2T_CHM13));
-        assert_eq!(get_primary_assembly(grch38_no_alt).len(), 24);
+        let t2t_chm13: Rc<Box<dyn ReferenceGenome>> = Rc::new(Box::new(T2T_CHM13));
+        assert_eq!(get_primary_assembly(t2t_chm13).len(), 24);
     }
 
     #[test]
-    pub fn it_contains_the_mitochodrion_chromosome() {
-        let grch38_no_alt = T2T_CHM13;
-        assert!(grch38_no_alt.mitochondrion_chromosome().is_none());
+    pub fn it_does_not_contain_the_mitochodrion_chromosome() {
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.mitochondrion_chromosome().is_none());
     }
 
     #[test]
-    pub fn it_contains_the_epstein_barr_virus() {
-        let grch38_no_alt = T2T_CHM13;
-        assert!(grch38_no_alt.ebv_chromosome().is_none());
+    pub fn it_does_not_contain_any_alternative_contigs() {
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.alternative_contig_sequences().is_none());
+    }
+
+    #[test]
+    pub fn it_does_not_contain_the_epstein_barr_virus() {
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.ebv_chromosome().is_none());
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_unlocalized_sequences() {
-        let grch38_no_alt = T2T_CHM13;
-        assert!(grch38_no_alt.unlocalized_sequences().is_none());
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.unlocalized_sequences().is_none());
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_unplaced_sequences() {
-        let grch38_no_alt = T2T_CHM13;
-        assert!(grch38_no_alt.unplaced_sequences().is_none());
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.unplaced_sequences().is_none());
     }
 
     #[test]
     pub fn it_has_the_correct_number_of_decoy_sequences() {
-        let grch38_no_alt = T2T_CHM13;
-        assert!(grch38_no_alt.decoy_sequences().is_none());
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.decoy_sequences().is_none());
+    }
+
+    #[test]
+    pub fn it_has_the_correct_number_of_other_sequences() {
+        let t2t_chm13 = T2T_CHM13;
+        assert!(t2t_chm13.other_sequences().is_none());
     }
 }

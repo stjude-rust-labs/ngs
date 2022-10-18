@@ -22,6 +22,7 @@ struct Cli {
 }
 
 #[derive(Subcommand)]
+#[allow(clippy::large_enum_variant)]
 enum Subcommands {
     /// Forensic analysis tool for next-generation sequencing data.
     Derive(derive::command::DeriveArgs),

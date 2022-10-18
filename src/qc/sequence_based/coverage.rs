@@ -34,7 +34,7 @@ pub struct IgnoredMetrics {
 }
 
 /// Primary struct used to compile stats regarding coverage.
-#[derive(Clone, Default, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct CoverageMetrics {
     /// Hashmap containing the mean coverage for each sequence in the reference
     /// genome.
@@ -55,8 +55,37 @@ pub struct CoverageMetrics {
     /// the analysis.
     pub ignored: IgnoredMetrics,
 
-    /// Coverage distribution as a histogram per sequence.
-    pub coverage_distribution_per_sequence: HashMap<String, Histogram>,
+    /// Coverage distribution across all processed sequences as a histogram.
+    pub coverage_distribution: Histogram,
+
+    /// Specifies how much of the genome was covered by at least NNx.
+    ///
+    /// Keys are the coverage amount (20x, 30x, 40x, etc) and values are the pct
+    /// of the genome that covered by at least that number of reads.
+    pub genome_covered_by: HashMap<String, f32>,
+}
+
+/// Size of the histogram that accumulates all coverages across a sequence or
+/// the genome. Pick a value that you think is reasonably high enough to account
+/// for all coverage depths we could see. For example, if you pick 2048, then
+/// positions with up to 2048 coverage will fit into the histogram (and anything
+/// larger will throw a `BinOutOfBounds` error and, ultimately, will be ignored).
+const COVERAGE_DISTRIBUTION_HISTOGRAM_SIZE: usize = 2048;
+
+impl Default for CoverageMetrics {
+    fn default() -> Self {
+        Self {
+            mean_coverage: Default::default(),
+            mean_coverage_per_bin: Default::default(),
+            median_coverage: Default::default(),
+            median_over_mean_coverage: Default::default(),
+            ignored: Default::default(),
+            coverage_distribution: Histogram::zero_based_with_capacity(
+                COVERAGE_DISTRIBUTION_HISTOGRAM_SIZE,
+            ),
+            genome_covered_by: Default::default(),
+        }
+    }
 }
 
 /// Main struct for the Coverage quality control facet.
@@ -151,7 +180,8 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
             None => return Ok(()),
         };
 
-        let mut coverages = Histogram::zero_based_with_capacity(1024);
+        let mut coverages =
+            Histogram::zero_based_with_capacity(COVERAGE_DISTRIBUTION_HISTOGRAM_SIZE);
         let mut ignored = 0;
 
         let mut total_coverage_for_bin = 0;
@@ -184,10 +214,6 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let modulo = positions.range_stop() % self.bin_size;
         if modulo != 0 {
             let mean = total_coverage_for_bin as f64 / modulo as f64;
-            println!(
-                "Modulo: {}, Total: {}, Mean: {}",
-                modulo, total_coverage_for_bin, mean
-            );
             coverage_per_bin_vec.push(mean);
         }
 
@@ -197,6 +223,15 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
 
         // Removed to save memory.
         self.coverage_per_position.remove(sequence.name().as_str());
+
+        // Adds the current sequence's coverage histogram to our global coverage
+        // histogram.
+        for i in coverages.range_start()..=coverages.range_stop() {
+            self.metrics
+                .coverage_distribution
+                .increment_by(i, coverages.get(i))
+                .unwrap();
+        }
 
         // Saved for reporting.
         self.metrics
@@ -209,9 +244,6 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
             .median_over_mean_coverage
             .insert(sequence.name().to_string(), median_over_mean);
         self.metrics
-            .coverage_distribution_per_sequence
-            .insert(sequence.name().to_string(), coverages);
-        self.metrics
             .ignored
             .pileup_too_large_positions
             .insert(sequence.name().to_string(), ignored);
@@ -220,6 +252,27 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
     }
 
     fn aggregate(&mut self, results: &mut results::Results) {
+        // (1) Calculate the total number of positions we have observed.
+        let mut total_positions = self.metrics.coverage_distribution.sum();
+
+        // Don't forget we have to include all of the positions for which the
+        // pileup was too big!
+        for v in self.metrics.ignored.pileup_too_large_positions.values() {
+            total_positions += v;
+        }
+
+        // (2) Calculate how much of the genome is covered by at least
+        // 10x/20x/30x/40x/50x/60x.
+        const COVERAGES_TO_CHECK: [usize; 6] = [10, 20, 30, 40, 50, 60];
+        for c in COVERAGES_TO_CHECK {
+            let k = format!("{}x", c);
+            let positions_supported_by_at_least_nx =
+                self.metrics.coverage_distribution.count_from_top_until(c);
+
+            let v = (positions_supported_by_at_least_nx as f32 / total_positions as f32) * 100.0;
+            self.metrics.genome_covered_by.insert(k, v);
+        }
+
         results.coverage = Some(self.metrics.clone());
     }
 }

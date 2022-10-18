@@ -10,12 +10,10 @@ use num_format::{Locale, ToFormattedString};
 use tracing::{debug, info};
 
 use crate::qc::get_qc_facets;
+use crate::utils::formats::bam::{IndexCheck, ParsedBAMFile};
 use crate::{
     qc::results::Results,
-    utils::{
-        formats::sam::parse_header,
-        genome::{get_all_sequences, get_reference_genome, ReferenceGenome},
-    },
+    utils::genome::{get_all_sequences, get_reference_genome, ReferenceGenome},
 };
 
 use super::record_based::features::FeatureNames;
@@ -54,7 +52,10 @@ pub struct QcArgs {
     #[arg(short = 'f', long, value_name = "PATH")]
     features_gff: Option<PathBuf>,
 
-    /// Number of records to process in the first pass.
+    /// Number of records to process in the first pass. Also caps the number of records
+    /// to process per sequence in the second pass.
+    ///
+    /// This is generally only used for testing purposes.
     #[arg(short = 'n', long, value_name = "USIZE")]
     num_records: Option<usize>,
 
@@ -74,6 +75,11 @@ pub struct QcArgs {
     /// Only process one QC facet (specify the name of the facet).
     #[arg(long = "only", value_name = "FACET")]
     only_facet: Option<String>,
+
+    /// If desired, a path to the VAF file to be generated as part of the Edits quality
+    /// control facet.
+    #[arg(long = "vaf-file", value_name = "PATH")]
+    vaf_file_path: Option<PathBuf>,
 
     /// Name of the feature that represents a five prime UTR region in the GFF
     /// file. Defaults to the respective GENCODE feature name.
@@ -191,6 +197,12 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
     let only_facet = args.only_facet;
     debug!("  [*] Only facet: {:?}", only_facet);
 
+    //===============//
+    // VAF File Path //
+    //===============//
+    let vaf_file_path = args.vaf_file_path;
+    debug!("  [*] VAF filepath: {:?}", vaf_file_path);
+
     //===================//
     // Number of Records //
     //===================//
@@ -216,6 +228,7 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
         num_records,
         feature_names,
         only_facet,
+        vaf_file_path,
     )
 }
 
@@ -235,22 +248,18 @@ fn app(
     num_records: NumberOfRecords,
     feature_names: FeatureNames,
     only_facet: Option<String>,
+    vafs_file_path: Option<PathBuf>,
 ) -> anyhow::Result<()> {
     //=====================================================//
     // Preprocessing: set up file handles and prepare file //
     //=====================================================//
 
-    let mut reader = File::open(&src).map(bam::Reader::new)?;
-    // This check is here simply so that, if the BAM index does not exist, we
-    // don't complete the first pass before erroring out. It's not strictly
-    // needed for this first pass as we aren't doing random access throughout
-    // the file.
-    let _ = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
-
-    let ht = reader.read_header()?;
-    let header = parse_header(ht);
-
-    let reference_sequences = reader.read_reference_sequences()?;
+    let ParsedBAMFile {
+        mut reader,
+        header,
+        reference_sequences,
+        ..
+    } = crate::utils::formats::bam::open_and_parse(&src, IndexCheck::CheckForIndex)?;
 
     if !output_directory.exists() {
         std::fs::create_dir_all(output_directory.clone())
@@ -284,10 +293,11 @@ fn app(
     let (mut record_facets, mut sequence_facets) = get_qc_facets(
         features_gff,
         Some(&feature_names),
-        Some(&header),
+        Some(&header.parsed),
         reference_fasta,
         Rc::clone(&reference_genome),
         only_facet,
+        vafs_file_path,
     )?;
 
     if !record_facets.is_empty() {
@@ -364,7 +374,7 @@ fn app(
         let mut reader = File::open(&src).map(bam::Reader::new)?;
         let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
-        for (name, seq) in header.reference_sequences() {
+        for (name, seq) in header.parsed.reference_sequences() {
             let start = Position::MIN;
             let end = Position::try_from(usize::from(seq.length()))?;
 
@@ -379,7 +389,7 @@ fn app(
             }
 
             let query = reader.query(
-                header.reference_sequences(),
+                header.parsed.reference_sequences(),
                 &index,
                 &Region::new(name, start..=end),
             )?;
@@ -401,6 +411,12 @@ fn app(
                         processed.to_formatted_string(&Locale::en),
                     );
                 }
+
+                if let NumberOfRecords::Some(n) = num_records {
+                    if processed > n {
+                        break;
+                    }
+                }
             }
 
             debug!("    [*] Tearing down sequence.");
@@ -418,6 +434,7 @@ fn app(
     // Finalize: write all results to file //
     //=====================================//
 
+    info!("Aggregating results.");
     let mut results = Results::default();
 
     for facet in &record_facets {
@@ -428,6 +445,7 @@ fn app(
         facet.aggregate(&mut results);
     }
 
+    info!("Writing output.");
     results.write(output_prefix, &output_directory)?;
 
     Ok(())

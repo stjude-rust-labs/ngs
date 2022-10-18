@@ -5,15 +5,14 @@
 //! `noodles_bam` crate at commit 0a709087934d.
 
 use anyhow::{bail, Context};
-use noodles::bam::{self as bam, bai};
+use noodles::bam::bai;
 use noodles::csi::index::reference_sequence::bin::Chunk;
 use noodles::sam::{self as sam, alignment::Record, header::record::value::map::header::SortOrder};
 use num_format::{Locale, ToFormattedString};
-use std::{fs::File, io, path::PathBuf};
+use std::{fs::File, path::PathBuf};
 use tracing::{debug, info};
 
-use crate::utils::formats::sam::parse_header;
-use crate::utils::pathbuf::AppendExtension;
+use crate::utils::formats::bam::{IndexCheck, ParsedBAMFile};
 
 //==================================//
 // Individual indexing methods: BAM //
@@ -34,40 +33,28 @@ fn is_coordinate_sorted(header: &sam::Header) -> bool {
 pub fn index(src: PathBuf) -> anyhow::Result<()> {
     info!("indexing BAM file");
 
-    // (1) Reads the file from disk.
-    debug!("reading BAM file from disk");
-    let mut reader = File::open(&src)
-        .map(bam::Reader::new)
-        .with_context(|| "opening src file")?;
+    // (1) Open and parse the BAM file.
+    let ParsedBAMFile {
+        mut reader,
+        header,
+        index_path,
+        ..
+    } = crate::utils::formats::bam::open_and_parse(src, IndexCheck::DontCheckForIndex)?;
 
     // (2) Calculate where the BAM index should go and check if a file is
     // already there. Error out if so.
-    let bai = src
-        .append_extension("bai")
-        .with_context(|| "constructing the BAM index filepath")?;
-    if bai.exists() {
+    if index_path.exists() {
         bail!(
             "refusing to overwrite existing index file: {}. Please delete \
                 and rerun if you'd like to replace it.",
-            bai.display()
+            index_path.display()
         );
     }
 
-    // (3) Read the header and reference sequences.
-    let ht = reader.read_header().with_context(|| "reading header")?;
-    let header = parse_header(ht);
-    reader
-        .read_reference_sequences()
-        .with_context(|| "reading reference sequences")?;
-
-    // (4) Check if the BAM is coordinate sorted. If it isn't, then return an error.
+    // (3) Check if the BAM is coordinate sorted. If it isn't, then return an error.
     debug!("checking the BAM is coordinate sorted");
-    if !is_coordinate_sorted(&header) {
-        return Err(io::Error::new(
-            io::ErrorKind::InvalidData,
-            "the input BAM must be coordinate-sorted to be indexed",
-        )
-        .into());
+    if !is_coordinate_sorted(&header.parsed) {
+        bail!("the input BAM must be coordinate-sorted to be indexed");
     }
 
     // (5) Build the BAM index.
@@ -102,11 +89,11 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
         }
     }
 
-    let index = builder.build(header.reference_sequences().len());
+    let index = builder.build(header.parsed.reference_sequences().len());
 
     // (6) Write the index to disk.
     debug!("writing the BAM index to disk");
-    let mut writer = File::create(bai)
+    let mut writer = File::create(index_path)
         .map(bai::Writer::new)
         .with_context(|| "creating BAM index output file")?;
 

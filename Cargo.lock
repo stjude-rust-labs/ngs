@@ -845,6 +845,7 @@ dependencies = [
  "flate2",
  "futures",
  "git-testament",
+ "indexmap",
  "indicatif",
  "itertools",
  "noodles",

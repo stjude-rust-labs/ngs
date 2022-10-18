@@ -50,6 +50,7 @@ pub fn get_qc_facets<'a>(
     reference_fasta: Option<PathBuf>,
     reference_genome: Rc<Box<dyn ReferenceGenome>>,
     only_facet: Option<String>,
+    vafs_file_path: Option<PathBuf>,
 ) -> anyhow::Result<(
     RecordBasedQualityControlFacetBoxedVec<'_>,
     SequenceBasedQualityControlFacetBoxedVec<'_>,
@@ -91,7 +92,7 @@ pub fn get_qc_facets<'a>(
 
     // Optionally load the Edits facet if a reference FASTA is provided.
     if let Some(fasta) = reference_fasta {
-        sequence_based_facets.push(Box::new(EditsFacet::try_from(fasta)?))
+        sequence_based_facets.push(Box::new(EditsFacet::try_from(&fasta, vafs_file_path)?));
     }
 
     // (3) If `only_facet` is provided, we need to (a) filter out all of the
@@ -236,6 +237,7 @@ mod tests {
             None,
             Rc::new(get_reference_genome("GRCh38_no_alt_AnalysisSet").unwrap()),
             None,
+            None,
         )
         .unwrap();
 
@@ -252,6 +254,7 @@ mod tests {
             None,
             Rc::new(get_reference_genome("GRCh38_no_alt_AnalysisSet").unwrap()),
             Some(String::from("GC Content")),
+            None,
         )
         .unwrap();
 

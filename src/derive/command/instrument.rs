@@ -1,13 +1,15 @@
 //! Functionality relating to the `ngs derive instrument` subcommand itself.
 
 use anyhow::bail;
-use std::{collections::HashSet, fs::File, path::PathBuf, thread};
+use std::{collections::HashSet, path::PathBuf, thread};
 
 use clap::Args;
-use noodles::bam;
 use tracing::info;
 
-use crate::derive::instrument::{compute, reads::IlluminaReadName};
+use crate::derive::instrument::compute;
+use crate::derive::instrument::reads::IlluminaReadName;
+use crate::utils::formats::bam::IndexCheck::CheckForIndex;
+use crate::utils::formats::bam::ParsedBAMFile;
 
 /// Clap arguments for the `ngs derive instrument` subcommand.
 #[derive(Args)]
@@ -50,9 +52,8 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
 
-    let mut reader = File::open(src).map(bam::Reader::new)?;
-    reader.read_header()?;
-    reader.read_reference_sequences()?;
+    let ParsedBAMFile { mut reader, .. } =
+        crate::utils::formats::bam::open_and_parse(src, CheckForIndex)?;
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.

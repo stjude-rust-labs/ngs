@@ -79,6 +79,10 @@ impl ReferenceGenome for HG38M1X {
         Some(sequence!("chrM", "mitochondrion"))
     }
 
+    fn alternative_contig_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
+
     fn ebv_chromosome(&self) -> Option<Sequence> {
         None
     }
@@ -265,6 +269,10 @@ impl ReferenceGenome for HG38M1X {
     fn decoy_sequences(&self) -> Option<Vec<Sequence>> {
         None
     }
+
+    fn other_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -301,6 +309,12 @@ mod tests {
     }
 
     #[test]
+    pub fn it_does_not_contain_any_alternative_contigs() {
+        let hg38m1x = HG38M1X;
+        assert!(hg38m1x.alternative_contig_sequences().is_none());
+    }
+
+    #[test]
     pub fn it_does_not_contain_the_epstein_barr_virus() {
         let hg38m1x = HG38M1X;
         assert!(hg38m1x.ebv_chromosome().is_none());
@@ -322,5 +336,11 @@ mod tests {
     pub fn it_has_the_correct_number_of_decoy_sequences() {
         let hg38m1x = HG38M1X;
         assert!(hg38m1x.decoy_sequences().is_none());
+    }
+
+    #[test]
+    pub fn it_does_not_contain_any_other_sequences() {
+        let hg38m1x = HG38M1X;
+        assert!(hg38m1x.other_sequences().is_none());
     }
 }

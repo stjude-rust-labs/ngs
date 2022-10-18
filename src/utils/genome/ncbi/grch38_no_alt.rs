@@ -81,6 +81,10 @@ impl ReferenceGenome for GRCh38NoAltAnalysisSet {
         Some(sequence!("chrM", "mitochondrion"))
     }
 
+    fn alternative_contig_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
+
     fn ebv_chromosome(&self) -> Option<Sequence> {
         Some(sequence!("chrEBV", "ebv"))
     }
@@ -273,6 +277,10 @@ impl ReferenceGenome for GRCh38NoAltAnalysisSet {
         // labels it.
         None
     }
+
+    fn other_sequences(&self) -> Option<Vec<Sequence>> {
+        None
+    }
 }
 
 #[cfg(test)]
@@ -309,6 +317,12 @@ mod tests {
     }
 
     #[test]
+    pub fn it_does_not_contain_any_alternative_contigs() {
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
+        assert!(grch38_no_alt.alternative_contig_sequences().is_none());
+    }
+
+    #[test]
     pub fn it_contains_the_epstein_barr_virus() {
         let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert!(grch38_no_alt.ebv_chromosome().is_some());
@@ -330,5 +344,11 @@ mod tests {
     pub fn it_has_the_correct_number_of_decoy_sequences() {
         let grch38_no_alt = GRCh38NoAltAnalysisSet;
         assert!(grch38_no_alt.decoy_sequences().is_none());
+    }
+
+    #[test]
+    pub fn it_does_not_contain_any_other_sequences() {
+        let grch38_no_alt = GRCh38NoAltAnalysisSet;
+        assert!(grch38_no_alt.other_sequences().is_none());
     }
 }

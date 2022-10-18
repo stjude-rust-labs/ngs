@@ -94,6 +94,7 @@ pub fn get_all_sample_plots(
     let mut results: Vec<Box<dyn SamplePlot>> = vec![
         Box::new(sample::quality_score_distribution::QualityScoreDistributionPlot),
         Box::new(sample::gc_content_distribution::GCContentDistributionPlot),
+        Box::new(sample::vaf_distribution::VariantAlleleFractionDistributionPlot),
     ];
 
     if let Some(only) = only_graph {
