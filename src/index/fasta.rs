@@ -5,11 +5,15 @@
 //! `noodles_fasta` crate at commit 44b7d19.
 
 use crate::utils::pathbuf::AppendExtension;
-use std::{fs::File, path::PathBuf};
+use std::fs::File;
+use std::path::PathBuf;
 
-use anyhow::{bail, Context};
-use noodles::fasta::{self, fai};
-use tracing::{debug, info};
+use anyhow::bail;
+use anyhow::Context;
+use noodles::fasta;
+use noodles::fasta::fai;
+use tracing::debug;
+use tracing::info;
 
 /// Indexes a FASTA file stored at `src`.
 pub fn index(src: PathBuf) -> anyhow::Result<()> {
