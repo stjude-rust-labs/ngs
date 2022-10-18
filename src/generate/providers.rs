@@ -2,7 +2,8 @@
 
 use super::utils::PairedRead;
 
-use rand::{prelude::*, seq::SliceRandom};
+use rand::prelude::*;
+use rand::seq::SliceRandom;
 
 pub mod reference_provider;
 
