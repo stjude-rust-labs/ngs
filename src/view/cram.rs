@@ -36,7 +36,7 @@ pub fn view(
     let mut handle = stdout.lock();
 
     // (3) Build the FASTA repository.
-    let repository = fasta::reader::Builder::default()
+    let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(&reference_fasta)
         .map(IndexedReader::new)
         .map(fasta::Repository::new)
