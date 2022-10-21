@@ -1,4 +1,4 @@
-//! Functionality related to `ngs derive`.
+//! Functionality related to the `ngs derive` subcommand.
 
 pub mod command;
 pub mod instrument;

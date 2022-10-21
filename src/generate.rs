@@ -1,4 +1,4 @@
-//! Functionality related to `ngs generate`.
+//! Functionality related to the `ngs generate` subcommand.
 
 pub mod command;
 pub mod providers;

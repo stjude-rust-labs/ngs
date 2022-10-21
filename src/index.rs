@@ -1,4 +1,4 @@
-//! Functionality related to `ngs index`.
+//! Functionality related to the `ngs index` subcommand.
 
 pub mod bam;
 pub mod command;

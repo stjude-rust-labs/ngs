@@ -1,4 +1,4 @@
-//! Utilities related to bioinformatics file formats.
+//! Convenient, extended containers for bioinformatics formats supported by `noodles`.
 
 use std::fmt::Display;
 use std::path::PathBuf;
