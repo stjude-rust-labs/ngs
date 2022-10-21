@@ -123,11 +123,11 @@
 //!
 //! Some consideration was given to using the (seemingly) quite good
 //! [`histogram`] crate that is already published on [crates.io]. When it boiled
-//! down to it, the authors choices were:
+//! down to it, the author's choices were:
 //!
 //! 1. Go and make a PR to add `Serialize` and `Deserialize` to the existing
-//!    crate.
-//! 2. Create our own customized histogram, or
+//!    crate, or
+//! 2. Create our own customized histogram.
 //!
 //! The first option had no guarantee of working out—especially since the last
 //! commit date was over two years ago from the time of writing. Further, the
