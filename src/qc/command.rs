@@ -18,29 +18,15 @@ use tracing::info;
 
 use crate::qc::get_qc_facets;
 use crate::qc::results::Results;
-use crate::utils::formats::bam::IndexCheck;
+use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
+use crate::utils::formats::utils::IndexCheck;
 use crate::utils::genome::get_all_sequences;
 use crate::utils::genome::get_reference_genome;
 use crate::utils::genome::ReferenceGenome;
+use crate::utils::records::NumberOfRecords;
 
 use super::record_based::features::FeatureNames;
-
-//====================================//
-// Command line parsing utility types //
-//====================================//
-
-/// Utility enum to designate whether we are reviewing all records in the file
-/// or just some of them. TODO: this may be generally useful, so we may want to
-/// pull this out into its own utility module.
-pub enum NumberOfRecords {
-    /// Designates that we should review _all_ of the records in the file.
-    All,
-
-    /// Designates that we should review _some_ of the records in the file. The
-    /// exact count of records is stored in the `usize`.
-    Some(usize),
-}
 
 //========================//
 // Command line arguments //
@@ -215,16 +201,7 @@ pub fn qc(args: QcArgs) -> anyhow::Result<()> {
     // Number of Records //
     //===================//
 
-    let num_records = match args.num_records {
-        Some(n) => {
-            debug!("Reading a maximum of {} records in the first pass.", n);
-            NumberOfRecords::Some(n)
-        }
-        None => {
-            debug!("Reading all available records in the first pass.");
-            NumberOfRecords::All
-        }
-    };
+    let num_records = NumberOfRecords::from(args.num_records);
 
     app(
         src,
@@ -323,7 +300,7 @@ fn app(
         //====================================================================//
 
         info!("Starting first pass for QC stats.");
-        let mut record_count = 0;
+        let mut counter = RecordCounter::new();
 
         for result in reader.records() {
             let record = result?;
@@ -332,24 +309,15 @@ fn app(
                 facet.process(&record)?;
             }
 
-            record_count += 1;
-            if record_count % 1_000_000 == 0 {
-                info!(
-                    "  [*] Processed {} records.",
-                    record_count.to_formatted_string(&Locale::en),
-                );
-            }
-
-            if let NumberOfRecords::Some(n) = num_records {
-                if record_count > n {
-                    break;
-                }
+            counter.inc();
+            if counter.time_to_break(&num_records) {
+                break;
             }
         }
 
         info!(
             "Processed {} records in the first pass.",
-            record_count.to_formatted_string(&Locale::en)
+            counter.get().to_formatted_string(&Locale::en)
         );
 
         //================================//

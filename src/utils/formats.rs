@@ -1,5 +1,6 @@
 //! Convenient, extended containers for bioinformatics formats supported by `noodles`.
 
+use std::error::Error;
 use std::fmt::Display;
 use std::path::PathBuf;
 
@@ -8,6 +9,34 @@ pub mod fasta;
 pub mod fastq;
 pub mod gff;
 pub mod sam;
+pub mod utils;
+
+//========//
+// Errors //
+//========//
+
+/// Errors related to bioinformatics file formats.
+#[derive(Debug)]
+pub enum BioinformaticsFileError {
+    /// Failed parsing of a bioinformatics file format.
+    FailedParsing,
+}
+
+impl Display for BioinformaticsFileError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            BioinformaticsFileError::FailedParsing => {
+                write!(f, "Failed parsing of bioinformatics file format.")
+            }
+        }
+    }
+}
+
+impl Error for BioinformaticsFileError {}
+
+//==============//
+// File Formats //
+//==============//
 
 /// Represents all of the supported bioinformatics file formats that can be
 /// detected by the extension of the filename.
@@ -28,6 +57,9 @@ pub enum BioinformaticsFileFormat {
 
     /// A SAM file.
     SAM,
+
+    /// An unaligned BAM file.
+    UBAM,
 
     /// A BAM file.
     BAM,
@@ -68,6 +100,7 @@ impl Display for BioinformaticsFileFormat {
             BioinformaticsFileFormat::FASTQ => write!(f, "FASTQ"),
             BioinformaticsFileFormat::FASTQ_GZ => write!(f, "Gzipped FASTQ"),
             BioinformaticsFileFormat::SAM => write!(f, "SAM"),
+            BioinformaticsFileFormat::UBAM => write!(f, "Unaligned BAM"),
             BioinformaticsFileFormat::BAM => write!(f, "BAM"),
             BioinformaticsFileFormat::CRAM => write!(f, "CRAM"),
             BioinformaticsFileFormat::VCF => write!(f, "VCF"),
@@ -124,6 +157,7 @@ impl BioinformaticsFileFormat {
                 "fasta" | "fna" | "fa" => Some(Self::FASTA),
                 "fastq" | "fq" => Some(Self::FASTQ),
                 "sam" => Some(Self::SAM),
+                "ubam" => Some(Self::UBAM),
                 "bam" => Some(Self::BAM),
                 "cram" => Some(Self::CRAM),
                 "vcf" => Some(Self::VCF),
@@ -196,6 +230,14 @@ mod tests {
         assert_eq!(
             BioinformaticsFileFormat::try_detect("sample.sam"),
             Some(BioinformaticsFileFormat::SAM)
+        );
+    }
+
+    #[test]
+    fn it_correctly_identifies_ubam_files() {
+        assert_eq!(
+            BioinformaticsFileFormat::try_detect("sample.ubam"),
+            Some(BioinformaticsFileFormat::UBAM)
         );
     }
 

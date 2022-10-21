@@ -49,8 +49,8 @@ pub fn get_qc_facets<'a>(
     only_facet: Option<String>,
     vafs_file_path: Option<PathBuf>,
 ) -> anyhow::Result<(
-    RecordBasedQualityControlFacetBoxedVec<'_>,
-    SequenceBasedQualityControlFacetBoxedVec<'_>,
+    RecordBasedQualityControlFacetBoxedVec<'a>,
+    SequenceBasedQualityControlFacetBoxedVec<'a>,
 )> {
     // (1) Define the full list of facets that are supported for the
     // record-based quality control facets.

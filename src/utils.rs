@@ -7,3 +7,4 @@ pub mod formats;
 pub mod genome;
 pub mod histogram;
 pub mod pathbuf;
+pub mod records;

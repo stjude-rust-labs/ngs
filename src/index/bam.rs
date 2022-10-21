@@ -18,8 +18,8 @@ use std::path::PathBuf;
 use tracing::debug;
 use tracing::info;
 
-use crate::utils::formats::bam::IndexCheck;
 use crate::utils::formats::bam::ParsedBAMFile;
+use crate::utils::formats::utils::IndexCheck;
 
 //==================================//
 // Individual indexing methods: BAM //
@@ -75,7 +75,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
         match reader.read_record(&mut record) {
             Ok(0) => break,
             Ok(_) => {}
-            Err(e) => return Err(e.into()),
+            Err(e) => bail!("failed to read record: {}", e),
         }
 
         let end_position = reader.virtual_position();
@@ -96,6 +96,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
         }
     }
 
+    debug!("building BAM index");
     let index = builder.build(header.parsed.reference_sequences().len());
 
     // (6) Write the index to disk.

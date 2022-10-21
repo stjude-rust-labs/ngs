@@ -10,6 +10,7 @@
 #![warn(rust_2018_idioms)]
 #![warn(rust_2021_compatibility)]
 
+pub mod convert;
 pub mod derive;
 pub mod generate;
 pub mod index;

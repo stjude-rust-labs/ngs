@@ -10,8 +10,8 @@ use tracing::info;
 
 use crate::derive::instrument::compute;
 use crate::derive::instrument::reads::IlluminaReadName;
-use crate::utils::formats::bam::IndexCheck::CheckForIndex;
 use crate::utils::formats::bam::ParsedBAMFile;
+use crate::utils::formats::utils::IndexCheck;
 
 /// Clap arguments for the `ngs derive instrument` subcommand.
 #[derive(Args)]
@@ -55,7 +55,7 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut flowcell_names = HashSet::new();
 
     let ParsedBAMFile { mut reader, .. } =
-        crate::utils::formats::bam::open_and_parse(src, CheckForIndex)?;
+        crate::utils::formats::bam::open_and_parse(src, IndexCheck::CheckForIndex)?;
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.

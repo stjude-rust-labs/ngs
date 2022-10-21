@@ -7,6 +7,7 @@ use clap::Subcommand;
 use git_testament::git_testament;
 use git_testament::render_testament;
 
+use ngs::convert;
 use ngs::derive;
 use ngs::generate;
 use ngs::index;
@@ -33,6 +34,9 @@ struct Cli {
 #[derive(Subcommand)]
 #[allow(clippy::large_enum_variant)]
 enum Subcommands {
+    /// Convert between next-generation sequencing formats.
+    Convert(convert::command::ConvertArgs),
+
     /// Forensic analysis tool for next-generation sequencing data.
     Derive(derive::command::DeriveArgs),
 
@@ -83,6 +87,7 @@ fn main() -> anyhow::Result<()> {
     //=====================//
 
     match cli.subcommand {
+        Subcommands::Convert(args) => convert::command::convert(args)?,
         Subcommands::Derive(args) => match args.subcommand {
             derive::command::DeriveSubcommand::Instrument(args) => {
                 derive::command::instrument::derive(args)?
