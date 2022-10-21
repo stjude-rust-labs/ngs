@@ -1,7 +1,7 @@
 [package]
 authors = ["Clay McLeod <clay.l.mcleod@gmail.com>"]
 edition = "2021"
-license = "MIT"
+license = "Apache 2.0 OR MIT"
 name = "ngs"
 rust-version = "1.64.0"
 publish = true
