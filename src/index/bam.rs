@@ -11,13 +11,12 @@ use noodles::csi::index::reference_sequence::bin::Chunk;
 use noodles::sam;
 use noodles::sam::alignment::Record;
 use noodles::sam::header::record::value::map::header::SortOrder;
-use num_format::Locale;
-use num_format::ToFormattedString;
 use std::fs::File;
 use std::path::PathBuf;
 use tracing::debug;
 use tracing::info;
 
+use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -69,7 +68,8 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
     let mut record = Record::default();
     let mut builder = bai::Index::builder();
     let mut start_position = reader.virtual_position();
-    let mut records_processed = 0;
+
+    let mut counter = RecordCounter::new();
 
     loop {
         match reader.read_record(&mut record) {
@@ -86,14 +86,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
             .with_context(|| "building BAM index")?;
 
         start_position = end_position;
-        records_processed += 1;
-
-        if records_processed % 1_000_000 == 0 {
-            debug!(
-                "  [*] Processed {} records.",
-                records_processed.to_formatted_string(&Locale::en),
-            );
-        }
+        counter.inc();
     }
 
     debug!("building BAM index");

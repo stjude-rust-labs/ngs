@@ -350,12 +350,13 @@ fn app(
         let mut reader = File::open(&src).map(bam::Reader::new)?;
         let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
 
+        let mut counter = RecordCounter::new();
+
         for (name, seq) in header.parsed.reference_sequences() {
             let start = Position::MIN;
             let end = Position::try_from(usize::from(seq.length()))?;
 
             info!("  [*] Starting sequence {} ", name);
-            let mut processed = 0;
 
             debug!("    [*] Setting up sequence.");
             for facet in &mut sequence_facets {
@@ -379,19 +380,10 @@ fn app(
                     }
                 }
 
-                processed += 1;
+                counter.inc();
 
-                if processed % 1_000_000 == 0 {
-                    info!(
-                        "    [*] Processed {} records for this sequence.",
-                        processed.to_formatted_string(&Locale::en),
-                    );
-                }
-
-                if let NumberOfRecords::Some(n) = num_records {
-                    if processed > n {
-                        break;
-                    }
+                if counter.time_to_break(&num_records) {
+                    break;
                 }
             }
 
