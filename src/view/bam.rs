@@ -16,13 +16,12 @@ use crate::utils::formats::utils::IndexCheck;
 /// Main method for BAM viewing.
 pub fn view(src: PathBuf, query: Option<String>, show_header: bool) -> anyhow::Result<()> {
     // (1) Opens and parses the BAM file.
-    debug!("reading BAM file from disk");
     let ParsedBAMFile {
         mut reader,
         header,
         index_path: bai_path,
         ..
-    } = crate::utils::formats::bam::open_and_parse(&src, IndexCheck::CheckForIndex)?;
+    } = crate::utils::formats::bam::open_and_parse(&src, IndexCheck::HeaderOnly)?;
 
     // (2) Determine the handle with which to write the output. TODO: for now, we just
     // default to stdout, but in the future we will support writing to another path.

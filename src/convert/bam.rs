@@ -21,7 +21,7 @@ pub async fn to_sam_async(
     // (1) Open and parse the BAM file.
     let ParsedAsyncBAMFile {
         mut reader, header, ..
-    } = formats::bam::open_and_parse_async(from, IndexCheck::DontCheckForIndex).await?;
+    } = formats::bam::open_and_parse_async(from, IndexCheck::None).await?;
 
     // (2) Open the SAM file writer.
     let handle = File::create(to).await?;

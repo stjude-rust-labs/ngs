@@ -55,7 +55,7 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
     let mut flowcell_names = HashSet::new();
 
     let ParsedBAMFile { mut reader, .. } =
-        crate::utils::formats::bam::open_and_parse(src, IndexCheck::CheckForIndex)?;
+        crate::utils::formats::bam::open_and_parse(src, IndexCheck::Full)?;
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.

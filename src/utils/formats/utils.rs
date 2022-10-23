@@ -14,9 +14,12 @@ pub struct RawAndParsedHeaders {
 #[derive(PartialEq, Eq)]
 /// Utility enum to formalize in types whether or not to check for an index.
 pub enum IndexCheck {
-    /// Checks for an index file when opening and parsing the BAM file.
-    CheckForIndex,
+    /// Opens and parses the associated index to ensure it is well-formed.
+    Full,
+
+    /// Opens the index and just checks that the header is well-formed.
+    HeaderOnly,
 
     /// _Does not_ check for an index file when opening and parsing the BAM file.
-    DontCheckForIndex,
+    None,
 }

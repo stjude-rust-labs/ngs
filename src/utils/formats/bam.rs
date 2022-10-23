@@ -1,5 +1,6 @@
 //! Utilities related to opening and manipulating Binary Alignment Map (BAM) files.
 
+use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
 use std::path::PathBuf;
@@ -80,19 +81,24 @@ where
     debug!("reading BAM file from disk");
     let mut reader = open(&src)?;
 
-    // (2) Though a BAM index is not always needed, we want, as good practice, to ensure
-    // one exists for the times that it is needed (and also to deduplicate code where
-    // we're checking for it). Thus, we will ask the user of this API to explicitly opt
-    // out if they don't want to check for it.
+    // (2) Checks for an index (or doesn't) based on the user's input.
     let index_path = src
         .as_ref()
         .to_path_buf()
         .append_extension("bai")
         .with_context(|| "constructing the BAM index filepath")?;
 
-    if ensure_index == IndexCheck::CheckForIndex {
-        debug!("checking that associated index exists for BAM file");
-        bai::read(&index_path).with_context(|| "BAM index")?;
+    match ensure_index {
+        IndexCheck::Full => {
+            debug!("checking the index's header and contents");
+            bai::read(&index_path).with_context(|| "BAM index")?;
+        }
+        IndexCheck::HeaderOnly => {
+            debug!("checking the index's header");
+            let mut reader = File::open(&index_path).map(bai::Reader::new)?;
+            reader.read_header()?;
+        }
+        IndexCheck::None => {}
     }
 
     // (3) Parse the header and reference sequences.
@@ -190,7 +196,7 @@ where
         .append_extension("bai")
         .with_context(|| "constructing the BAM index filepath")?;
 
-    if ensure_index == IndexCheck::CheckForIndex {
+    if ensure_index == IndexCheck::Full {
         debug!("checking that associated index exists for BAM file");
         bai::read(&index_path).with_context(|| "BAM index")?;
     }

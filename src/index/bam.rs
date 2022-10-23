@@ -45,7 +45,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
         header,
         index_path,
         ..
-    } = crate::utils::formats::bam::open_and_parse(src, IndexCheck::DontCheckForIndex)?;
+    } = crate::utils::formats::bam::open_and_parse(src, IndexCheck::None)?;
 
     // (2) Calculate where the BAM index should go and check if a file is
     // already there. Error out if so.

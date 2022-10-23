@@ -244,7 +244,7 @@ fn app(
         header,
         reference_sequences,
         ..
-    } = crate::utils::formats::bam::open_and_parse(&src, IndexCheck::CheckForIndex)?;
+    } = crate::utils::formats::bam::open_and_parse(&src, IndexCheck::Full)?;
 
     if !output_directory.exists() {
         std::fs::create_dir_all(output_directory.clone())
