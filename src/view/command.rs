@@ -25,9 +25,23 @@ pub struct ViewArgs {
     #[arg(short, long)]
     reference_fasta: Option<PathBuf>,
 
-    /// Shows the header for the file.
-    #[arg(short = 'H')]
-    show_header: bool,
+    /// Shows either the header ("header-only"), the records ("records-only"),
+    /// or both ("full").
+    #[arg(short, long, value_enum, default_value = "full")]
+    mode: Mode,
+}
+
+/// Mode of the view command
+#[derive(clap::ValueEnum, PartialEq, Eq, Clone)]
+pub enum Mode {
+    /// Shows the full contents of the file (header and records).
+    Full,
+
+    /// Shows only the header of the file.
+    HeaderOnly,
+
+    /// Shows only the records within the file.
+    RecordsOnly,
 }
 
 //==============//
@@ -39,13 +53,13 @@ pub fn view(args: ViewArgs) -> anyhow::Result<()> {
     let src = args.src;
     let query = args.query;
     let reference_fasta = args.reference_fasta;
-    let show_header = args.show_header;
+    let mode = args.mode;
 
     match BioinformaticsFileFormat::try_detect(&src) {
-        Some(BioinformaticsFileFormat::BAM) => super::bam::view(src, query, show_header),
+        Some(BioinformaticsFileFormat::BAM) => super::bam::view(src, query, mode),
         Some(BioinformaticsFileFormat::CRAM) => {
             if let Some(reference_fasta) = reference_fasta {
-                super::cram::view(src, query, reference_fasta, show_header)
+                super::cram::view(src, query, reference_fasta, mode)
             } else {
                 bail!("Reference FASTA is required to view a CRAM file.")
             }

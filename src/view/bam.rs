@@ -8,13 +8,13 @@ use anyhow::Context;
 use noodles::bam::bai;
 use noodles::sam;
 use noodles::sam::AlignmentWriter;
-use tracing::debug;
 
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
+use crate::view::command::Mode;
 
 /// Main method for BAM viewing.
-pub fn view(src: PathBuf, query: Option<String>, show_header: bool) -> anyhow::Result<()> {
+pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<()> {
     // (1) Opens and parses the BAM file.
     let ParsedBAMFile {
         mut reader,
@@ -29,14 +29,20 @@ pub fn view(src: PathBuf, query: Option<String>, show_header: bool) -> anyhow::R
     let mut handle = stdout.lock();
 
     // (3) If the user specified to output the header, output the header.
-    if show_header {
+    if mode == Mode::Full || mode == Mode::HeaderOnly {
         write!(handle, "{}", header.raw).with_context(|| "writing header to stream")?;
     }
 
-    // (4) Writes the file to the output stream.
+    // (4) If the mode is header only, nothing left to do, so return.
+    if mode == Mode::HeaderOnly {
+        return Ok(());
+    }
+
+    // (5) Writes the records to the output stream.
     let mut writer = sam::Writer::new(handle);
+
     if let Some(query) = query {
-        // (4a) If a query is specified, print just the records that fall within the query.
+        // (a) If a query is specified, print just the records that fall within the query.
         let index = bai::read(bai_path).with_context(|| "reading BAM index")?;
         let region = query.parse().with_context(|| "parsing query")?;
 
@@ -49,7 +55,7 @@ pub fn view(src: PathBuf, query: Option<String>, show_header: bool) -> anyhow::R
             writer.write_alignment_record(&header.parsed, &record)?;
         }
     } else {
-        // (4b) Else, print all of the records in the file.
+        // (b) Else, print all of the records in the file.
         for result in reader.records() {
             let record = result?;
             writer.write_alignment_record(&header.parsed, &record)?;

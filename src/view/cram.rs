@@ -17,13 +17,14 @@ use tracing::debug;
 
 use crate::utils::formats::sam::parse_header;
 use crate::utils::pathbuf::AppendExtension;
+use crate::view::command::Mode;
 
 /// Main method for BAM viewing.
 pub fn view(
     src: PathBuf,
     query: Option<String>,
     reference_fasta: PathBuf,
-    show_header: bool,
+    mode: Mode,
 ) -> anyhow::Result<()> {
     // (1) Reads the file from disk.
     debug!("reading CRAM file from disk");
@@ -61,16 +62,24 @@ pub fn view(
     let ht = reader
         .read_file_header()
         .with_context(|| "reading CRAM header")?;
-    if show_header {
+
+    if mode == Mode::Full || mode == Mode::HeaderOnly {
         write!(handle, "{}", ht).with_context(|| "writing header to stream")?;
     }
 
-    // (4) Parse the header.
+    // (5) If the mode is header-only, nothing left to do, so return.
+    if mode == Mode::HeaderOnly {
+        return Ok(());
+    }
+
+    // (5) Parse the header.
     let header = parse_header(ht);
 
+    // (6) Writes the records to the output stream.
     let mut writer = sam::Writer::new(handle);
+
     if let Some(query) = query {
-        // (5a) If a query is specified, print just the records that fall within the query.
+        // (a) If a query is specified, print just the records that fall within the query.
         let index =
             crai::read(src.with_extension("cram.crai")).with_context(|| "reading CRAM index")?;
         let region = query.parse().with_context(|| "parsing query")?;
@@ -86,7 +95,7 @@ pub fn view(
             writer.write_alignment_record(&header, &record)?;
         }
     } else {
-        // (5b) Else, print all of the records in the file.
+        // (b) Else, print all of the records in the file.
         for result in reader.records(&repository, &header) {
             let record = result
                 .and_then(|record| record.try_into_alignment_record(&header))
