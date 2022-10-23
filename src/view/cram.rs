@@ -55,10 +55,11 @@ pub fn view(
         )
     }
 
-    // (3) Read the file's definition.
+    // (4) Read the file's definition.
     reader.read_file_definition()?;
 
-    // (4) If the user specified to output the header, output the header.
+    // (5) If the user specified to output the header, output the raw header (before
+    // applying any corrections).
     let ht = reader
         .read_file_header()
         .with_context(|| "reading CRAM header")?;
@@ -67,15 +68,15 @@ pub fn view(
         write!(handle, "{}", ht).with_context(|| "writing header to stream")?;
     }
 
-    // (5) If the mode is header-only, nothing left to do, so return.
+    // (6) If the mode is header-only, nothing left to do, so return.
     if mode == Mode::HeaderOnly {
         return Ok(());
     }
 
-    // (5) Parse the header.
-    let header = parse_header(ht);
+    // (7) Parse the header and apply corrections.
+    let header = parse_header(ht).with_context(|| "parsing header")?;
 
-    // (6) Writes the records to the output stream.
+    // (8) Writes the records to the output stream.
     let mut writer = sam::Writer::new(handle);
 
     if let Some(query) = query {

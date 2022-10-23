@@ -5,6 +5,7 @@ use std::fmt::Display;
 use std::path::PathBuf;
 
 pub mod bam;
+pub mod cram;
 pub mod fasta;
 pub mod fastq;
 pub mod gff;

@@ -4,6 +4,7 @@ use std::io::BufRead;
 use std::path::Path;
 
 use anyhow::bail;
+use anyhow::Context;
 use noodles::sam;
 use regex::Captures;
 use regex::Regex;
@@ -33,10 +34,14 @@ pub fn correct_common_header_mistakes(header: String) -> String {
 
 /// Parses a SAM/BAM/CRAM header from a string while also correcting common
 /// header mistakes.
-pub fn parse_header(header: String) -> sam::Header {
-    correct_common_header_mistakes(header)
+pub fn parse_header(header: String) -> anyhow::Result<sam::Header> {
+    let header_raw_corrected = correct_common_header_mistakes(header);
+
+    let header = header_raw_corrected
         .parse()
-        .expect("Could not parse SAM/BAM/CRAM header.")
+        .with_context(|| "could not parse SAM/BAM/CRAM header")?;
+
+    Ok(header)
 }
 
 //====================================//
@@ -97,7 +102,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header()?;
-    let parsed_header = parse_header(raw_header.clone());
+    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing header")?;
 
     // (3) Return the result.
     Ok(ParsedSAMFile {
@@ -171,7 +176,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header().await?;
-    let parsed_header = parse_header(raw_header.clone());
+    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing header")?;
 
     // (3) Return the result.
     Ok(ParsedAsyncSAMFile {

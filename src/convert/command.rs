@@ -8,6 +8,7 @@ use clap::arg;
 use clap::Args;
 
 use crate::convert::bam;
+use crate::convert::cram;
 use crate::convert::sam;
 use crate::utils::formats::BioinformaticsFileError;
 use crate::utils::formats::BioinformaticsFileFormat;
@@ -100,7 +101,14 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
             todo!()
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::CRAM, BioinformaticsFileFormat::SAM) => {
-            todo!()
+            let fasta = match args.reference_fasta {
+                Some(s) => s,
+                None => bail!(
+                    "--reference-fasta is a required argument when converting to/from a CRAM file"
+                ),
+            };
+
+            rt.block_on(cram::to_sam_async(args.from, args.to, fasta, num_records))
         }
         _ => bail!(
             "Conversion from {} to {} is not currently supported",
