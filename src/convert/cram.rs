@@ -8,11 +8,11 @@ use noodles::fasta;
 use noodles::sam;
 use tokio::fs::File;
 
+use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats;
 use crate::utils::formats::cram::ParsedAsyncCRAMFile;
 use crate::utils::formats::utils::IndexCheck;
-use crate::utils::records::NumberOfRecords;
 
 /// Converts a CRAM file to a SAM file in an asyncronous fashion.
 pub async fn to_sam_async(

@@ -18,13 +18,13 @@ use tracing::info;
 
 use crate::qc::get_qc_facets;
 use crate::qc::results::Results;
+use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 use crate::utils::genome::get_all_sequences;
 use crate::utils::genome::get_reference_genome;
 use crate::utils::genome::ReferenceGenome;
-use crate::utils::records::NumberOfRecords;
 
 use super::record_based::features::FeatureNames;
 

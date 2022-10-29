@@ -6,11 +6,11 @@ use noodles::sam;
 use noodles::sam::alignment::Record;
 use tokio::fs::File;
 
+use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats;
 use crate::utils::formats::bam::ParsedAsyncBAMFile;
 use crate::utils::formats::utils::IndexCheck;
-use crate::utils::records::NumberOfRecords;
 
 /// Converts a BAM file to a SAM file in an asyncronous fashion.
 pub async fn to_sam_async(

@@ -6,7 +6,7 @@ use num_format::Locale;
 use num_format::ToFormattedString;
 use tracing::info;
 
-use crate::utils::records::NumberOfRecords;
+use crate::utils::args::NumberOfRecords;
 
 /// Utility struct for displays percentages. The first item in the struct is the
 /// numerator and the second item in the struct is the denominator.

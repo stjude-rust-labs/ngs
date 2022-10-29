@@ -10,9 +10,9 @@ use noodles::gff;
 use noodles::gff::Line::Record;
 
 use crate::utils::args::CompressionStrategy;
+use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats;
-use crate::utils::records::NumberOfRecords;
 
 /// Converts a GFF file to a Block-gzipped GFF file.
 pub fn to_block_gzipped_gff(

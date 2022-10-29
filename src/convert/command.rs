@@ -13,9 +13,9 @@ use crate::convert::cram;
 use crate::convert::gff;
 use crate::convert::sam;
 use crate::utils::args::CompressionStrategy;
+use crate::utils::args::NumberOfRecords;
 use crate::utils::formats::BioinformaticsFileError;
 use crate::utils::formats::BioinformaticsFileFormat;
-use crate::utils::records::NumberOfRecords;
 
 //========================//
 // Command-line arguments //
