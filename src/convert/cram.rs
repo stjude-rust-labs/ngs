@@ -21,7 +21,7 @@ pub async fn to_sam_async(
     fasta: PathBuf,
     max_records: NumberOfRecords,
 ) -> anyhow::Result<()> {
-    // (1) Open and parse the BAM file.
+    // (1) Open and parse the CRAM file.
     let ParsedAsyncCRAMFile {
         mut reader, header, ..
     } = formats::cram::open_and_parse_async(from, IndexCheck::None)
@@ -48,7 +48,7 @@ pub async fn to_sam_async(
     let mut counter = RecordCounter::new();
     let mut records = reader.records(&repository, &header.parsed);
 
-    // (5) Write each record in the BAM file to the SAM file.
+    // (5) Write each record in the CRAM file to the SAM file.
     while let Some(record) = records.try_next().await? {
         let record = record.try_into_alignment_record(&header.parsed)?;
         writer
