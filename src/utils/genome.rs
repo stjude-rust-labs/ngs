@@ -1,8 +1,11 @@
 //! Utilities related to reference genomes.
 
+#[cfg(feature = "extended-reference-genomes")]
 pub mod microsoft;
 pub mod ncbi;
+#[cfg(feature = "extended-reference-genomes")]
 pub mod one_thousand_genomes;
+#[cfg(feature = "extended-reference-genomes")]
 pub mod t2t_consortium;
 
 use std::fmt;
@@ -10,10 +13,14 @@ use std::fmt::Debug;
 use std::rc::Rc;
 use std::str::FromStr;
 
+#[cfg(feature = "extended-reference-genomes")]
 use self::microsoft::hg38m1x::HG38M1X;
 use self::ncbi::grch38_no_alt::GRCh38NoAltAnalysisSet;
+#[cfg(feature = "extended-reference-genomes")]
 use self::one_thousand_genomes::grch38_full_analysis_set_with_decoy_hla::GRCh38FullAnalysisSetWithDecoyHLA;
+#[cfg(feature = "extended-reference-genomes")]
 use self::one_thousand_genomes::hs37d5::HS37D5;
+#[cfg(feature = "extended-reference-genomes")]
 use self::t2t_consortium::t2t_chm13::T2T_CHM13;
 
 //=================//
@@ -24,10 +31,14 @@ use self::t2t_consortium::t2t_chm13::T2T_CHM13;
 /// genomes are added, this needs to be updated.
 pub fn get_all_reference_genomes() -> Vec<Box<dyn ReferenceGenome>> {
     vec![
+        #[cfg(feature = "extended-reference-genomes")]
         Box::new(HS37D5),
+        #[cfg(feature = "extended-reference-genomes")]
         Box::new(GRCh38FullAnalysisSetWithDecoyHLA),
         Box::new(GRCh38NoAltAnalysisSet),
+        #[cfg(feature = "extended-reference-genomes")]
         Box::new(HG38M1X),
+        #[cfg(feature = "extended-reference-genomes")]
         Box::new(T2T_CHM13),
     ]
 }
