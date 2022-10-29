@@ -48,7 +48,7 @@ pub async fn to_sam_async(
     let mut counter = RecordCounter::new();
     let mut records = reader.records(&repository, &header.parsed);
 
-    // (6) Write each record in the BAM file to the SAM file.
+    // (5) Write each record in the BAM file to the SAM file.
     while let Some(record) = records.try_next().await? {
         let record = record.try_into_alignment_record(&header.parsed)?;
         writer
