@@ -95,7 +95,7 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
     // Number of Records //
     //===================//
 
-    let num_records = NumberOfRecords::from(args.num_records);
+    let max_records = NumberOfRecords::from(args.num_records);
 
     //==========================//
     // Bioinformatics File Pair //
@@ -110,16 +110,29 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
 
     match pair {
         BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::BAM) => {
-            rt.block_on(sam::to_bam_async(args.from, args.to, num_records))
+            rt.block_on(sam::to_bam_async(args.from, args.to, max_records))
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::SAM) => {
-            rt.block_on(bam::to_sam_async(args.from, args.to, num_records))
+            rt.block_on(bam::to_sam_async(args.from, args.to, max_records))
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::CRAM) => {
             todo!()
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::CRAM, BioinformaticsFileFormat::BAM) => {
-            todo!()
+            let fasta = match args.reference_fasta {
+                Some(s) => s,
+                None => bail!(
+                    "--reference-fasta is a required argument when converting to/from a CRAM file"
+                ),
+            };
+
+            rt.block_on(cram::to_bam_async(
+                args.from,
+                args.to,
+                fasta,
+                max_records,
+                compression_strategy,
+            ))
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::CRAM) => {
             todo!()
@@ -132,12 +145,12 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
                 ),
             };
 
-            rt.block_on(cram::to_sam_async(args.from, args.to, fasta, num_records))
+            rt.block_on(cram::to_sam_async(args.from, args.to, fasta, max_records))
         }
         BioinformaticsFilePair(
             BioinformaticsFileFormat::GFF,
             BioinformaticsFileFormat::GFF_BGZ,
-        ) => gff::to_block_gzipped_gff(args.from, args.to, num_records, compression_strategy),
+        ) => gff::to_block_gzipped_gff(args.from, args.to, max_records, compression_strategy),
         _ => bail!(
             "Conversion from {} to {} is not currently supported",
             pair.from(),
