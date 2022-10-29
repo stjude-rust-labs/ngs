@@ -19,7 +19,7 @@ git-testament = "0.2.1"
 indexmap = "1.9.1"
 indicatif = "0.16.2"
 itertools = "0.10.5"
-noodles = { version = "0.28.0", features = [
+noodles = { version = "0.29.0", features = [
     "async",
     "bam",
     "bgzf",
