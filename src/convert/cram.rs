@@ -131,6 +131,7 @@ pub async fn to_bam_async(
         }
     }
 
+    // (7) Shutdown the async writer.
     writer.shutdown().await?;
 
     Ok(())
