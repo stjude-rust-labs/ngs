@@ -109,9 +109,13 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
         .unwrap();
 
     match pair {
-        BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::BAM) => {
-            rt.block_on(sam::to_bam_async(args.from, args.to, max_records))
-        }
+        BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::BAM) => rt
+            .block_on(sam::to_bam_async(
+                args.from,
+                args.to,
+                max_records,
+                compression_strategy,
+            )),
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::SAM) => {
             rt.block_on(bam::to_sam_async(args.from, args.to, max_records))
         }

@@ -2,10 +2,14 @@
 
 use std::path::PathBuf;
 
+use anyhow::Context;
 use noodles::bam;
+use noodles::bgzf;
+use noodles::bgzf::writer::CompressionLevel;
 use noodles::sam::alignment::Record;
 use tokio::fs::File;
 
+use crate::utils::args::CompressionStrategy;
 use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats;
@@ -16,16 +20,27 @@ pub async fn to_bam_async(
     from: PathBuf,
     to: PathBuf,
     max_records: NumberOfRecords,
+    compression_strategy: CompressionStrategy,
 ) -> anyhow::Result<()> {
     // (1) Open and parse the BAM file.
     let ParsedAsyncSAMFile { mut reader, header } =
         formats::sam::open_and_parse_async(from).await?;
 
-    // (2) Open the SAM file writer.
-    let handle = File::create(to).await?;
-    let mut writer = bam::AsyncWriter::new(handle);
+    // (2) Determine the compression level.
+    let compression_level: CompressionLevel = compression_strategy.into();
 
-    // (3) Write the header and the reference sequences.
+    // (3) Open the SAM file writer.
+    let mut writer = File::create(to)
+        .await
+        .map(|f| {
+            bgzf::r#async::writer::Builder::default()
+                .set_compression_level(compression_level)
+                .build_with_writer(f)
+        })
+        .map(bam::AsyncWriter::from)
+        .with_context(|| "opening output filestream")?;
+
+    // (4) Write the header and the reference sequences.
     writer.write_header(&header.parsed).await?;
     writer
         .write_reference_sequences(header.parsed.reference_sequences())
@@ -34,7 +49,7 @@ pub async fn to_bam_async(
     let mut counter = RecordCounter::new();
     let mut record = Record::default();
 
-    // (4) Write each record in the BAM file to the SAM file.
+    // (5) Write each record in the BAM file to the SAM file.
     while reader.read_record(&header.parsed, &mut record).await? != 0 {
         writer
             .write_alignment_record(&header.parsed, &record)
@@ -47,7 +62,7 @@ pub async fn to_bam_async(
         }
     }
 
-    // (5) Shutdown the async writer.
+    // (6) Shutdown the async writer.
     writer.shutdown().await?;
 
     Ok(())
