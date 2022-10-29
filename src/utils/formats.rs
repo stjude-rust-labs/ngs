@@ -83,6 +83,9 @@ pub enum BioinformaticsFileFormat {
     /// A Gzipped GFF file.
     GFF_GZ,
 
+    /// A block-gzipped GFF file.
+    GFF_BGZ,
+
     /// A GTF file.
     GTF,
 
@@ -109,6 +112,7 @@ impl Display for BioinformaticsFileFormat {
             BioinformaticsFileFormat::BCF => write!(f, "BCF"),
             BioinformaticsFileFormat::GFF => write!(f, "GFF"),
             BioinformaticsFileFormat::GFF_GZ => write!(f, "Gzipped GFF"),
+            BioinformaticsFileFormat::GFF_BGZ => write!(f, "Block-gzipped GFF"),
             BioinformaticsFileFormat::GTF => write!(f, "GTF"),
             BioinformaticsFileFormat::GTF_GZ => write!(f, "Gzipped GTF"),
             BioinformaticsFileFormat::BED => write!(f, "BED"),
@@ -126,7 +130,13 @@ impl BioinformaticsFileFormat {
             // (1) First, check if the extension is "gz". If it is, then we need
             // a different set of matches.
 
-            if ext.eq_ignore_ascii_case("gz") {
+            if ext.eq_ignore_ascii_case("bgz") {
+                let path_as_str = path.to_str().expect("path to be convertible to &str");
+
+                if path_as_str.ends_with("gff.bgz") || path_as_str.ends_with("gff3.bgz") {
+                    return Some(Self::GFF_BGZ);
+                }
+            } else if ext.eq_ignore_ascii_case("gz") {
                 let path_as_str = path.to_str().expect("path to be convertible to &str");
 
                 if path_as_str.ends_with("fasta.gz")
@@ -147,8 +157,8 @@ impl BioinformaticsFileFormat {
                 }
             }
 
-            // (2) Next, if the extension is _not_ "gz", then we can match using
-            // a simple `match` statement.
+            // (2) Next, if the extension is _not_ "bgz" or "gz", then we can match
+            // using a simple `match` statement.
 
             match ext
                 .to_ascii_lowercase()

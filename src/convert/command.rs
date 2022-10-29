@@ -6,10 +6,13 @@ use anyhow::bail;
 use anyhow::Context;
 use clap::arg;
 use clap::Args;
+use tracing::debug;
 
 use crate::convert::bam;
 use crate::convert::cram;
+use crate::convert::gff;
 use crate::convert::sam;
+use crate::utils::args::CompressionStrategy;
 use crate::utils::formats::BioinformaticsFileError;
 use crate::utils::formats::BioinformaticsFileFormat;
 use crate::utils::records::NumberOfRecords;
@@ -34,6 +37,9 @@ pub struct ConvertArgs {
     /// If available, the FASTA reference file used to generate the file.
     #[arg(short, long)]
     reference_fasta: Option<PathBuf>,
+
+    #[arg(short, long)]
+    compression_strategy: Option<CompressionStrategy>,
 }
 
 /// Utility struct to join two bioinformatics file formats together as a tuple. Most
@@ -71,11 +77,29 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
         .ok_or(BioinformaticsFileError::FailedParsing)
         .with_context(|| format!("to input file: {}", args.to.display()))?;
 
+    //======================//
+    // Compression Strategy //
+    //======================//
+
+    let compression_strategy = match args.compression_strategy {
+        Some(cs) => cs,
+        None => CompressionStrategy::Balanced,
+    };
+
+    debug!(
+        "If applicable, using the {} compression strategy.",
+        compression_strategy
+    );
+
     //===================//
     // Number of Records //
     //===================//
 
     let num_records = NumberOfRecords::from(args.num_records);
+
+    //==========================//
+    // Bioinformatics File Pair //
+    //==========================//
 
     let pair = BioinformaticsFilePair(from, to);
 
@@ -110,6 +134,10 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
 
             rt.block_on(cram::to_sam_async(args.from, args.to, fasta, num_records))
         }
+        BioinformaticsFilePair(
+            BioinformaticsFileFormat::GFF,
+            BioinformaticsFileFormat::GFF_BGZ,
+        ) => gff::to_block_gzipped_gff(args.from, args.to, num_records, compression_strategy),
         _ => bail!(
             "Conversion from {} to {} is not currently supported",
             pair.from(),

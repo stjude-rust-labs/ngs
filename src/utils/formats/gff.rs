@@ -10,6 +10,10 @@ use std::path::Path;
 
 use super::BioinformaticsFileFormat;
 
+//==============================//
+// General feature format files //
+//==============================//
+
 /// Attempts to open a GFF file from a given source.
 pub fn open<P>(src: P) -> anyhow::Result<gff::Reader<Box<dyn BufRead>>>
 where
