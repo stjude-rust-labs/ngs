@@ -123,12 +123,15 @@ Contributions, issues and feature requests are welcome! Feel free to check
 
 ## 📝 License
 
+* All code related to the `ngs derive instrument` subcommand is licensed under the [AGPL v2.0][agpl-v2]. This is not due to any strict requirement, but out of deference to some [code][10x-inspiration] that inspired our strategy (and from which patterns were copied), the decision was made to license this code consistently.
+* The rest of this project is licensed as either [Apache 2.0][license-apache] or
+[MIT][license-mit] at your discretion.
+
 Copyright © 2021-Present [St. Jude Children's Research
 Hospital](https://github.com/stjude).
 
-This project is licensed as either [Apache 2.0][license-apache] or
-[MIT][license-mit] at your discretion.
-
+[10x-inspiration]: https://github.com/10XGenomics/supernova/blob/master/tenkit/lib/python/tenkit/illumina_instrument.py
+[agpl-v2]: http://www.affero.org/agpl2.html
 [contributing-md]: https://github.com/stjude-rust-labs/ngs/blob/master/CONTRIBUTING.md
 [license-apache]: https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-APACHE
 [license-mit]: https://github.com/stjude-rust-labs/ngs/blob/master/LICENSE-MIT
