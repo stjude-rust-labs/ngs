@@ -119,6 +119,19 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::SAM) => {
             rt.block_on(bam::to_sam_async(args.from, args.to, max_records))
         }
+        BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::CRAM) => {
+            todo!()
+        }
+        BioinformaticsFilePair(BioinformaticsFileFormat::CRAM, BioinformaticsFileFormat::SAM) => {
+            let fasta = match args.reference_fasta {
+                Some(s) => s,
+                None => bail!(
+                    "--reference-fasta is a required argument when converting to/from a CRAM file"
+                ),
+            };
+
+            rt.block_on(cram::to_sam_async(args.from, args.to, fasta, max_records))
+        }
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::CRAM) => {
             todo!()
         }
@@ -137,19 +150,6 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
                 max_records,
                 compression_strategy,
             ))
-        }
-        BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::CRAM) => {
-            todo!()
-        }
-        BioinformaticsFilePair(BioinformaticsFileFormat::CRAM, BioinformaticsFileFormat::SAM) => {
-            let fasta = match args.reference_fasta {
-                Some(s) => s,
-                None => bail!(
-                    "--reference-fasta is a required argument when converting to/from a CRAM file"
-                ),
-            };
-
-            rt.block_on(cram::to_sam_async(args.from, args.to, fasta, max_records))
         }
         BioinformaticsFilePair(
             BioinformaticsFileFormat::GFF,
