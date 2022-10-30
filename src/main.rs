@@ -23,11 +23,11 @@ struct Cli {
     pub subcommand: Subcommands,
 
     /// Only errors are printed to the stderr stream.
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     pub quiet: bool,
 
     /// All available information, including debug information, is printed to stderr.
-    #[arg(short, long)]
+    #[arg(short, long, global = true)]
     pub verbose: bool,
 }
 
