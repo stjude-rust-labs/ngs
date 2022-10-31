@@ -38,8 +38,8 @@ pub struct ConvertArgs {
     #[arg(short, long)]
     reference_fasta: Option<PathBuf>,
 
-    #[arg(short, long)]
-    compression_strategy: Option<CompressionStrategy>,
+    #[arg(short, long, default_value_t = CompressionStrategy::Balanced)]
+    compression_strategy: CompressionStrategy,
 }
 
 /// Utility struct to join two bioinformatics file formats together as a tuple. Most
@@ -77,18 +77,9 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
         .ok_or(BioinformaticsFileError::FailedParsing)
         .with_context(|| format!("to input file: {}", args.to.display()))?;
 
-    //======================//
-    // Compression Strategy //
-    //======================//
-
-    let compression_strategy = match args.compression_strategy {
-        Some(cs) => cs,
-        None => CompressionStrategy::Balanced,
-    };
-
     debug!(
         "If applicable, using the {} compression strategy.",
-        compression_strategy
+        args.compression_strategy
     );
 
     //===================//
@@ -114,7 +105,7 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
                 args.from,
                 args.to,
                 max_records,
-                compression_strategy,
+                args.compression_strategy,
             )),
         BioinformaticsFilePair(BioinformaticsFileFormat::BAM, BioinformaticsFileFormat::SAM) => {
             rt.block_on(bam::to_sam_async(args.from, args.to, max_records))
@@ -148,13 +139,13 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
                 args.to,
                 fasta,
                 max_records,
-                compression_strategy,
+                args.compression_strategy,
             ))
         }
         BioinformaticsFilePair(
             BioinformaticsFileFormat::GFF,
             BioinformaticsFileFormat::GFF_BGZ,
-        ) => gff::to_block_gzipped_gff(args.from, args.to, max_records, compression_strategy),
+        ) => gff::to_block_gzipped_gff(args.from, args.to, max_records, args.compression_strategy),
         _ => bail!(
             "Conversion from {} to {} is not currently supported",
             pair.from(),
