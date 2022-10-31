@@ -65,6 +65,9 @@ pub fn view(args: ViewArgs) -> anyhow::Result<()> {
                 bail!("Reference FASTA is required to view a CRAM file.")
             }
         }
+        Some(BioinformaticsFileFormat::GFF) | Some(BioinformaticsFileFormat::GFF_GZ) => {
+            super::gff::view(src)
+        }
         Some(format) => {
             bail!(
                 "{} files are not supported by this command. This may be \

@@ -11,7 +11,7 @@ use std::path::Path;
 use super::BioinformaticsFileFormat;
 
 //==============================//
-// General feature format files //
+// General Feature Format Files //
 //==============================//
 
 /// Attempts to open a GFF file from a given source.
