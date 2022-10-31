@@ -15,10 +15,10 @@ use crate::utils::formats::BioinformaticsFileFormat;
 #[derive(Args)]
 pub struct ViewArgs {
     /// Path to the file to view.
-    #[arg(value_name = "BAM/CRAM")]
+    #[arg(value_name = "FILE")]
     src: PathBuf,
 
-    /// If available, the query location for this view.
+    /// If available, the query region for this view.
     query: Option<String>,
 
     /// If available, the FASTA reference file used to generate the file.
@@ -56,6 +56,7 @@ pub fn view(args: ViewArgs) -> anyhow::Result<()> {
     let mode = args.mode;
 
     match BioinformaticsFileFormat::try_detect(&src) {
+        Some(BioinformaticsFileFormat::SAM) => super::sam::view(src, query, mode),
         Some(BioinformaticsFileFormat::BAM) => super::bam::view(src, query, mode),
         Some(BioinformaticsFileFormat::CRAM) => {
             if let Some(reference_fasta) = reference_fasta {
