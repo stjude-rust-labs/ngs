@@ -95,7 +95,9 @@ where
         }
         IndexCheck::HeaderOnly => {
             debug!("checking the index's header");
-            let mut reader = File::open(&index_path).map(bai::Reader::new)?;
+            let mut reader = File::open(&index_path)
+                .map(bai::Reader::new)
+                .with_context(|| "BAM index")?;
             reader.read_header()?;
         }
         IndexCheck::None => {}

@@ -1,40 +1,39 @@
 //! CRAM viewing
 
-use std::fs::File;
-use std::io;
-use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::bail;
 use anyhow::Context;
-use noodles::cram;
-use noodles::cram::crai;
+use futures::TryStreamExt;
 use noodles::fasta;
 use noodles::fasta::repository::adapters::IndexedReader;
 use noodles::sam;
-use noodles::sam::AlignmentWriter;
-use tracing::debug;
+use tokio::io;
+use tokio::io::AsyncWriteExt;
 
-use crate::utils::formats::sam::parse_header;
+use crate::utils::formats::cram::ParsedAsyncCRAMFile;
+use crate::utils::formats::utils::IndexCheck;
 use crate::utils::pathbuf::AppendExtension;
 use crate::view::command::Mode;
 
-/// Main method for BAM viewing.
-pub fn view(
+/// Main method for CRAM viewing in an asyncronous fashion.
+pub async fn view(
     src: PathBuf,
     query: Option<String>,
     reference_fasta: PathBuf,
     mode: Mode,
 ) -> anyhow::Result<()> {
-    // (1) Reads the file from disk.
-    debug!("reading CRAM file from disk");
-    let mut reader = File::open(&src)
-        .map(cram::Reader::new)
-        .with_context(|| "opening src file")?;
+    // (1) Opens and parses the BAM file.
+    let ParsedAsyncCRAMFile {
+        mut reader,
+        header,
+        index_path,
+        ..
+    } = crate::utils::formats::cram::open_and_parse_async(&src, IndexCheck::Full).await?;
 
-    // (2) Determine the handle with which to write the output.
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
+    // (2) Determine the handle with which to write the output. TODO: for now, we just
+    // default to stdout, but in the future we will support writing to another path.
+    let mut handle = io::stdout();
 
     // (3) Build the FASTA repository.
     let repository = fasta::indexed_reader::Builder::default()
@@ -55,17 +54,12 @@ pub fn view(
         )
     }
 
-    // (4) Read the file's definition.
-    reader.read_file_definition()?;
-
-    // (5) If the user specified to output the header, output the raw header (before
-    // applying any corrections).
-    let ht = reader
-        .read_file_header()
-        .with_context(|| "reading CRAM header")?;
-
+    // (4) If the user specified to output the header, output the header.
     if mode == Mode::Full || mode == Mode::HeaderOnly {
-        write!(handle, "{}", ht).with_context(|| "writing header to stream")?;
+        handle
+            .write_all(header.raw.to_string().as_bytes())
+            .await
+            .with_context(|| "writing header to stream")?;
     }
 
     // (6) If the mode is header-only, nothing left to do, so return.
@@ -73,38 +67,37 @@ pub fn view(
         return Ok(());
     }
 
-    // (7) Parse the header and apply corrections.
-    let header = parse_header(ht).with_context(|| "parsing header")?;
-
     // (8) Writes the records to the output stream.
-    let mut writer = sam::Writer::new(handle);
+    let mut writer = sam::AsyncWriter::new(handle);
 
-    if let Some(query) = query {
-        // (a) If a query is specified, print just the records that fall within the query.
-        let index =
-            crai::read(src.with_extension("cram.crai")).with_context(|| "reading CRAM index")?;
-        let region = query.parse().with_context(|| "parsing query")?;
+    // if let Some(query) = query {
+    //     // (a) If a query is specified, print just the records that fall within the query.
+    //     let index = crai::read(index_path).with_context(|| "reading CRAM index")?;
+    //     let region = query.parse().with_context(|| "parsing query")?;
 
-        let records = reader
-            .query(&repository, &header, &index, &region)
-            .with_context(|| "querying CRAM file")?;
+    //     let records = reader
+    //         .query(&repository, &header, &index, &region)
+    //         .with_context(|| "querying CRAM file")?;
 
-        for result in records {
-            let record = result
-                .and_then(|record| record.try_into_alignment_record(&header))
-                .with_context(|| "reading record")?;
-            writer.write_alignment_record(&header, &record)?;
-        }
-    } else {
-        // (b) Else, print all of the records in the file.
-        for result in reader.records(&repository, &header) {
-            let record = result
-                .and_then(|record| record.try_into_alignment_record(&header))
-                .with_context(|| "reading record")?;
-            writer.write_alignment_record(&header, &record)?;
-        }
+    //     for result in records {
+    //         let record = result
+    //             .and_then(|record| record.try_into_alignment_record(&header))
+    //             .with_context(|| "reading record")?;
+    //         writer
+    //             .write_alignment_record(&header.parsed, &record)
+    //             .await?;
+    //     }
+    // } else {
+    // (b) Else, print all of the records in the file.
+
+    // TODO: use `read_record` when this issue is resolved:
+    // https://github.com/zaeleus/noodles/issues/126.
+    let mut records = reader.records(&repository, &header.parsed);
+
+    while let Some(record) = records.try_next().await? {
+        let record = record.try_into_alignment_record(&header.parsed)?;
+        writer.write_record(&header.parsed, &record).await?;
     }
 
-    writer.finish(&header)?;
     Ok(())
 }

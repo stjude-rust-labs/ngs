@@ -50,17 +50,43 @@ pub enum Mode {
 
 /// Main method for the `ngs view` subcommand.
 pub fn view(args: ViewArgs) -> anyhow::Result<()> {
+    //=================//
+    // Source Filepath //
+    //=================//
+
     let src = args.src;
+
+    //==============//
+    // Query Region //
+    //==============//
+
     let query = args.query;
+
+    //=================//
+    // Reference FASTA //
+    //=================//
+
     let reference_fasta = args.reference_fasta;
+
+    //===================//
+    // File Reading Mode //
+    //===================//
+
     let mode = args.mode;
 
+    // (1) Build tokio runtime
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
+    // (2) Run the view command based on the specified bioinformatics file.
     match BioinformaticsFileFormat::try_detect(&src) {
-        Some(BioinformaticsFileFormat::SAM) => super::sam::view(src, query, mode),
-        Some(BioinformaticsFileFormat::BAM) => super::bam::view(src, query, mode),
+        Some(BioinformaticsFileFormat::SAM) => rt.block_on(super::sam::view(src, query, mode)),
+        Some(BioinformaticsFileFormat::BAM) => rt.block_on(super::bam::view(src, query, mode)),
         Some(BioinformaticsFileFormat::CRAM) => {
             if let Some(reference_fasta) = reference_fasta {
-                super::cram::view(src, query, reference_fasta, mode)
+                rt.block_on(super::cram::view(src, query, reference_fasta, mode))
             } else {
                 bail!("Reference FASTA is required to view a CRAM file.")
             }
