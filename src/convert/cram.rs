@@ -35,12 +35,12 @@ pub async fn to_sam_async(
             the FASTA used to generate the file."
         })?;
 
-    // (2) Builds the FASTA repository.
+    // (2) Builds the FASTA repository and associated index.
     let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(fasta)
         .map(fasta::repository::adapters::IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "FASTA repository")?;
+        .with_context(|| "FASTA repository and associated index")?;
 
     // (3) Open the SAM file writer.
     let handle = File::create(to).await?;
@@ -87,12 +87,12 @@ pub async fn to_bam_async(
             the FASTA used to generate the file."
         })?;
 
-    // (2) Builds the FASTA repository.
+    // (2) Builds the FASTA repository and associated index.
     let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(fasta)
         .map(fasta::repository::adapters::IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "FASTA repository")?;
+        .with_context(|| "FASTA repository and associated index")?;
 
     // (3) Determine the compression level.
     let compression_level: CompressionLevel = compression_strategy.into();

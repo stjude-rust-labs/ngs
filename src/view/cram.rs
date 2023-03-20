@@ -36,12 +36,12 @@ pub fn view(
     let stdout = io::stdout();
     let mut handle = stdout.lock();
 
-    // (3) Build the FASTA repository.
+    // (3) Build the FASTA repository and associated index.
     let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(&reference_fasta)
         .map(IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "building FASTA repository")?;
+        .with_context(|| "building FASTA repository and associated index")?;
 
     // TODO: remove in a future version when noodles gives an error message that
     // suggests you should index your FASTA file (as of the time of writing, it
