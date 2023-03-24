@@ -55,14 +55,21 @@ pub fn view(args: ViewArgs) -> anyhow::Result<()> {
     let reference_fasta = args.reference_fasta;
     let mode = args.mode;
 
+    let rt = tokio::runtime::Builder::new_current_thread()
+        .enable_all()
+        .build()
+        .unwrap();
+
     match BioinformaticsFileFormat::try_detect(&src) {
-        Some(BioinformaticsFileFormat::SAM) => super::sam::view(src, query, mode),
-        Some(BioinformaticsFileFormat::BAM) => super::bam::view(src, query, mode),
+        Some(BioinformaticsFileFormat::SAM) => rt.block_on(super::sam::view(src, query, mode)),
+        Some(BioinformaticsFileFormat::BAM) => rt.block_on(super::bam::view(src, query, mode)),
         Some(BioinformaticsFileFormat::CRAM) => {
             if let Some(reference_fasta) = reference_fasta {
-                super::cram::view(src, query, reference_fasta, mode)
+                rt.block_on(super::cram::view(src, query, reference_fasta, mode))
             } else {
-                bail!("Reference FASTA is required to view a CRAM file.")
+                bail!(
+                    "--reference-fasta is a required argument when converting to/from a CRAM file"
+                )
             }
         }
         Some(BioinformaticsFileFormat::GFF) | Some(BioinformaticsFileFormat::GFF_GZ) => {
