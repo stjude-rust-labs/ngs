@@ -111,7 +111,13 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
             rt.block_on(bam::to_sam_async(args.from, args.to, max_records))
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::SAM, BioinformaticsFileFormat::CRAM) => {
-            todo!()
+            let fasta = match args.reference_fasta {
+                Some(s) => s,
+                None => bail!(
+                    "--reference-fasta is a required argument when converting to/from a CRAM file"
+                ),
+            };
+            rt.block_on(sam::to_cram_async(args.from, args.to, fasta, max_records))
         }
         BioinformaticsFilePair(BioinformaticsFileFormat::CRAM, BioinformaticsFileFormat::SAM) => {
             let fasta = match args.reference_fasta {
