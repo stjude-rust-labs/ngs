@@ -209,11 +209,7 @@ impl SequenceBasedQualityControlFacet for EditsFacet {
         Ok(())
     }
 
-    fn process<'b>(
-        &mut self,
-        _: &'b Map<ReferenceSequence>,
-        record: &Record,
-    ) -> anyhow::Result<()> {
+    fn process<'b>(&mut self, _: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()> {
         // (1) First, if the read is unmapped, we need to ignore it for this
         // analysis because there is no reference to compare it to. Further, we don't
         // care about duplicate reads for this analysis (and they will only serve to

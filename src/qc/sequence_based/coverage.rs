@@ -140,11 +140,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         Ok(())
     }
 
-    fn process<'b>(
-        &mut self,
-        seq: &'b Map<ReferenceSequence>,
-        record: &Record,
-    ) -> anyhow::Result<()> {
+    fn process(&mut self, seq: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()> {
         let h = self
             .coverage_per_position
             .entry(seq.name().to_string())

@@ -57,10 +57,10 @@ pub fn get_qc_facets<'a>(
 
     // Default facets that are loaded within the qc subcommand.
     let mut record_based_facets: Vec<Box<dyn RecordBasedQualityControlFacet>> = vec![
-        Box::new(GeneralMetricsFacet::default()),
+        Box::<GeneralMetricsFacet>::default(),
         Box::new(TemplateLengthFacet::with_capacity(1024)),
-        Box::new(GCContentFacet::default()),
-        Box::new(QualityScoreFacet::default()),
+        Box::<GCContentFacet>::default(),
+        Box::<QualityScoreFacet>::default(),
     ];
 
     // Optionally load the Genomic Features facet if the GFF file is provided.
@@ -203,11 +203,7 @@ pub trait SequenceBasedQualityControlFacet {
     fn setup(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()>;
 
     /// Processes a sequence for a quality control facet.
-    fn process<'b>(
-        &mut self,
-        seq: &'b Map<ReferenceSequence>,
-        record: &Record,
-    ) -> anyhow::Result<()>;
+    fn process(&mut self, seq: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()>;
 
     /// Tears down any machinery that was built up for this sequence within the
     /// quality control facet.

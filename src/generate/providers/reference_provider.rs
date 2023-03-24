@@ -327,7 +327,7 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
 
             inner_distance_offset = i64::clamp(inner_distance_offset, lower_bound, upper_bound);
 
-            if let Ok(start_pos) = Position::try_from(start as usize) {
+            if let Ok(start_pos) = Position::try_from(start) {
                 if let Ok(end_as_isize) = i64::try_from(start + (self.read_length * 2)) {
                     if let Ok(end) = u64::try_from(end_as_isize + inner_distance_offset) {
                         if let Ok(end_pos) = Position::try_from(end as usize) {
@@ -363,44 +363,32 @@ impl SequenceProvider for ReferenceGenomeSequenceProvider {
         );
 
         let mut fwd_vec = forward_sequence.unwrap();
-        let fwd = fwd_vec
-            .get(0..self.read_length as usize)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Forward read fragment is too short for the specified read \
+        let fwd = fwd_vec.get(0..self.read_length).unwrap_or_else(|| {
+            panic!(
+                "Forward read fragment is too short for the specified read \
              length. This usually means you need to increase the specified \
              inner distance or reduce the standard deviation for genome {} \
              such that fragments this short cannot be generated.",
-                    self.filename
-                )
-            });
+                self.filename
+            )
+        });
         let mut rev_vec = reverse_sequence.unwrap();
-        let rev = rev_vec
-            .get(0..self.read_length as usize)
-            .unwrap_or_else(|| {
-                panic!(
-                    "Reverse read fragment is too short for the specified read \
+        let rev = rev_vec.get(0..self.read_length).unwrap_or_else(|| {
+            panic!(
+                "Reverse read fragment is too short for the specified read \
              length. This usually means you need to increase the specified \
              inner distance or reduce the standard deviation for genome {} \
              such that fragments this short cannot be generated.",
-                    self.filename
-                )
-            });
+                self.filename
+            )
+        });
 
         fwd_vec = simulate_errors(fwd, self.error_frequency, &mut rng);
         rev_vec = simulate_errors(rev, self.error_frequency, &mut rng);
 
         PairedRead(
-            fastq::Record::new(
-                read_name_one,
-                fwd_vec,
-                "J".repeat(self.read_length as usize),
-            ),
-            fastq::Record::new(
-                read_name_two,
-                rev_vec,
-                "J".repeat(self.read_length as usize),
-            ),
+            fastq::Record::new(read_name_one, fwd_vec, "J".repeat(self.read_length)),
+            fastq::Record::new(read_name_two, rev_vec, "J".repeat(self.read_length)),
         )
     }
 }
