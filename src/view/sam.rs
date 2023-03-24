@@ -1,19 +1,19 @@
 //! SAM viewing
 
-use std::io;
-use std::io::Write;
 use std::path::PathBuf;
 
 use anyhow::bail;
 use anyhow::Context;
+use futures::TryStreamExt;
 use noodles::sam;
-use noodles::sam::AlignmentWriter;
+use tokio::io;
+use tokio::io::AsyncWriteExt;
 
-use crate::utils::formats::sam::ParsedSAMFile;
+use crate::utils::formats::sam::ParsedAsyncSAMFile;
 use crate::view::command::Mode;
 
 /// Main method for SAM viewing.
-pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<()> {
+pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<()> {
     // (1) Check if the user provided a query. If they did, we do not support any sort
     //     tabix-like indexing and we would highly recommend the user take advantage of
     //     BAM/CRAM files. If anyone stumbles across this comment and sees a reason we
@@ -27,18 +27,21 @@ pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<(
     }
 
     // (2) Opens and parses the SAM file.
-    let ParsedSAMFile {
+    let ParsedAsyncSAMFile {
         mut reader, header, ..
-    } = crate::utils::formats::sam::open_and_parse(&src)?;
+    } = crate::utils::formats::sam::open_and_parse_async(&src).await?;
 
     // (3) Determine the handle with which to write the output. TODO: for now, we just
-    // default to stdout, but in the future we will support writing to another path.
-    let stdout = io::stdout();
-    let mut handle = stdout.lock();
+    // default to stdout, but in the future we will support writing to another
+    // path.
+    let mut handle = io::stdout();
 
     // (4) If the user specified to output the header, output the header.
     if mode == Mode::Full || mode == Mode::HeaderOnly {
-        write!(handle, "{}", header.raw).with_context(|| "writing header to stream")?;
+        handle
+            .write_all(header.raw.to_string().as_bytes())
+            .await
+            .with_context(|| "writing header to stream")?;
     }
 
     // (5) If the mode is header only, nothing left to do, so return.
@@ -47,13 +50,13 @@ pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<(
     }
 
     // (6) Writes the records to the output stream.
-    let mut writer = sam::Writer::new(handle);
-
-    for result in reader.records(&header.parsed) {
-        let record = result?;
-        writer.write_alignment_record(&header.parsed, &record)?;
+    let mut writer = sam::AsyncWriter::new(handle);
+    let mut records = reader.records(&header.parsed);
+    while let Some(record) = records.try_next().await? {
+        writer
+            .write_alignment_record(&header.parsed, &record)
+            .await?;
     }
 
-    writer.finish(&header.parsed)?;
     Ok(())
 }
