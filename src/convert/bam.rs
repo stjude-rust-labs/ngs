@@ -104,7 +104,7 @@ pub async fn to_cram_async(
     let mut counter = RecordCounter::new();
     let mut record = Record::default();
 
-    // (6) Write each record in the BAM file to the SAM file.
+    // (6) Write each record in the BAM file to the CRAM file.
     info!("Writing records to CRAM file.");
     while reader.read_record(&mut record).await? != 0 {
         let cram_record = cram::Record::try_from_alignment_record(&header.parsed, &record)?;
