@@ -1,12 +1,12 @@
 [package]
 authors = ["Clay McLeod <clay.l.mcleod@gmail.com>"]
 edition = "2021"
-license = "Apache 2.0 OR MIT"
+license = "Apache-2.0/MIT"
 name = "ngs"
 rust-version = "1.64.0"
 publish = true
 description = "Command line tool for processing next-generation sequencing data."
-version = "0.3.0"
+version = "0.4.0"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
