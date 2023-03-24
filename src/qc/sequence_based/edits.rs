@@ -13,6 +13,7 @@ use noodles::sam::header::record::value::{map::ReferenceSequence, Map};
 use noodles::sam::record::cigar::op::Kind;
 use noodles::sam::record::sequence::base::TryFromCharError;
 use noodles::sam::record::sequence::Base;
+use noodles::sam::record::ReferenceSequenceName;
 use serde::Deserialize;
 use serde::Serialize;
 
@@ -173,8 +174,12 @@ impl SequenceBasedQualityControlFacet for EditsFacet {
         true
     }
 
-    fn setup(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()> {
-        let seq_name = sequence.name().as_str();
+    fn setup(
+        &mut self,
+        name: &ReferenceSequenceName,
+        sequence: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()> {
+        let seq_name = name.to_string();
 
         // (1) Load the reference sequence we're currently evaluating into memory.
         let mut fasta =
@@ -209,7 +214,12 @@ impl SequenceBasedQualityControlFacet for EditsFacet {
         Ok(())
     }
 
-    fn process<'b>(&mut self, _: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()> {
+    fn process<'b>(
+        &mut self,
+        _: &ReferenceSequenceName,
+        _: &Map<ReferenceSequence>,
+        record: &Record,
+    ) -> anyhow::Result<()> {
         // (1) First, if the read is unmapped, we need to ignore it for this
         // analysis because there is no reference to compare it to. Further, we don't
         // care about duplicate reads for this analysis (and they will only serve to
@@ -292,8 +302,12 @@ impl SequenceBasedQualityControlFacet for EditsFacet {
         Ok(())
     }
 
-    fn teardown(&mut self, seq: &Map<ReferenceSequence>) -> anyhow::Result<()> {
-        let seq_name = seq.name().to_string();
+    fn teardown(
+        &mut self,
+        name: &ReferenceSequenceName,
+        _: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()> {
+        let seq_name = name.to_string();
 
         // (1) Resets the current sequence to None so that there can be no
         // confusion as to whether the sequence we were looking at is still

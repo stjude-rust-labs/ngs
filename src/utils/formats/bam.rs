@@ -13,6 +13,7 @@ use noodles::bam::bai;
 use noodles::bgzf;
 use noodles::sam::header::record::value::map::Map;
 use noodles::sam::header::record::value::map::ReferenceSequence;
+use noodles::sam::record::ReferenceSequenceName;
 use tracing::debug;
 
 use crate::utils::formats::utils::IndexCheck;
@@ -64,7 +65,7 @@ pub struct ParsedBAMFile {
     pub header: RawAndParsedHeaders,
 
     /// The reference sequences read from the BAM file.
-    pub reference_sequences: IndexMap<String, Map<ReferenceSequence>>,
+    pub reference_sequences: IndexMap<ReferenceSequenceName, Map<ReferenceSequence>>,
 
     /// The path to the associated BAM index file.
     pub index_path: PathBuf,
@@ -167,7 +168,7 @@ pub struct ParsedAsyncBAMFile {
     pub header: RawAndParsedHeaders,
 
     /// The reference sequences read from the BAM file.
-    pub reference_sequences: IndexMap<String, Map<ReferenceSequence>>,
+    pub reference_sequences: IndexMap<ReferenceSequenceName, Map<ReferenceSequence>>,
 
     /// The path to the associated BAM index file.
     pub index_path: PathBuf,

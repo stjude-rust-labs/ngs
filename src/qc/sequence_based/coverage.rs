@@ -7,6 +7,7 @@ use std::rc::Rc;
 use noodles::sam::alignment::Record;
 use noodles::sam::header::record::value::map::Map;
 use noodles::sam::header::record::value::map::ReferenceSequence;
+use noodles::sam::record::ReferenceSequenceName;
 use serde::Deserialize;
 use serde::Serialize;
 use tracing::error;
@@ -136,15 +137,24 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
             .any(|x| x == name)
     }
 
-    fn setup(&mut self, _: &Map<ReferenceSequence>) -> anyhow::Result<()> {
+    fn setup(
+        &mut self,
+        _: &ReferenceSequenceName,
+        _: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()> {
         Ok(())
     }
 
-    fn process(&mut self, seq: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()> {
+    fn process(
+        &mut self,
+        name: &ReferenceSequenceName,
+        sequence: &Map<ReferenceSequence>,
+        record: &Record,
+    ) -> anyhow::Result<()> {
         let h = self
             .coverage_per_position
-            .entry(seq.name().to_string())
-            .or_insert_with(|| Histogram::zero_based_with_capacity(usize::from(seq.length())));
+            .entry(name.to_string())
+            .or_insert_with(|| Histogram::zero_based_with_capacity(usize::from(sequence.length())));
 
         let record_start = usize::from(record.alignment_start().unwrap());
         let record_end = usize::from(record.alignment_end().unwrap());
@@ -169,8 +179,12 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         Ok(())
     }
 
-    fn teardown(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()> {
-        let positions = match self.coverage_per_position.get(sequence.name().as_str()) {
+    fn teardown(
+        &mut self,
+        name: &ReferenceSequenceName,
+        _: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()> {
+        let positions = match self.coverage_per_position.get(&name.to_string()) {
             Some(s) => s,
             // In the None case, no records were inserted for this sequence.
             // This may be because the file is a mini-SAM/BAM/CRAM. If that's
@@ -186,7 +200,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let coverage_per_bin_vec = self
             .metrics
             .mean_coverage_per_bin
-            .entry(sequence.name().to_string())
+            .entry(name.to_string())
             .or_default();
 
         for i in positions.range_start()..=positions.range_stop() {
@@ -220,7 +234,7 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         let median_over_mean = median / mean;
 
         // Removed to save memory.
-        self.coverage_per_position.remove(sequence.name().as_str());
+        self.coverage_per_position.remove(&name.to_string());
 
         // Adds the current sequence's coverage histogram to our global coverage
         // histogram.
@@ -232,19 +246,17 @@ impl SequenceBasedQualityControlFacet for CoverageFacet {
         }
 
         // Saved for reporting.
-        self.metrics
-            .mean_coverage
-            .insert(sequence.name().to_string(), mean);
+        self.metrics.mean_coverage.insert(name.to_string(), mean);
         self.metrics
             .median_coverage
-            .insert(sequence.name().to_string(), median);
+            .insert(name.to_string(), median);
         self.metrics
             .median_over_mean_coverage
-            .insert(sequence.name().to_string(), median_over_mean);
+            .insert(name.to_string(), median_over_mean);
         self.metrics
             .ignored
             .pileup_too_large_positions
-            .insert(sequence.name().to_string(), ignored);
+            .insert(name.to_string(), ignored);
 
         Ok(())
     }

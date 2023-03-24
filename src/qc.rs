@@ -7,6 +7,7 @@ use itertools::Itertools;
 use noodles::sam;
 use noodles::sam::header::record::value::map::ReferenceSequence;
 use noodles::sam::header::record::value::Map;
+use noodles::sam::record::ReferenceSequenceName;
 use noodles::sam::Header;
 use sam::alignment::Record;
 
@@ -200,14 +201,27 @@ pub trait SequenceBasedQualityControlFacet {
     fn supports_sequence_name(&self, name: &str) -> bool;
 
     /// Sets up a quality control facet for a given sequence.
-    fn setup(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()>;
+    fn setup(
+        &mut self,
+        name: &ReferenceSequenceName,
+        sequence: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()>;
 
     /// Processes a sequence for a quality control facet.
-    fn process(&mut self, seq: &Map<ReferenceSequence>, record: &Record) -> anyhow::Result<()>;
+    fn process(
+        &mut self,
+        name: &ReferenceSequenceName,
+        sequence: &Map<ReferenceSequence>,
+        record: &Record,
+    ) -> anyhow::Result<()>;
 
     /// Tears down any machinery that was built up for this sequence within the
     /// quality control facet.
-    fn teardown(&mut self, sequence: &Map<ReferenceSequence>) -> anyhow::Result<()>;
+    fn teardown(
+        &mut self,
+        name: &ReferenceSequenceName,
+        sequence: &Map<ReferenceSequence>,
+    ) -> anyhow::Result<()>;
 
     /// Adds the results of this quality control facet to the global
     /// [`results::Results`] object for writing to a file.

@@ -1,6 +1,7 @@
 //! Conversions from a BAM file to other next-generation sequencing file formats.
 
 use std::io;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -41,7 +42,7 @@ pub async fn to_sam_async(
     let mut record = Record::default();
 
     // (4) Write each record in the BAM file to the SAM file.
-    while reader.read_record(&mut record).await? != 0 {
+    while reader.read_record(&header.parsed, &mut record).await? != 0 {
         writer
             .write_alignment_record(&header.parsed, &record)
             .await?;
@@ -83,8 +84,8 @@ pub async fn to_cram_async(
         let name = name_as_string.parse()?;
         let length = record.sequence().len();
 
-        let reference_sequence = Map::<ReferenceSequence>::new(name, length)?;
-        reference_sequences.insert(name_as_string, reference_sequence);
+        let reference_sequence = Map::<ReferenceSequence>::new(NonZeroUsize::try_from(length)?);
+        reference_sequences.insert(name, reference_sequence);
     }
 
     let repository = fasta::Repository::new(records);
@@ -106,7 +107,7 @@ pub async fn to_cram_async(
 
     // (6) Write each record in the BAM file to the CRAM file.
     info!("Writing records to CRAM file.");
-    while reader.read_record(&mut record).await? != 0 {
+    while reader.read_record(&header.parsed, &mut record).await? != 0 {
         let cram_record = cram::Record::try_from_alignment_record(&header.parsed, &record)?;
         writer
             .write_record(&header.parsed, cram_record)

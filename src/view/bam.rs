@@ -47,7 +47,7 @@ pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<(
         let region = query.parse().with_context(|| "parsing query")?;
 
         let records = reader
-            .query(header.parsed.reference_sequences(), &index, &region)
+            .query(&header.parsed, &index, &region)
             .with_context(|| "querying BAM file")?;
 
         for result in records {
@@ -56,7 +56,7 @@ pub fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Result<(
         }
     } else {
         // (b) Else, print all of the records in the file.
-        for result in reader.records() {
+        for result in reader.records(&header.parsed) {
             let record = result?;
             writer.write_alignment_record(&header.parsed, &record)?;
         }

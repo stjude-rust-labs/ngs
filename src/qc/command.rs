@@ -261,7 +261,7 @@ fn app(
         if !supported_sequences
             .iter()
             .map(|s| s.name())
-            .any(|x| x == sequence)
+            .any(|x| x == *sequence)
         {
             bail!(
                 "Sequence \"{}\" not found in specified reference genome. \
@@ -302,7 +302,7 @@ fn app(
         info!("Starting first pass for QC stats.");
         let mut counter = RecordCounter::new();
 
-        for result in reader.records() {
+        for result in reader.records(&header.parsed) {
             let record = result?;
 
             for facet in &mut record_facets {
@@ -361,14 +361,14 @@ fn app(
             debug!("    [*] Setting up sequence.");
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
-                    facet.setup(seq)?;
+                    facet.setup(name, seq)?;
                 }
             }
 
             let query = reader.query(
-                header.parsed.reference_sequences(),
+                &header.parsed,
                 &index,
-                &Region::new(name, start..=end),
+                &Region::new(name.to_string(), start..=end),
             )?;
 
             debug!("    [*] Processing records from sequence.");
@@ -376,7 +376,7 @@ fn app(
                 let record = result?;
                 for facet in &mut sequence_facets {
                     if facet.supports_sequence_name(name) {
-                        facet.process(seq, &record)?;
+                        facet.process(name, seq, &record)?;
                     }
                 }
 
@@ -390,7 +390,7 @@ fn app(
             debug!("    [*] Tearing down sequence.");
             for facet in &mut sequence_facets {
                 if facet.supports_sequence_name(name) {
-                    facet.teardown(seq)?;
+                    facet.teardown(name, seq)?;
                 }
             }
         }

@@ -72,7 +72,7 @@ pub fn index(src: PathBuf) -> anyhow::Result<()> {
     let mut counter = RecordCounter::new();
 
     loop {
-        match reader.read_record(&mut record) {
+        match reader.read_record(&header.parsed, &mut record) {
             Ok(0) => break,
             Ok(_) => {}
             Err(e) => bail!("failed to read record: {}", e),

@@ -7,6 +7,7 @@ use std::rc::Rc;
 use anyhow::bail;
 use anyhow::Context;
 use noodles::sam;
+use noodles::sam::record::ReferenceSequenceName;
 use rust_lapper::Interval;
 use rust_lapper::Lapper;
 use sam::alignment::Record;
@@ -80,10 +81,11 @@ impl FeatureNames {
 /// Main struct for the Features quality control facet.
 pub struct GenomicFeaturesFacet<'a> {
     /// Store of the cached exonic translation regions.
-    pub exonic_translation_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
+    pub exonic_translation_regions:
+        HashMap<ReferenceSequenceName, Lapper<usize, FeatureNameStrand>>,
 
     /// Store of the cached gene regions.
-    pub gene_regions: HashMap<String, Lapper<usize, FeatureNameStrand>>,
+    pub gene_regions: HashMap<ReferenceSequenceName, Lapper<usize, FeatureNameStrand>>,
 
     /// Feature names that correspond to the respective features in the gene
     /// model. These are passed in on the command line.
@@ -142,7 +144,7 @@ impl<'a> RecordBasedQualityControlFacet for GenomicFeaturesFacet<'a> {
             .header
             .reference_sequences()
             .get_index(id)
-            .map(|(_, rs)| Some(rs.name().as_str()))
+            .map(|(name, _)| Some(name))
         {
             Some(Some(name)) => name,
             _ => {
@@ -156,7 +158,7 @@ impl<'a> RecordBasedQualityControlFacet for GenomicFeaturesFacet<'a> {
         if !self
             .primary_chromosome_names
             .iter()
-            .any(|s: &String| s == seq_name)
+            .any(|s: &String| s.parse::<ReferenceSequenceName>().unwrap() == *seq_name)
         {
             self.metrics.records.ignored_nonprimary_chromosome += 1;
             return Ok(());
@@ -333,9 +335,9 @@ impl<'a> GenomicFeaturesFacet<'a> {
                 utr_features.len()
             );
 
-            exonic_translations.insert(parent_seq_name.to_string(), Lapper::new(utr_features));
+            exonic_translations.insert(parent_seq_name.parse().unwrap(), Lapper::new(utr_features));
             gene_regions.insert(
-                parent_seq_name.to_string(),
+                parent_seq_name.parse().unwrap(),
                 Lapper::new(gene_region_features),
             );
         }

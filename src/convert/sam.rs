@@ -1,6 +1,7 @@
 //! Conversions from a SAM file to other next-generation sequencing file formats.
 
 use std::io;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -101,8 +102,8 @@ pub async fn to_cram_async(
         let name = name_as_string.parse()?;
         let length = record.sequence().len();
 
-        let reference_sequence = Map::<ReferenceSequence>::new(name, length)?;
-        reference_sequences.insert(name_as_string, reference_sequence);
+        let reference_sequence = Map::<ReferenceSequence>::new(NonZeroUsize::try_from(length)?);
+        reference_sequences.insert(name, reference_sequence);
     }
 
     let repository = fasta::Repository::new(records);
