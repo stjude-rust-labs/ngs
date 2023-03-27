@@ -29,7 +29,9 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
     // (2) Opens and parses the SAM file.
     let ParsedAsyncSAMFile {
         mut reader, header, ..
-    } = crate::utils::formats::sam::open_and_parse_async(&src).await?;
+    } = crate::utils::formats::sam::open_and_parse_async(&src)
+        .await
+        .with_context(|| "reading SAM input file")?;
 
     // (3) Determine the handle with which to write the output. TODO: for now, we just
     // default to stdout, but in the future we will support writing to another
@@ -41,7 +43,7 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
         handle
             .write_all(header.raw.to_string().as_bytes())
             .await
-            .with_context(|| "writing header to stream")?;
+            .with_context(|| "writing SAM header to stream")?;
     }
 
     // (5) If the mode is header only, nothing left to do, so return.
@@ -52,10 +54,15 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
     // (6) Writes the records to the output stream.
     let mut writer = sam::AsyncWriter::new(handle);
     let mut records = reader.records(&header.parsed);
-    while let Some(record) = records.try_next().await? {
+    while let Some(record) = records
+        .try_next()
+        .await
+        .with_context(|| "reading SAM record")?
+    {
         writer
             .write_alignment_record(&header.parsed, &record)
-            .await?;
+            .await
+            .with_context(|| "writing record to stream")?;
     }
 
     Ok(())
