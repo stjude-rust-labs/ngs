@@ -22,7 +22,7 @@ pub fn to_block_gzipped_gff(
     compression_strategy: CompressionStrategy,
 ) -> anyhow::Result<()> {
     // (1) Open the GFF file.
-    let mut reader = formats::gff::open(from).with_context(|| "opening input filestream")?;
+    let mut reader = formats::gff::open(from).with_context(|| "opening GFF input file")?;
 
     // (2) Determine the compression level.
     let compression_level: CompressionLevel = compression_strategy.into();
@@ -35,14 +35,16 @@ pub fn to_block_gzipped_gff(
                 .build_with_writer(f)
         })
         .map(gff::Writer::new)
-        .with_context(|| "opening output filestream")?;
+        .with_context(|| "opening bgzipped GFF output file")?;
 
     // (4) Write the Bgzipped GFF.
     let mut counter = RecordCounter::default();
 
     for result in reader.lines() {
-        let line = result?;
-        writer.write_line(&line)?;
+        let line = result.with_context(|| "reading GFF line")?;
+        writer
+            .write_line(&line)
+            .with_context(|| "writing bgzipped GFF line")?;
 
         if let Record(_) = line {
             counter.inc();

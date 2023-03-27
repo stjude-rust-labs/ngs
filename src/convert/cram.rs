@@ -30,34 +30,43 @@ pub async fn to_sam_async(
         mut reader, header, ..
     } = formats::cram::open_and_parse_async(from, IndexCheck::None)
         .await
-        .with_context(|| {
-            "opening and parsing CRAM file. Check that your reference FASTA matches \
-            the FASTA used to generate the file."
-        })?;
+        .with_context(|| "opening CRAM file")?;
 
     // (2) Builds the FASTA repository and associated index.
     let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(fasta)
         .map(fasta::repository::adapters::IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "FASTA repository and associated index")?;
+        .with_context(|| "opening reference FASTA and associated index")?;
 
     // (3) Open the SAM file writer.
-    let handle = File::create(to).await?;
+    let handle = File::create(to)
+        .await
+        .with_context(|| "opening SAM output file")?;
     let mut writer = sam::AsyncWriter::new(handle);
 
     // (4) Write the header.
-    writer.write_header(&header.parsed).await?;
+    writer
+        .write_header(&header.parsed)
+        .await
+        .with_context(|| "writing SAM header")?;
 
     // (5) Write each record in the CRAM file to the SAM file.
     let mut counter = RecordCounter::new();
     let mut records = reader.records(&repository, &header.parsed);
 
-    while let Some(record) = records.try_next().await? {
-        let record = record.try_into_alignment_record(&header.parsed)?;
+    while let Some(record) = records
+        .try_next()
+        .await
+        .with_context(|| "reading CRAM record")?
+    {
+        let record = record
+            .try_into_alignment_record(&header.parsed)
+            .with_context(|| "parsing CRAM record")?;
         writer
             .write_alignment_record(&header.parsed, &record)
-            .await?;
+            .await
+            .with_context(|| "writing SAM record")?;
 
         counter.inc();
 
@@ -82,17 +91,14 @@ pub async fn to_bam_async(
         mut reader, header, ..
     } = formats::cram::open_and_parse_async(from, IndexCheck::None)
         .await
-        .with_context(|| {
-            "opening and parsing CRAM file. Check that your reference FASTA matches \
-            the FASTA used to generate the file."
-        })?;
+        .with_context(|| "opening CRAM input file")?;
 
     // (2) Builds the FASTA repository and associated index.
     let repository = fasta::indexed_reader::Builder::default()
         .build_from_path(fasta)
         .map(fasta::repository::adapters::IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "FASTA repository and associated index")?;
+        .with_context(|| "opening reference FASTA and associated index")?;
 
     // (3) Determine the compression level.
     let compression_level: CompressionLevel = compression_strategy.into();
@@ -106,23 +112,34 @@ pub async fn to_bam_async(
                 .build_with_writer(f)
         })
         .map(bam::AsyncWriter::from)
-        .with_context(|| "opening output filestream")?;
+        .with_context(|| "opening BAM output file")?;
 
     // (5) Write the header and the reference sequences.
-    writer.write_header(&header.parsed).await?;
+    writer
+        .write_header(&header.parsed)
+        .await
+        .with_context(|| "writing BAM header")?;
     writer
         .write_reference_sequences(header.parsed.reference_sequences())
-        .await?;
+        .await
+        .with_context(|| "writing BAM reference sequences")?;
 
     // (6) Write each record in the CRAM file to the BAM file.
     let mut counter = RecordCounter::new();
     let mut records = reader.records(&repository, &header.parsed);
 
-    while let Some(record) = records.try_next().await? {
-        let record = record.try_into_alignment_record(&header.parsed)?;
+    while let Some(record) = records
+        .try_next()
+        .await
+        .with_context(|| "reading CRAM record")?
+    {
+        let record = record
+            .try_into_alignment_record(&header.parsed)
+            .with_context(|| "parsing CRAM record")?;
         writer
             .write_alignment_record(&header.parsed, &record)
-            .await?;
+            .await
+            .with_context(|| "writing BAM record")?;
 
         counter.inc();
 
@@ -132,7 +149,10 @@ pub async fn to_bam_async(
     }
 
     // (7) Shutdown the async writer.
-    writer.shutdown().await?;
+    writer
+        .shutdown()
+        .await
+        .with_context(|| "shutting down BAM writer")?;
 
     Ok(())
 }
