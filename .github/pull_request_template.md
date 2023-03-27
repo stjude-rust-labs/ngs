@@ -5,6 +5,7 @@ Before submitting this PR, please make sure:
 - [ ] You have added a few sentences describing the PR here.
 - [ ] You have added yourself or the appropriate individual as the assignee.
 - [ ] You have added at least one relevant code reviewer to the PR.
+- [ ] You have added any relevant tags to the pull request.
 - [ ] Your code builds clean without any errors or warnings (use `cargo test` and `cargo clippy`).
 - [ ] You have added tests (when appropriate).
 - [ ] You have updated the wiki (when appropriate).
