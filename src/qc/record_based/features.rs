@@ -274,7 +274,7 @@ impl<'a> GenomicFeaturesFacet<'a> {
         reference_genome: Rc<Box<dyn ReferenceGenome>>,
     ) -> anyhow::Result<Self> {
         let mut gff = formats::gff::open(&src)
-            .with_context(|| format!("Could not open GFF: {}", src.display()))?;
+            .with_context(|| format!("opening GFF file: {}", src.display()))?;
 
         let mut exonic_translations = HashMap::new();
         let mut gene_regions = HashMap::new();

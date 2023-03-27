@@ -348,7 +348,8 @@ fn app(
 
         info!("Starting second pass for QC stats.");
         let mut reader = File::open(&src).map(bam::Reader::new)?;
-        let index = bai::read(&src.with_extension("bam.bai")).with_context(|| "bam index")?;
+        let index =
+            bai::read(&src.with_extension("bam.bai")).with_context(|| "reading BAM index")?;
 
         let mut counter = RecordCounter::new();
 
