@@ -30,7 +30,7 @@ pub async fn view(
     let mut reader = tokio::fs::File::open(&src)
         .await
         .map(cram::AsyncReader::new)
-        .with_context(|| "opening src file")?;
+        .with_context(|| "opening CRAM input file")?;
 
     // (2) Determine the handle with which to write the output.
     let mut handle = io::stdout();
@@ -40,13 +40,15 @@ pub async fn view(
         .build_from_path(&reference_fasta)
         .map(IndexedReader::new)
         .map(fasta::Repository::new)
-        .with_context(|| "building FASTA repository and associated index")?;
+        .with_context(|| "reading reference FASTA and associated index")?;
 
     // TODO: remove in a future version when noodles gives an error message that
     // suggests you should index your FASTA file (as of the time of writing, it
     // just gives an error back saying "unsupported" if you don't have an
     // index).
-    let fai_filepath = reference_fasta.append_extension("fai")?;
+    let fai_filepath = reference_fasta
+        .append_extension("fai")
+        .with_context(|| "setting FAI extension")?;
     if !fai_filepath.exists() {
         bail!(
             "couldn't find an index for your reference FASTA: is the FASTA indexed? \
@@ -55,14 +57,17 @@ pub async fn view(
     }
 
     // (4) Read the file's definition.
-    reader.read_file_definition().await?;
+    reader
+        .read_file_definition()
+        .await
+        .with_context(|| "reading CRAM file definition")?;
 
     // (5) If the user specified to output the header, output the raw header (before
     // applying any corrections).
     let ht = reader
         .read_file_header()
         .await
-        .with_context(|| "reading CRAM header")?;
+        .with_context(|| "reading CRAM file header")?;
 
     if mode == Mode::Full || mode == Mode::HeaderOnly {
         handle
@@ -77,7 +82,7 @@ pub async fn view(
     }
 
     // (7) Parses the header text.
-    let header = parse_header(ht).with_context(|| "parsing header")?;
+    let header = parse_header(ht).with_context(|| "parsing CRAM header")?;
 
     // (8) Writes the records to the output stream.
     let mut writer = sam::AsyncWriter::new(handle);
@@ -93,21 +98,36 @@ pub async fn view(
             .query(&repository, &header, &index, &region)
             .with_context(|| "querying CRAM file")?;
 
-        while let Some(record) = records.try_next().await? {
+        while let Some(record) = records
+            .try_next()
+            .await
+            .with_context(|| "reading CRAM record")?
+        {
             let record = record
                 .try_into_alignment_record(&header)
-                .with_context(|| "reading record")?;
-            writer.write_alignment_record(&header, &record).await?;
+                .with_context(|| "parsing CRAM record")?;
+            writer
+                .write_alignment_record(&header, &record)
+                .await
+                .with_context(|| "writing record to stream")?;
         }
     } else {
         // (b) Else, print all of the records in the file.
         let mut records = reader.records(&repository, &header);
 
-        while let Some(record) = records.try_next().await? {
+        while let Some(record) = records
+            .try_next()
+            .await
+            .with_context(|| "reading CRAM record")?
+        {
             let record = record
                 .try_into_alignment_record(&header)
-                .with_context(|| "reading record")?;
-            writer.write_alignment_record(&header, &record).await?;
+                .with_context(|| "parsing CRAM record")?;
+
+            writer
+                .write_alignment_record(&header, &record)
+                .await
+                .with_context(|| "writing record to stream")?;
         }
     }
 

@@ -20,7 +20,9 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
         header,
         index_path: bai_path,
         ..
-    } = crate::utils::formats::bam::open_and_parse_async(&src, IndexCheck::HeaderOnly).await?;
+    } = crate::utils::formats::bam::open_and_parse_async(&src, IndexCheck::HeaderOnly)
+        .await
+        .with_context(|| "opening BAM input file")?;
 
     // (2) Determine the handle with which to write the output. TODO: for now, we just
     // default to stdout, but in the future we will support writing to another path.
@@ -31,7 +33,7 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
         handle
             .write_all(header.raw.to_string().as_bytes())
             .await
-            .with_context(|| "writing header to stream")?;
+            .with_context(|| "writing BAM header to stream")?;
     }
 
     // (4) If the mode is header only, nothing left to do, so return.
@@ -51,18 +53,28 @@ pub async fn view(src: PathBuf, query: Option<String>, mode: Mode) -> anyhow::Re
             .query(&header.parsed, &index, &region)
             .with_context(|| "querying BAM file")?;
 
-        while let Some(record) = records.try_next().await? {
+        while let Some(record) = records
+            .try_next()
+            .await
+            .with_context(|| "reading BAM records")?
+        {
             writer
                 .write_alignment_record(&header.parsed, &record)
-                .await?;
+                .await
+                .with_context(|| "writing record to stream")?;
         }
     } else {
         // (b) Else, print all of the records in the file.
         let mut records = reader.records(&header.parsed);
-        while let Some(record) = records.try_next().await? {
+        while let Some(record) = records
+            .try_next()
+            .await
+            .with_context(|| "reading BAM record")?
+        {
             writer
                 .write_alignment_record(&header.parsed, &record)
-                .await?;
+                .await
+                .with_context(|| "writing record to stream")?;
         }
     }
 
