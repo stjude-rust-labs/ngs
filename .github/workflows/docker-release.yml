@@ -1,7 +1,8 @@
 name: Docker Release
 
 on:
-  workflow_dispatch:
+  release:
+    types: [released, edited]
 
 # Ensure single workflow runs at a time
 # Runs that are already underway will be canceled when a new job is queued
