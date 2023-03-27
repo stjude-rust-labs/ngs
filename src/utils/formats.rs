@@ -9,6 +9,7 @@ pub mod cram;
 pub mod fasta;
 pub mod fastq;
 pub mod gff;
+pub mod gtf;
 pub mod sam;
 pub mod utils;
 

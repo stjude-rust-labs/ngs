@@ -75,6 +75,9 @@ pub fn view(args: ViewArgs) -> anyhow::Result<()> {
         Some(BioinformaticsFileFormat::GFF) | Some(BioinformaticsFileFormat::GFF_GZ) => {
             super::gff::view(src)
         }
+        Some(BioinformaticsFileFormat::GTF) | Some(BioinformaticsFileFormat::GTF_GZ) => {
+            super::gtf::view(src)
+        }
         Some(format) => {
             bail!(
                 "{} files are not supported by this command. This may be \
