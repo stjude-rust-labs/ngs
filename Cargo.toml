@@ -28,6 +28,7 @@ noodles = { version = "0.34.0", features = [
     "fasta",
     "fastq",
     "gff",
+    "gtf",
     "sam",
     "cram",
 ] }
