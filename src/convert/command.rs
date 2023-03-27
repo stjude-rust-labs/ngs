@@ -67,7 +67,12 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
 
     let from = BioinformaticsFileFormat::try_detect(&args.from)
         .ok_or(BioinformaticsFileError::FailedParsing)
-        .with_context(|| format!("from input file: {}", &args.from.display()))?;
+        .with_context(|| {
+            format!(
+                "failed to detect from input filetype: {}",
+                &args.from.display()
+            )
+        })?;
 
     //=============//
     // To Filepath //
@@ -75,7 +80,7 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
 
     let to = BioinformaticsFileFormat::try_detect(&args.to)
         .ok_or(BioinformaticsFileError::FailedParsing)
-        .with_context(|| format!("to input file: {}", args.to.display()))?;
+        .with_context(|| format!("failed to deteect to input filetype: {}", args.to.display()))?;
 
     debug!(
         "If applicable, using the {} compression strategy.",

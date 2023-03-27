@@ -126,7 +126,7 @@ impl EditsFacet {
         // proceeding.
         formats::fasta::open(reference_fasta).with_context(|| {
             format!(
-                "opening reference FASTA file: {}.",
+                "opening reference FASTA file: {}",
                 reference_fasta.display()
             )
         })?;

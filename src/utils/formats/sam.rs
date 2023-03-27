@@ -102,7 +102,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header()?;
-    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing SAM header")?;
 
     // (3) Return the result.
     Ok(ParsedSAMFile {
@@ -176,7 +176,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header().await?;
-    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing SAM header")?;
 
     // (3) Return the result.
     Ok(ParsedAsyncSAMFile {

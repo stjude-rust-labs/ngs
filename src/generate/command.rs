@@ -63,24 +63,16 @@ pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
         .iter()
         .map(|provider_as_string| provider_as_string.parse::<ReferenceGenomeSequenceProvider>())
         .collect();
-    let reference_providers = result.with_context(|| "issue parsing reference providers")?;
+    let reference_providers = result.with_context(|| "parsing reference providers")?;
 
     let reads_one_file = args.read_ones_file;
     let reads_two_file = args.read_twos_file;
 
     info!("Starting generate command...");
-    let mut writer_read_one = formats::fastq::writer(&reads_one_file).with_context(|| {
-        format!(
-            "Could not open reads one file: {}.",
-            reads_one_file.display()
-        )
-    })?;
-    let mut writer_read_two = formats::fastq::writer(&reads_two_file).with_context(|| {
-        format!(
-            "Could not open reads two file: {}.",
-            reads_two_file.display()
-        )
-    })?;
+    let mut writer_read_one = formats::fastq::writer(&reads_one_file)
+        .with_context(|| format!("opening reads one file: {}", reads_one_file.display()))?;
+    let mut writer_read_two = formats::fastq::writer(&reads_two_file)
+        .with_context(|| format!("opening reads two file: {}", reads_two_file.display()))?;
 
     let mut total_reads: usize = 0;
 
@@ -116,10 +108,10 @@ pub fn generate(args: GenerateArgs) -> anyhow::Result<()> {
         );
         writer_read_one
             .write_record(read_pair.get_forward_read())
-            .with_context(|| "Could not write record to read one file.")?;
+            .with_context(|| "could not write record to read one file")?;
         writer_read_two
             .write_record(read_pair.get_reverse_read())
-            .with_context(|| "Could not write record to read two file.")?;
+            .with_context(|| "could not write record to read two file")?;
 
         if i > 0 && i % 5_000 == 0 {
             pb.inc(5000);

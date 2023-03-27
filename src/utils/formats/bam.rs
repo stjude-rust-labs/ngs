@@ -40,7 +40,7 @@ where
         Some(BioinformaticsFileFormat::BAM) => {
             let reader = file
                 .map(BufReader::new)
-                .with_context(|| "opening src BAM file")?;
+                .with_context(|| "opening BAM file")?;
             Ok(bam::Reader::new(reader))
         }
         Some(format) => bail!("incompatible formats: required BAM, found {}", format),
@@ -87,12 +87,12 @@ where
         .as_ref()
         .to_path_buf()
         .append_extension("bai")
-        .with_context(|| "constructing the BAM index filepath")?;
+        .with_context(|| "constructing BAM index filepath")?;
 
     match ensure_index {
         IndexCheck::Full => {
             debug!("checking the index's header and contents");
-            bai::read(&index_path).with_context(|| "BAM index")?;
+            bai::read(&index_path).with_context(|| "reading BAM index")?;
         }
         IndexCheck::HeaderOnly => {
             debug!("checking the index's header");
@@ -104,12 +104,12 @@ where
 
     // (3) Parse the header and reference sequences.
     debug!("parsing the header and reference sequences");
-    let raw_header = reader.read_header().with_context(|| "reading header")?;
+    let raw_header = reader.read_header().with_context(|| "reading BAM header")?;
     let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing BAM header")?;
     let reference_sequences = reader
         .read_reference_sequences()
-        .with_context(|| "reading reference sequences")?;
+        .with_context(|| "reading BAM reference sequences")?;
 
     // (4) Return the result.
     Ok(ParsedBAMFile {
@@ -143,7 +143,7 @@ where
         Some(BioinformaticsFileFormat::BAM) => {
             let reader = file
                 .map(bam::AsyncReader::new)
-                .with_context(|| "opening src BAM file")?;
+                .with_context(|| "opening BAM file")?;
             Ok(reader)
         }
         Some(format) => bail!("incompatible formats: required BAM, found {}", format),
@@ -196,11 +196,11 @@ where
         .as_ref()
         .to_path_buf()
         .append_extension("bai")
-        .with_context(|| "constructing the BAM index filepath")?;
+        .with_context(|| "constructing BAM index filepath")?;
 
     if ensure_index == IndexCheck::Full {
         debug!("checking that associated index exists for BAM file");
-        bai::read(&index_path).with_context(|| "BAM index")?;
+        bai::read(&index_path).with_context(|| "reading BAM index")?;
     }
 
     // (3) Parse the header and reference sequences.
@@ -208,13 +208,13 @@ where
     let raw_header = reader
         .read_header()
         .await
-        .with_context(|| "reading header")?;
+        .with_context(|| "reading BAM header")?;
     let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing BAM header")?;
     let reference_sequences = reader
         .read_reference_sequences()
         .await
-        .with_context(|| "reading reference sequences")?;
+        .with_context(|| "reading BAM reference sequences")?;
 
     // (4) Return the result.
     Ok(ParsedAsyncBAMFile {

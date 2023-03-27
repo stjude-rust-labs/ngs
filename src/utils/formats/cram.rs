@@ -34,7 +34,7 @@ where
         Some(BioinformaticsFileFormat::CRAM) => {
             let reader = file
                 .map(BufReader::new)
-                .with_context(|| "opening src CRAM file")?;
+                .with_context(|| "opening CRAM file")?;
             Ok(cram::Reader::new(reader))
         }
         Some(format) => bail!("incompatible formats: required CRAM, found {}", format),
@@ -81,12 +81,12 @@ where
         .as_ref()
         .to_path_buf()
         .append_extension("crai")
-        .with_context(|| "constructing the CRAM index filepath")?;
+        .with_context(|| "constructing CRAM index filepath")?;
 
     match ensure_index {
         IndexCheck::Full => {
             debug!("checking the index's header and contents");
-            crai::read(&index_path).with_context(|| "CRAM index")?;
+            crai::read(&index_path).with_context(|| "reading CRAM index")?;
         }
         IndexCheck::HeaderOnly => {
             // A header doesn't really exist for a CRAM file, so this option doesn't
@@ -101,9 +101,9 @@ where
     let file_definition = reader.read_file_definition()?;
     let raw_header = reader
         .read_file_header()
-        .with_context(|| "reading header")?;
+        .with_context(|| "reading CRAM header")?;
     let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing CRAM header")?;
 
     // (4) Return the result.
     Ok(ParsedCRAMFile {
@@ -135,7 +135,7 @@ where
         Some(BioinformaticsFileFormat::CRAM) => {
             let reader = file
                 .map(cram::AsyncReader::new)
-                .with_context(|| "opening src CRAM file")?;
+                .with_context(|| "opening CRAM file")?;
             Ok(reader)
         }
         Some(format) => bail!("incompatible formats: required CRAM, found {}", format),
@@ -185,12 +185,12 @@ where
         .as_ref()
         .to_path_buf()
         .append_extension("crai")
-        .with_context(|| "constructing the CRAM index filepath")?;
+        .with_context(|| "constructing CRAM index filepath")?;
 
     match ensure_index {
         IndexCheck::Full => {
             debug!("checking the index's header and contents");
-            crai::read(&index_path).with_context(|| "CRAM index")?;
+            crai::read(&index_path).with_context(|| "reading CRAM index")?;
         }
         IndexCheck::HeaderOnly => {
             // A header doesn't really exist for a CRAM file, so this option doesn't
@@ -206,9 +206,9 @@ where
     let raw_header = reader
         .read_file_header()
         .await
-        .with_context(|| "reading header")?;
+        .with_context(|| "reading CRAM header")?;
     let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing header")?;
+        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing CRAM header")?;
 
     // (4) Return the result.
     Ok(ParsedAsyncCRAMFile {
