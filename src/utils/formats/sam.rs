@@ -6,43 +6,11 @@ use std::path::Path;
 use anyhow::bail;
 use anyhow::Context;
 use noodles::sam;
-use regex::Captures;
-use regex::Regex;
 use tracing::debug;
 
 use crate::utils::formats::utils::RawAndParsedHeaders;
 
 use super::BioinformaticsFileFormat;
-
-//=================//
-// Utility Methods //
-//=================//
-
-/// Corrects common header mistakes. See the inline comments for the things that
-/// are automatically corrected.
-pub fn correct_common_header_mistakes(header: String) -> String {
-    // (1) Corrects any lowercase platform units in the read group to be all
-    // uppercase. This is especially important for data that contains 'illumina'
-    // instead of the correct 'ILLUMINA'.
-    let pattern = Regex::new("(\tPL:)(.+)").unwrap();
-    let replaced = pattern.replace_all(&header, |c: &Captures<'_>| {
-        format!("{}{}", &c[1], c[2].to_uppercase())
-    });
-
-    replaced.to_string()
-}
-
-/// Parses a SAM/BAM/CRAM header from a string while also correcting common
-/// header mistakes.
-pub fn parse_header(header: String) -> anyhow::Result<sam::Header> {
-    let header_raw_corrected = correct_common_header_mistakes(header);
-
-    let header = header_raw_corrected
-        .parse()
-        .with_context(|| "could not parse SAM/BAM/CRAM header")?;
-
-    Ok(header)
-}
 
 //====================================//
 // Sequence Alignment Map (SAM) files //
@@ -102,7 +70,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header()?;
-    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing SAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing SAM header")?;
 
     // (3) Return the result.
     Ok(ParsedSAMFile {
@@ -176,7 +144,7 @@ where
     // (2) Parse the header.
     debug!("parsing the header");
     let raw_header = reader.read_header().await?;
-    let parsed_header = parse_header(raw_header.clone()).with_context(|| "parsing SAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing SAM header")?;
 
     // (3) Return the result.
     Ok(ParsedAsyncSAMFile {
@@ -186,22 +154,4 @@ where
             parsed: parsed_header,
         },
     })
-}
-
-//=======//
-// Tests //
-//=======//
-
-#[cfg(test)]
-mod tests {
-
-    use super::*;
-
-    #[test]
-    pub fn test_illumina_lowercase_fix() {
-        let data = "@RG\tID:rg0\tPL:illumina\n";
-        let expected = "@RG\tID:rg0\tPL:ILLUMINA\n";
-
-        assert_eq!(correct_common_header_mistakes(data.to_string()), expected);
-    }
 }

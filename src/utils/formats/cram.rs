@@ -102,8 +102,7 @@ where
     let raw_header = reader
         .read_file_header()
         .with_context(|| "reading CRAM header")?;
-    let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing CRAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing CRAM header")?;
 
     // (4) Return the result.
     Ok(ParsedCRAMFile {
@@ -207,8 +206,7 @@ where
         .read_file_header()
         .await
         .with_context(|| "reading CRAM header")?;
-    let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing CRAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing CRAM header")?;
 
     // (4) Return the result.
     Ok(ParsedAsyncCRAMFile {
