@@ -105,8 +105,7 @@ where
     // (3) Parse the header and reference sequences.
     debug!("parsing the header and reference sequences");
     let raw_header = reader.read_header().with_context(|| "reading BAM header")?;
-    let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing BAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing BAM header")?;
     let reference_sequences = reader
         .read_reference_sequences()
         .with_context(|| "reading BAM reference sequences")?;
@@ -209,8 +208,7 @@ where
         .read_header()
         .await
         .with_context(|| "reading BAM header")?;
-    let parsed_header =
-        super::sam::parse_header(raw_header.clone()).with_context(|| "parsing BAM header")?;
+    let parsed_header = raw_header.parse().with_context(|| "parsing BAM header")?;
     let reference_sequences = reader
         .read_reference_sequences()
         .await

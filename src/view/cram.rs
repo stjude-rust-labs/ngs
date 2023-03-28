@@ -14,7 +14,6 @@ use tokio::io;
 use tokio::io::AsyncWriteExt;
 use tracing::debug;
 
-use crate::utils::formats::sam::parse_header;
 use crate::utils::pathbuf::AppendExtension;
 use crate::view::command::Mode;
 
@@ -82,7 +81,7 @@ pub async fn view(
     }
 
     // (7) Parses the header text.
-    let header = parse_header(ht).with_context(|| "parsing CRAM header")?;
+    let header = ht.parse().with_context(|| "parsing CRAM header")?;
 
     // (8) Writes the records to the output stream.
     let mut writer = sam::AsyncWriter::new(handle);
