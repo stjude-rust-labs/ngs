@@ -10,6 +10,5 @@
   * [ ] Create git tag: `git tag v0.1.0`.
   * [ ] Push release: `git push && git push --tags`.
   * [ ] Publish the new crate: `cargo publish --all-features`.
-  * [ ] Go to the Releases page in Github, create a Release for this tag, and
-    copy the notes from the `CHANGELOG.md` file.
+  * [ ] Go to the Releases page in Github, create a Release for this tag, and copy the notes from the `CHANGELOG.md` file.
   * [ ] Run docker release workflow from release tag branch.
