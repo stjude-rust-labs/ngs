@@ -1,6 +1,7 @@
 //! Functionality related to the `ngs derive` subcommand itself.
 
 pub mod instrument;
+pub mod readlen;
 
 use clap::Args;
 use clap::Subcommand;
@@ -22,4 +23,7 @@ pub struct DeriveArgs {
 pub enum DeriveSubcommand {
     /// Derives the instrument used to produce the file.
     Instrument(self::instrument::DeriveInstrumentArgs),
+
+    /// Derives the read length of the file.
+    Readlen(self::readlen::DeriveReadlenArgs),
 }

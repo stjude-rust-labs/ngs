@@ -92,6 +92,9 @@ fn main() -> anyhow::Result<()> {
             derive::command::DeriveSubcommand::Instrument(args) => {
                 derive::command::instrument::derive(args)?
             }
+            derive::command::DeriveSubcommand::Readlen(args) => {
+                derive::command::readlen::derive(args)?
+            }
         },
         Subcommands::Generate(args) => generate::command::generate(args)?,
         Subcommands::Index(args) => index::command::index(args)?,
