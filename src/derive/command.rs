@@ -1,5 +1,7 @@
 //! Functionality related to the `ngs derive` subcommand itself.
 
+pub mod encoding;
+pub mod endedness;
 pub mod instrument;
 pub mod readlen;
 
@@ -21,6 +23,12 @@ pub struct DeriveArgs {
 /// All possible subcommands for `ngs derive`.
 #[derive(Subcommand)]
 pub enum DeriveSubcommand {
+    /// Derives the quality score encoding used to produce the file.
+    Encoding(self::encoding::DeriveEncodingArgs),
+
+    /// Derives the endedness of the file.
+    Endedness(self::endedness::DeriveEndednessArgs),
+
     /// Derives the instrument used to produce the file.
     Instrument(self::instrument::DeriveInstrumentArgs),
 
