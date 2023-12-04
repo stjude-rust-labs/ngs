@@ -19,7 +19,9 @@ pub fn cutoff_in_range(cutoff_raw: &str) -> Result<f64, String> {
 
     match (0.0..=1.0).contains(&cutoff) {
         true => Ok(cutoff),
-        false => Err(String::from("Error rate must be between 0.0 and 1.0")),
+        false => Err(String::from(
+            "Majority Vote Cutoff must be between 0.0 and 1.0",
+        )),
     }
 }
 
