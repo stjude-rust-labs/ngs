@@ -1,11 +1,14 @@
 //! Functionality relating to the `ngs derive endedness` subcommand itself.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
+use radix_trie::Trie;
 use tracing::info;
+use tracing::trace;
 
 use crate::derive::endedness::compute;
 use crate::utils::formats::bam::ParsedBAMFile;
@@ -53,6 +56,31 @@ pub struct DeriveEndednessArgs {
     round_rpt: bool,
 }
 
+struct ReadGroup {
+    name: String,
+    first: usize,
+    last: usize,
+    both: usize,
+    neither: usize,
+}
+
+struct FoundReadGroups {
+    read_groups: HashSet<String>,
+}
+
+impl FoundReadGroups {
+    fn new() -> Self {
+        FoundReadGroups {
+            read_groups: HashSet::new(),
+        }
+    }
+
+    fn insert_and_get_ref(&mut self, read_group: &str) -> &String {
+        self.read_groups.insert(read_group.to_string());
+        self.read_groups.get(read_group).unwrap()
+    }
+}
+
 /// Main function for the `ngs derive endedness` subcommand.
 pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     info!("Starting derive endedness subcommand.");
@@ -79,6 +107,10 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     new_ordering_flags
         .entry("f-l-".to_string())
         .and_modify(|e| *e += 1);
+
+    // only used if args.calc_rpt is true
+    let mut found_rgs = FoundReadGroups::new();
+    let mut read_names = Trie::<String, Vec<&str>>::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -108,6 +140,21 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             .get(Tag::ReadGroup)
             .and_then(|v| v.as_str())
             .unwrap_or("unknown_read_group");
+
+        if args.calc_rpt {
+            let rg_ref = found_rgs.insert_and_get_ref(read_group);
+
+            match record.read_name() {
+                Some(rn) => {
+                    read_names.insert(rn.to_string(), vec![rg_ref]);
+                }
+                None => {
+                    trace!("Could not parse a QNAME from a read in the file.");
+                    trace!("Skipping this read and proceeding.");
+                    continue;
+                }
+            }
+        }
 
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
             ordering_flags.entry("overall".to_string()).and_modify(|e| {
@@ -169,5 +216,5 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     let output = serde_json::to_string_pretty(&result).unwrap();
     print!("{}", output);
 
-    Ok(())
+    anyhow::Ok(())
 }
