@@ -4,7 +4,6 @@ use std::path::PathBuf;
 
 use anyhow::Ok;
 use clap::Args;
-use tracing::info;
 
 /// Clap arguments for the `ngs derive encoding` subcommand.
 #[derive(Args)]

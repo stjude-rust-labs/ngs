@@ -3,6 +3,7 @@
 use anyhow::bail;
 use serde::Serialize;
 use std::collections::HashMap;
+use std::rc::Rc;
 
 /// Struct holding the final results for an `ngs derive endedness` subcommand
 /// call.
@@ -52,13 +53,13 @@ impl DerivedEndednessResult {
 /// return a result for the endedness of the file. This may fail, and the
 /// resulting [`DerivedEndednessResult`] should be evaluated accordingly.
 pub fn predict(
-    ordering_flags: HashMap<String, HashMap<String, usize>>,
+    ordering_flags: HashMap<Rc<String>, HashMap<String, usize>>,
     paired_deviance: f64,
 ) -> Result<DerivedEndednessResult, anyhow::Error> {
-    let first = ordering_flags["overall"]["f+l-"];
-    let last = ordering_flags["overall"]["f-l+"];
-    let both = ordering_flags["overall"]["f+l+"];
-    let neither = ordering_flags["overall"]["f-l-"];
+    let first = ordering_flags[&String::from("overall")]["f+l-"];
+    let last = ordering_flags[&String::from("overall")]["f-l+"];
+    let both = ordering_flags[&String::from("overall")]["f+l+"];
+    let neither = ordering_flags[&String::from("overall")]["f-l-"];
 
     let mut result =
         DerivedEndednessResult::new(false, "Unknown".to_string(), first, last, both, neither);
