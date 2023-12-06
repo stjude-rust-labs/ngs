@@ -12,6 +12,7 @@ use tracing::info;
 use tracing::trace;
 
 use crate::derive::endedness::compute;
+use crate::derive::endedness::compute::{BOTH, FIRST, LAST, NEITHER, OVERALL, UNKNOWN_READ_GROUP};
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -31,7 +32,7 @@ pub fn deviance_in_range(deviance_raw: &str) -> Result<f64, String> {
 /// Clap arguments for the `ngs derive endedness` subcommand.
 #[derive(Args)]
 pub struct DeriveEndednessArgs {
-    // Source BAM.
+    /// Source BAM.
     #[arg(value_name = "BAM")]
     src: PathBuf,
 
@@ -64,32 +65,25 @@ struct ReadGroup {
     both: usize,
     neither: usize,
 }
+
 /// Main function for the `ngs derive endedness` subcommand.
 pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     info!("Starting derive endedness subcommand.");
 
     let mut new_ordering_flags: HashMap<String, usize> = HashMap::new();
-    new_ordering_flags.insert("f+l-".to_string(), 0);
-    new_ordering_flags.insert("f-l+".to_string(), 0);
-    new_ordering_flags.insert("f+l+".to_string(), 0);
-    new_ordering_flags.insert("f-l-".to_string(), 0);
+    new_ordering_flags.insert(*FIRST, 0);
+    new_ordering_flags.insert(*LAST, 0);
+    new_ordering_flags.insert(*BOTH, 0);
+    new_ordering_flags.insert(*NEITHER, 0);
 
     let mut ordering_flags: HashMap<Rc<String>, HashMap<String, usize>> = HashMap::new();
-    ordering_flags.insert(Rc::new("overall".to_string()), new_ordering_flags.clone());
-    ordering_flags.insert(Rc::new("unknown_read_group".to_string()), new_ordering_flags.clone());
+    ordering_flags.insert(Rc::new(*OVERALL), new_ordering_flags.clone());
+    ordering_flags.insert(Rc::new(*UNKNOWN_READ_GROUP), new_ordering_flags.clone());
 
-    new_ordering_flags
-        .entry("f+l-".to_string())
-        .and_modify(|e| *e += 1);
-    new_ordering_flags
-        .entry("f-l+".to_string())
-        .and_modify(|e| *e += 1);
-    new_ordering_flags
-        .entry("f+l+".to_string())
-        .and_modify(|e| *e += 1);
-    new_ordering_flags
-        .entry("f-l-".to_string())
-        .and_modify(|e| *e += 1);
+    new_ordering_flags.entry(*FIRST).and_modify(|e| *e += 1);
+    new_ordering_flags.entry(*LAST).and_modify(|e| *e += 1);
+    new_ordering_flags.entry(*BOTH).and_modify(|e| *e += 1);
+    new_ordering_flags.entry(*NEITHER).and_modify(|e| *e += 1);
 
     // only used if args.calc_rpt is true
     let mut found_rgs = HashSet::new();
@@ -118,18 +112,28 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             continue;
         }
 
-        let read_group = record
-            .data()
-            .get(Tag::ReadGroup)
-            .map(|v| Rc::new(v.to_string()))
-            .unwrap_or(Rc::new(String::from("unknown_read_group")));
+        let read_group = match record.data().get(Tag::ReadGroup) {
+            Some(rg) => Rc::new(String::from(rg.as_str().unwrap())),
+            None => Rc::new(*UNKNOWN_READ_GROUP),
+        };
 
         if args.calc_rpt {
             found_rgs.insert(Rc::clone(&read_group));
 
             match record.read_name() {
                 Some(rn) => {
-                    read_names.insert(rn.to_string(), vec![Rc::clone(&read_group)]);
+                    let rg_vec = read_names.get_mut(&rn.to_string());
+
+                    match rg_vec {
+                        Some(rg_vec) => {
+                            rg_vec.push(Rc::clone(&read_group));
+                        }
+                        None => {
+                            let mut rg_vec = Vec::new();
+                            rg_vec.push(Rc::clone(&read_group));
+                            read_names.insert(rn.to_string(), rg_vec);
+                        }
+                    }
                 }
                 None => {
                     trace!("Could not parse a QNAME from a read in the file.");
@@ -140,43 +144,47 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new("overall".to_string())).and_modify(|e| {
-                e.entry("f+l-".to_string()).and_modify(|e| *e += 1);
+            ordering_flags.entry(Rc::new(*OVERALL)).and_modify(|e| {
+                e.entry(*FIRST).and_modify(|e| *e += 1);
             });
+
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
-                    e.entry("f+l-".to_string()).and_modify(|e| *e += 1);
+                    e.entry(*FIRST).and_modify(|e| *e += 1);
                 })
                 .or_insert(new_ordering_flags.clone());
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new("overall".to_string())).and_modify(|e| {
-                e.entry("f-l+".to_string()).and_modify(|e| *e += 1);
+            ordering_flags.entry(Rc::new(*OVERALL)).and_modify(|e| {
+                e.entry(*LAST).and_modify(|e| *e += 1);
             });
+
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
-                    e.entry("f-l+".to_string()).and_modify(|e| *e += 1);
+                    e.entry(*LAST).and_modify(|e| *e += 1);
                 })
                 .or_insert(new_ordering_flags.clone());
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new("overall".to_string())).and_modify(|e| {
-                e.entry("f+l+".to_string()).and_modify(|e| *e += 1);
+            ordering_flags.entry(Rc::new(*OVERALL)).and_modify(|e| {
+                e.entry(*BOTH).and_modify(|e| *e += 1);
             });
+
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
-                    e.entry("f+l+".to_string()).and_modify(|e| *e += 1);
+                    e.entry(*BOTH).and_modify(|e| *e += 1);
                 })
                 .or_insert(new_ordering_flags.clone());
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new("overall".to_string())).and_modify(|e| {
-                e.entry("f-l-".to_string()).and_modify(|e| *e += 1);
+            ordering_flags.entry(Rc::new(*OVERALL)).and_modify(|e| {
+                e.entry(*NEITHER).and_modify(|e| *e += 1);
             });
+
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
-                    e.entry("f-l-".to_string()).and_modify(|e| *e += 1);
+                    e.entry(*NEITHER).and_modify(|e| *e += 1);
                 })
                 .or_insert(new_ordering_flags.clone());
         } else {
@@ -192,7 +200,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     }
 
     // (2) Derive the consensus endedness based on the ordering flags gathered.
-    let result = compute::predict(ordering_flags, args.paired_deviance.unwrap()).unwrap();
+    let result =
+        compute::predict(ordering_flags, read_names, args.paired_deviance.unwrap()).unwrap();
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
