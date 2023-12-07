@@ -10,20 +10,33 @@ use std::collections::HashSet;
 use std::rc::Rc;
 use tracing::warn;
 
+// Strings used to index into the HashMaps used to store the Read Group ordering flags.
+// Lazy statics are used to save memory.
 lazy_static! {
-    // Strings used to index into the HashMaps used to store the Read Group ordering flags.
+    /// String used to index into the HashMaps used to store the "overall" ordering flags.
     pub static ref OVERALL: String = String::from("overall");
+
+    /// String used to index into th HashMaps used to store the "unknown_read_group" ordering flags.
     pub static ref UNKNOWN_READ_GROUP: String = String::from("unknown_read_group");
 }
 
+/// Struct holding the ordering flags for a single read group.
+#[derive(Debug, Clone)]
 pub struct OrderingFlagsCounts {
+    /// The number of reads with the first in template flag set.
     pub first: usize,
+
+    /// The number of reads with the last in template flag set.
     pub last: usize,
+
+    /// The number of reads with both the first and last in template flags set.
     pub both: usize,
+
+    /// The number of reads with neither the first nor last in template flags set.
     pub neither: usize,
 }
-
 impl OrderingFlagsCounts {
+    /// Creates a new [`OrderingFlagsCounts`].
     pub fn new() -> Self {
         OrderingFlagsCounts {
             first: 0,
@@ -34,10 +47,16 @@ impl OrderingFlagsCounts {
     }
 }
 
+impl Default for OrderingFlagsCounts {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 /// Struct holding the per read group results for an `ngs derive endedness`
 /// subcommand call.
 #[derive(Debug, Serialize)]
-struct ReadGroupDerivedEndednessResult {
+pub struct ReadGroupDerivedEndednessResult {
     /// Name of the read group.
     pub read_group: String,
 
@@ -70,20 +89,17 @@ impl ReadGroupDerivedEndednessResult {
         read_group: String,
         succeeded: bool,
         endedness: String,
-        first: usize,
-        last: usize,
-        both: usize,
-        neither: usize,
+        counts: OrderingFlagsCounts,
         rpt: Option<f64>,
     ) -> Self {
         ReadGroupDerivedEndednessResult {
             read_group,
             succeeded,
             endedness,
-            first,
-            last,
-            both,
-            neither,
+            first: counts.first,
+            last: counts.last,
+            both: counts.both,
+            neither: counts.neither,
             rpt,
         }
     }
@@ -126,39 +142,38 @@ impl DerivedEndednessResult {
     pub fn new(
         succeeded: bool,
         endedness: String,
-        first: usize,
-        last: usize,
-        both: usize,
-        neither: usize,
+        counts: OrderingFlagsCounts,
         rpt: Option<f64>,
         read_groups: Vec<ReadGroupDerivedEndednessResult>,
     ) -> Self {
         DerivedEndednessResult {
             succeeded,
             endedness,
-            first,
-            last,
-            both,
-            neither,
+            first: counts.first,
+            last: counts.last,
+            both: counts.both,
+            neither: counts.neither,
             rpt,
             read_groups,
         }
     }
 }
 
-fn calculate_reads_per_template(read_names: Trie<String, Vec<Rc<&str>>>) -> HashMap<Rc<&str>, f64> {
-    let mut reads_per_template: HashMap<Rc<&str>, f64> = HashMap::new();
+fn calculate_reads_per_template(
+    read_names: Trie<String, Vec<Rc<String>>>,
+) -> HashMap<Rc<String>, f64> {
+    let mut reads_per_template: HashMap<Rc<String>, f64> = HashMap::new();
     let mut total_reads: usize = 0;
     let mut total_templates: usize = 0;
-    let mut read_group_reads: HashMap<Rc<&str>, usize> = HashMap::new();
-    let mut read_group_templates: HashMap<Rc<&str>, usize> = HashMap::new();
+    let mut read_group_reads: HashMap<Rc<String>, usize> = HashMap::new();
+    let mut read_group_templates: HashMap<Rc<String>, usize> = HashMap::new();
 
     for (read_name, read_groups) in read_names.iter() {
         let num_reads = read_groups.len();
         total_reads += num_reads;
         total_templates += 1;
 
-        let read_group_set: HashSet<Rc<&str>> = read_groups.iter().cloned().collect();
+        let read_group_set: HashSet<Rc<String>> = read_groups.iter().cloned().collect();
 
         if read_group_set.len() == 1 {
             let read_group = read_group_set.iter().next().unwrap();
@@ -177,9 +192,8 @@ fn calculate_reads_per_template(read_names: Trie<String, Vec<Rc<&str>>>) -> Hash
                 read_name, read_groups
             );
             for read_group in read_groups {
-                let read_group = Rc::new(**read_group);
                 read_group_reads
-                    .entry(read_group)
+                    .entry(read_group.clone())
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
             }
@@ -193,7 +207,7 @@ fn calculate_reads_per_template(read_names: Trie<String, Vec<Rc<&str>>>) -> Hash
     }
 
     reads_per_template.insert(
-        Rc::new(OVERALL.as_str()),
+        Rc::new(OVERALL.to_string()),
         total_reads as f64 / total_templates as f64,
     );
 
@@ -218,21 +232,22 @@ fn predict_endedness(
     let both = rg_ordering_flags.both;
     let neither = rg_ordering_flags.neither;
 
+    // all zeroes (Perform this check before creating the result struct
+    // so that we don't have to clone the read group name)
+    if first == 0 && last == 0 && both == 0 && neither == 0 {
+        bail!(
+            "No reads were detected in this read group: {}",
+            read_group_name
+        );
+    }
+
     let mut result = ReadGroupDerivedEndednessResult::new(
         read_group_name,
         false,
         "Unknown".to_string(),
-        first,
-        last,
-        both,
-        neither,
+        rg_ordering_flags.clone(),
         reads_per_template.copied(),
     );
-
-    // all zeroes
-    if first == 0 && last == 0 && both == 0 && neither == 0 {
-        bail!("No reads were detected in the file.");
-    }
 
     // only first present
     if first > 0 && last == 0 && both == 0 && neither == 0 {
@@ -291,36 +306,48 @@ fn predict_endedness(
             }
         }
     }
-
-    return Ok(result);
+    Ok(result)
 }
 
 /// Main method to evaluate the collected ordering flags and
 /// return a result for the endedness of the file. This may fail, and the
 /// resulting [`DerivedEndednessResult`] should be evaluated accordingly.
 pub fn predict(
-    ordering_flags: HashMap<Rc<&str>, OrderingFlagsCounts>,
-    read_names: Trie<String, Vec<Rc<&str>>>,
+    ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts>,
+    read_names: Trie<String, Vec<Rc<String>>>,
     paired_deviance: f64,
     round_rpt: bool,
 ) -> Result<DerivedEndednessResult, anyhow::Error> {
-    let mut rpts: HashMap<Rc<&str>, f64> = HashMap::new();
+    let mut rpts: HashMap<Rc<String>, f64> = HashMap::new();
     if !read_names.is_empty() {
         rpts = calculate_reads_per_template(read_names);
     }
 
-    let mut final_result =
-        DerivedEndednessResult::new(false, "Unknown".to_string(), 0, 0, 0, 0, None, Vec::new());
+    let mut final_result = DerivedEndednessResult::new(
+        false,
+        "Unknown".to_string(),
+        OrderingFlagsCounts::new(),
+        None,
+        Vec::new(),
+    );
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
+        if (read_group == &Rc::new(UNKNOWN_READ_GROUP.to_string()))
+            && (rg_ordering_flags.first == 0
+                && rg_ordering_flags.last == 0
+                && rg_ordering_flags.both == 0
+                && rg_ordering_flags.neither == 0)
+        {
+            continue;
+        }
         let result = predict_endedness(
-            String::from(**read_group),
+            read_group.to_string(),
             rg_ordering_flags,
             paired_deviance,
             rpts.get(read_group),
             round_rpt,
         )?;
-        if result.read_group == String::from("overall") {
+        if result.read_group == "overall" {
             final_result.endedness = result.endedness;
             final_result.first = result.first;
             final_result.last = result.last;
@@ -334,4 +361,265 @@ pub fn predict(
     }
 
     Ok(final_result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_derive_endedness_from_all_zero_counts() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(Rc::new(OVERALL.to_string()), OrderingFlagsCounts::new());
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_derive_endedness_from_only_first() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 1,
+                last: 0,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 1);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 0);
+    }
+
+    #[test]
+    fn test_derive_endedness_from_only_last() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 0,
+                last: 1,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 1);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 0);
+    }
+
+    #[test]
+    fn test_derive_endedness_from_only_both() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 0,
+                last: 0,
+                both: 1,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.succeeded);
+        assert_eq!(result.endedness, "Single-End");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 1);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 0);
+    }
+
+    #[test]
+    fn test_derive_endedness_from_only_neither() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 0,
+                last: 0,
+                both: 0,
+                neither: 1,
+            },
+        );
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 1);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 0);
+    }
+
+    #[test]
+    fn test_derive_endedness_from_first_and_last() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 1,
+                last: 1,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, Trie::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(result.succeeded);
+        assert_eq!(result.endedness, "Paired-End");
+        assert_eq!(result.first, 1);
+        assert_eq!(result.last, 1);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 0);
+    }
+
+    #[test]
+    fn test_calculate_reads_per_template() {
+        let mut read_names: Trie<String, Vec<Rc<String>>> = Trie::new();
+        read_names.insert(
+            "read1".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+            ],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_single".to_string()),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Rc::new("rg_single".to_string())]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+            ],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_single".to_string()),
+            ],
+        );
+        let results = calculate_reads_per_template(read_names);
+        assert_eq!(results.len(), 3);
+        assert_eq!(results.get(&Rc::new("overall".to_string())).unwrap(), &2.2);
+        assert_eq!(
+            results.get(&Rc::new("rg_paired".to_string())).unwrap(),
+            &2.0
+        );
+        assert_eq!(
+            results.get(&Rc::new("rg_single".to_string())).unwrap(),
+            &1.0
+        );
+    }
+
+    #[test]
+    fn test_derive_endedness_from_first_and_last_with_good_rpt() {
+        let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Rc::new(OVERALL.to_string()),
+            OrderingFlagsCounts {
+                first: 8,
+                last: 8,
+                both: 2,
+                neither: 0,
+            },
+        );
+        ordering_flags.insert(
+            Rc::new("rg_paired".to_string()),
+            OrderingFlagsCounts {
+                first: 8,
+                last: 8,
+                both: 0,
+                neither: 0,
+            },
+        );
+        ordering_flags.insert(
+            Rc::new("rg_single".to_string()),
+            OrderingFlagsCounts {
+                first: 0,
+                last: 0,
+                both: 2,
+                neither: 0,
+            },
+        );
+        let mut read_names: Trie<String, Vec<Rc<String>>> = Trie::new();
+        read_names.insert(
+            "read1".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+            ],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_single".to_string()),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Rc::new("rg_single".to_string())]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+            ],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_paired".to_string()),
+                Rc::new("rg_single".to_string()),
+            ],
+        );
+        let result = predict(ordering_flags, read_names, 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 8);
+        assert_eq!(result.last, 8);
+        assert_eq!(result.both, 2);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, Some(2.2));
+        assert_eq!(result.read_groups.len(), 2);
+        assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
+    }
 }

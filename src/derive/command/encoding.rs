@@ -18,6 +18,6 @@ pub struct DeriveEncodingArgs {
 }
 
 /// Main function for the `ngs derive encoding` subcommand.
-pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
+pub fn derive(_args: DeriveEncodingArgs) -> anyhow::Result<()> {
     Ok(())
 }

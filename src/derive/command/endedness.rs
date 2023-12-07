@@ -62,13 +62,16 @@ pub struct DeriveEndednessArgs {
 pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     info!("Starting derive endedness subcommand.");
 
-    let mut ordering_flags: HashMap<Rc<&str>, OrderingFlagsCounts> = HashMap::new();
-    ordering_flags.insert(Rc::new(&OVERALL), OrderingFlagsCounts::new());
-    ordering_flags.insert(Rc::new(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
+    let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
+    ordering_flags.insert(Rc::new(OVERALL.to_string()), OrderingFlagsCounts::new());
+    ordering_flags.insert(
+        Rc::new(UNKNOWN_READ_GROUP.to_string()),
+        OrderingFlagsCounts::new(),
+    );
 
     // only used if args.calc_rpt is true
     let mut found_rgs = HashSet::new();
-    let mut read_names = Trie::<String, Vec<Rc<&str>>>::new();
+    let mut read_names = Trie::<String, Vec<Rc<String>>>::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -94,8 +97,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => Rc::new(rg.as_str().unwrap()),
-            None => Rc::new(UNKNOWN_READ_GROUP.as_str()),
+            Some(rg) => Rc::new(rg.as_str().unwrap().to_owned()),
+            None => Rc::new(UNKNOWN_READ_GROUP.to_string()),
         };
 
         if args.calc_rpt {
@@ -110,8 +113,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                             rg_vec.push(Rc::clone(&read_group));
                         }
                         None => {
-                            let mut rg_vec = Vec::new();
-                            rg_vec.push(Rc::clone(&read_group));
+                            let rg_vec = vec![(Rc::clone(&read_group))];
                             read_names.insert(rn.to_string(), rg_vec);
                         }
                     }
@@ -125,53 +127,77 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new(&OVERALL)).and_modify(|e| {
-                e.first += 1;
-            });
+            ordering_flags
+                .entry(Rc::new(OVERALL.to_string()))
+                .and_modify(|e| {
+                    e.first += 1;
+                });
 
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
                     e.first += 1;
                 })
-                .or_insert(OrderingFlagsCounts::new())
-                .first += 1;
+                .or_insert(OrderingFlagsCounts {
+                    first: 1,
+                    last: 0,
+                    both: 0,
+                    neither: 0,
+                });
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new(&OVERALL)).and_modify(|e| {
-                e.last += 1;
-            });
+            ordering_flags
+                .entry(Rc::new(OVERALL.to_string()))
+                .and_modify(|e| {
+                    e.last += 1;
+                });
 
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
                     e.last += 1;
                 })
-                .or_insert(OrderingFlagsCounts::new())
-                .last += 1;
+                .or_insert(OrderingFlagsCounts {
+                    first: 0,
+                    last: 1,
+                    both: 0,
+                    neither: 0,
+                });
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new(&OVERALL)).and_modify(|e| {
-                e.both += 1;
-            });
+            ordering_flags
+                .entry(Rc::new(OVERALL.to_string()))
+                .and_modify(|e| {
+                    e.both += 1;
+                });
 
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
                     e.both += 1;
                 })
-                .or_insert(OrderingFlagsCounts::new())
-                .both += 1;
+                .or_insert(OrderingFlagsCounts {
+                    first: 0,
+                    last: 0,
+                    both: 1,
+                    neither: 0,
+                });
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(Rc::new(&OVERALL)).and_modify(|e| {
-                e.neither += 1;
-            });
+            ordering_flags
+                .entry(Rc::new(OVERALL.to_string()))
+                .and_modify(|e| {
+                    e.neither += 1;
+                });
 
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
                     e.neither += 1;
                 })
-                .or_insert(OrderingFlagsCounts::new())
-                .neither += 1;
+                .or_insert(OrderingFlagsCounts {
+                    first: 0,
+                    last: 0,
+                    both: 0,
+                    neither: 1,
+                });
         } else {
             unreachable!();
         }
