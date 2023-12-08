@@ -188,8 +188,8 @@ fn calculate_reads_per_template(
                 .or_insert(1);
         } else {
             warn!(
-                "Read {} has multiple read groups: {:#?}",
-                read_name, read_groups
+                "QNAME: '{}' is in multiple read groups: {:?}",
+                read_name, read_group_set
             );
             for read_group in read_groups {
                 read_group_reads
@@ -548,7 +548,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_first_and_last_with_good_rpt() {
+    fn test_derive_endedness_from_first_and_last_with_rpt() {
         let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Rc::new(OVERALL.to_string()),
@@ -620,6 +620,8 @@ mod tests {
         assert_eq!(result.neither, 0);
         assert_eq!(result.rpt, Some(2.2));
         assert_eq!(result.read_groups.len(), 2);
+        // We can't know which read group will be first in the vector.
+        // But both should succeed.
         assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
     }
 }
