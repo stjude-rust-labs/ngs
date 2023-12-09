@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
@@ -62,16 +62,14 @@ pub struct DeriveEndednessArgs {
 pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     info!("Starting derive endedness subcommand.");
 
-    let mut ordering_flags: HashMap<Rc<String>, OrderingFlagsCounts> = HashMap::new();
-    ordering_flags.insert(Rc::new(OVERALL.to_string()), OrderingFlagsCounts::new());
-    ordering_flags.insert(
-        Rc::new(UNKNOWN_READ_GROUP.to_string()),
-        OrderingFlagsCounts::new(),
-    );
+    let mut found_rgs = HashSet::new();
+
+    let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
+    ordering_flags.insert(Arc::clone(&OVERALL), OrderingFlagsCounts::new());
+    ordering_flags.insert(Arc::clone(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
-    let mut found_rgs = HashSet::new();
-    let mut read_names = Trie::<String, Vec<Rc<String>>>::new();
+    let mut read_names = Trie::<String, Vec<Arc<String>>>::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -97,24 +95,28 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => Rc::new(rg.as_str().unwrap().to_owned()),
-            None => Rc::new(UNKNOWN_READ_GROUP.to_string()),
+            Some(rg) => {
+                let rg = rg.to_string();
+                if !found_rgs.contains(&rg) {
+                    found_rgs.insert(Arc::new(rg.clone()));
+                }
+                found_rgs.get(&rg).unwrap().clone()
+            }
+            None => Arc::clone(&UNKNOWN_READ_GROUP),
         };
 
         if args.calc_rpt {
-            found_rgs.insert(Rc::clone(&read_group));
-
             match record.read_name() {
                 Some(rn) => {
-                    let rg_vec = read_names.get_mut(&rn.to_string());
+                    let rn = rn.to_string();
+                    let rg_vec = read_names.get_mut(&rn);
 
                     match rg_vec {
                         Some(rg_vec) => {
-                            rg_vec.push(Rc::clone(&read_group));
+                            rg_vec.push(Arc::clone(&read_group));
                         }
                         None => {
-                            let rg_vec = vec![(Rc::clone(&read_group))];
-                            read_names.insert(rn.to_string(), rg_vec);
+                            read_names.insert(rn, vec![(Arc::clone(&read_group))]);
                         }
                     }
                 }
@@ -126,12 +128,12 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             }
         }
 
+        let overall_rg = Arc::clone(&OVERALL);
+
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags
-                .entry(Rc::new(OVERALL.to_string()))
-                .and_modify(|e| {
-                    e.first += 1;
-                });
+            ordering_flags.entry(overall_rg).and_modify(|e| {
+                e.first += 1;
+            });
 
             ordering_flags
                 .entry(read_group)
@@ -145,11 +147,9 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags
-                .entry(Rc::new(OVERALL.to_string()))
-                .and_modify(|e| {
-                    e.last += 1;
-                });
+            ordering_flags.entry(overall_rg).and_modify(|e| {
+                e.last += 1;
+            });
 
             ordering_flags
                 .entry(read_group)
@@ -163,11 +163,9 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags
-                .entry(Rc::new(OVERALL.to_string()))
-                .and_modify(|e| {
-                    e.both += 1;
-                });
+            ordering_flags.entry(overall_rg).and_modify(|e| {
+                e.both += 1;
+            });
 
             ordering_flags
                 .entry(read_group)
@@ -181,11 +179,9 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags
-                .entry(Rc::new(OVERALL.to_string()))
-                .and_modify(|e| {
-                    e.neither += 1;
-                });
+            ordering_flags.entry(overall_rg).and_modify(|e| {
+                e.neither += 1;
+            });
 
             ordering_flags
                 .entry(read_group)
