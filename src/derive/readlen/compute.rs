@@ -75,7 +75,6 @@ pub fn predict(
     if majority_detected >= majority_vote_cutoff {
         result.succeeded = true;
         result.consensus_read_length = Some(consensus_read_length);
-        result.majority_pct_detected = majority_detected * 100.0;
     }
 
     Ok(result)
@@ -118,7 +117,7 @@ mod tests {
         let result = predict(read_lengths, 0.7).unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.consensus_read_length, None);
-        assert!(result.majority_pct_detected < 1.0);
+        assert!(result.majority_pct_detected < 0.7);
         assert_eq!(result.evidence, Vec::from([(101, 5), (100, 1000), (99, 5)]));
     }
 }
