@@ -503,53 +503,37 @@ mod tests {
     #[test]
     fn test_calculate_reads_per_template() {
         let mut read_names: Trie<String, Vec<Arc<String>>> = Trie::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
         read_names.insert(
             "read1".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone()],
         );
         read_names.insert(
             "read2".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_single".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone(), rg_single.clone()],
         );
-        read_names.insert("read3".to_string(), vec![Arc::new("rg_single".to_string())]);
+        read_names.insert("read3".to_string(), vec![rg_single.clone()]);
         read_names.insert(
             "read4".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone()],
         );
         read_names.insert(
             "read5".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_single".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone(), rg_single.clone()],
         );
         let results = calculate_reads_per_template(read_names);
         assert_eq!(results.len(), 3);
         assert_eq!(results.get(&Arc::new("overall".to_string())).unwrap(), &2.2);
-        assert_eq!(
-            results.get(&Arc::new("rg_paired".to_string())).unwrap(),
-            &2.0
-        );
-        assert_eq!(
-            results.get(&Arc::new("rg_single".to_string())).unwrap(),
-            &1.0
-        );
+        assert_eq!(results.get(&rg_paired.clone()).unwrap(), &2.0);
+        assert_eq!(results.get(&rg_single.clone()).unwrap(), &1.0);
     }
 
     #[test]
     fn test_derive_endedness_from_first_and_last_with_rpt() {
         let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
         ordering_flags.insert(
             Arc::new(OVERALL.to_string()),
             OrderingFlagsCounts {
@@ -560,7 +544,7 @@ mod tests {
             },
         );
         ordering_flags.insert(
-            Arc::new("rg_paired".to_string()),
+            rg_paired.clone(),
             OrderingFlagsCounts {
                 first: 8,
                 last: 8,
@@ -569,7 +553,7 @@ mod tests {
             },
         );
         ordering_flags.insert(
-            Arc::new("rg_single".to_string()),
+            rg_single.clone(),
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -580,34 +564,20 @@ mod tests {
         let mut read_names: Trie<String, Vec<Arc<String>>> = Trie::new();
         read_names.insert(
             "read1".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone()],
         );
         read_names.insert(
             "read2".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_single".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone(), rg_single.clone()],
         );
-        read_names.insert("read3".to_string(), vec![Arc::new("rg_single".to_string())]);
+        read_names.insert("read3".to_string(), vec![rg_single.clone()]);
         read_names.insert(
             "read4".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone()],
         );
         read_names.insert(
             "read5".to_string(),
-            vec![
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_paired".to_string()),
-                Arc::new("rg_single".to_string()),
-            ],
+            vec![rg_paired.clone(), rg_paired.clone(), rg_single.clone()],
         );
         let result = predict(ordering_flags, read_names, 0.0, false);
         assert!(result.is_ok());
