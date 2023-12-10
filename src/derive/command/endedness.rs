@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
-use radix_trie::Trie;
 use tracing::info;
 use tracing::trace;
 
@@ -69,7 +68,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     ordering_flags.insert(Arc::clone(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
-    let mut read_names = Trie::<String, Vec<Arc<String>>>::new();
+    let mut read_names: HashMap<String, Vec<Arc<String>>> = HashMap::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
