@@ -6,7 +6,7 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use clap::Args;
-use noodles::sam::record::data::field::Tag;
+use noodles::bam::lazy::record::data::field::value::Value;
 use tracing::info;
 use tracing::trace;
 
@@ -83,41 +83,33 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         sample_max = s;
     }
 
-    for result in reader.records(&header.parsed) {
-        let record = result?;
+    let mut record = noodles::bam::lazy::Record::default();
+    while reader.read_lazy_record(&mut record)? != 0 {
+        let flags = record.flags();
 
         // Only count primary alignments and unmapped reads.
-        if (record.flags().is_secondary() || record.flags().is_supplementary())
-            && !record.flags().is_unmapped()
-        {
+        if (flags.is_secondary() || flags.is_supplementary()) && !flags.is_unmapped() {
             continue;
         }
 
-        let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => {
-                let rg = rg.to_string();
+        let read_group = match record.data().get(b"RG") {
+            Some(Ok(Value::String(rg))) => {
+                // RG tag found, and can be converted to String
+                let rg = String::from_utf8_lossy(rg).to_string();
                 if !found_rgs.contains(&rg) {
                     found_rgs.insert(Arc::new(rg.clone()));
                 }
                 found_rgs.get(&rg).unwrap().clone()
             }
-            None => Arc::clone(&UNKNOWN_READ_GROUP),
+            _ => Arc::clone(&UNKNOWN_READ_GROUP), // RG tag not found or not a String
         };
 
         if args.calc_rpt {
             match record.read_name() {
                 Some(rn) => {
-                    let rn = rn.to_string();
-                    let rg_vec = read_names.get_mut(&rn);
-
-                    match rg_vec {
-                        Some(rg_vec) => {
-                            rg_vec.push(Arc::clone(&read_group));
-                        }
-                        None => {
-                            read_names.insert(rn, vec![(Arc::clone(&read_group))]);
-                        }
-                    }
+                    let rn = String::from_utf8_lossy(rn.as_bytes()).to_string();
+                    let rg_vec = read_names.entry(rn).or_insert(vec![]);
+                    rg_vec.push(Arc::clone(&read_group));
                 }
                 None => {
                     trace!("Could not parse a QNAME from a read in the file.");
@@ -129,7 +121,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
         let overall_rg = Arc::clone(&OVERALL);
 
-        if record.flags().is_first_segment() && !record.flags().is_last_segment() {
+        if flags.is_first_segment() && !flags.is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.first += 1;
             });
@@ -145,7 +137,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     both: 0,
                     neither: 0,
                 });
-        } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
+        } else if !flags.is_first_segment() && flags.is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.last += 1;
             });
@@ -161,7 +153,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     both: 0,
                     neither: 0,
                 });
-        } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
+        } else if flags.is_first_segment() && flags.is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.both += 1;
             });
@@ -177,7 +169,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     both: 1,
                     neither: 0,
                 });
-        } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
+        } else if !flags.is_first_segment() && !flags.is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.neither += 1;
             });
