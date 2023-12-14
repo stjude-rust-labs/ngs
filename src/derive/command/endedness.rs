@@ -99,7 +99,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                 if !found_rgs.contains(&rg) {
                     found_rgs.insert(Arc::new(rg.clone()));
                 }
-                found_rgs.get(&rg).unwrap().clone()
+                Arc::clone(found_rgs.get(&rg).unwrap())
             }
             None => Arc::clone(&UNKNOWN_READ_GROUP),
         };
