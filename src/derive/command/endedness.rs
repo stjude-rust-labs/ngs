@@ -36,8 +36,8 @@ pub struct DeriveEndednessArgs {
     src: PathBuf,
 
     /// Only examine the first n records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    #[arg(short, long, value_name = "U64")]
+    num_records: Option<u64>,
 
     /// Distance from 0.5 split between number of f+l- reads and f-l+ reads
     /// allowed to be called 'Paired-End'. Default of `0.0` only appropriate
@@ -63,16 +63,16 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
     let mut found_rgs = HashSet::new();
 
-    let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
-    ordering_flags.insert(Arc::clone(&OVERALL), OrderingFlagsCounts::new());
-    ordering_flags.insert(Arc::clone(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
+    let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+    ordering_flags.insert(OVERALL.as_str(), OrderingFlagsCounts::new());
+    ordering_flags.insert(UNKNOWN_READ_GROUP.as_str(), OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
-    let mut read_names: HashMap<String, Vec<Arc<String>>> = HashMap::new();
+    let mut read_names: HashMap<String, Vec<&str>> = HashMap::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
-    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::Full)?;
+    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::None)?;
 
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
@@ -95,13 +95,13 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
         let read_group = match record.data().get(Tag::ReadGroup) {
             Some(rg) => {
-                let rg = rg.to_string();
-                if !found_rgs.contains(&rg) {
-                    found_rgs.insert(Arc::new(rg.clone()));
+                let rg = rg.as_str().unwrap();
+                if !found_rgs.contains(rg) {
+                    found_rgs.insert(rg.to_string());
                 }
-                Arc::clone(found_rgs.get(&rg).unwrap())
+                found_rgs.get(rg).unwrap()
             }
-            None => Arc::clone(&UNKNOWN_READ_GROUP),
+            None => UNKNOWN_READ_GROUP.as_str(),
         };
 
         if args.calc_rpt {
@@ -112,10 +112,10 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
                     match rg_vec {
                         Some(rg_vec) => {
-                            rg_vec.push(Arc::clone(&read_group));
+                            rg_vec.push(read_group);
                         }
                         None => {
-                            read_names.insert(rn, vec![(Arc::clone(&read_group))]);
+                            read_names.insert(rn, vec![read_group]);
                         }
                     }
                 }
@@ -127,7 +127,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             }
         }
 
-        let overall_rg = Arc::clone(&OVERALL);
+        let overall_rg = OVERALL.as_str();
 
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
@@ -207,8 +207,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
     // (2) Derive the consensus endedness based on the ordering flags gathered.
     let result = compute::predict(
-        ordering_flags,
-        read_names,
+        &ordering_flags,
+        &read_names,
         args.paired_deviance.unwrap(),
         args.round_rpt,
     )

@@ -33,8 +33,8 @@ pub struct DeriveReadlenArgs {
     src: PathBuf,
 
     /// Only examine the first n records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    #[arg(short, long, value_name = "U64")]
+    num_records: Option<u64>,
 
     /// Majority vote cutoff value as a fraction between [0.0, 1.0].
     #[arg(short, long, value_name = "F64", default_value = "0.7")]
@@ -50,7 +50,7 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
 
     let ParsedBAMFile {
         mut reader, header, ..
-    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::Full)?;
+    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::None)?;
 
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
@@ -63,9 +63,12 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
 
     for result in reader.records(&header.parsed) {
         let record = result?;
-        let len = record.sequence().len();
+        let len = record.sequence().len() as u32;
 
-        read_lengths.entry(len).and_modify(|e| *e += 1).or_insert(1);
+        read_lengths
+            .entry(len)
+            .and_modify(|e| *e += 1)
+            .or_insert(1 as u64);
 
         if sample_max > 0 {
             samples += 1;

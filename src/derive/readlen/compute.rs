@@ -12,23 +12,23 @@ pub struct DerivedReadlenResult {
     pub succeeded: bool,
 
     /// The concsensus read length, if available.
-    pub consensus_read_length: Option<usize>,
+    pub consensus_read_length: Option<u32>,
 
     /// The majority vote percentage of the consensus read length, if available.
     pub majority_pct_detected: f64,
 
     /// Status of the evidence that supports (or does not support) this
     /// read length, if available.
-    pub evidence: Vec<(usize, i32)>,
+    pub evidence: Vec<(u32, u64)>,
 }
 
 impl DerivedReadlenResult {
     /// Creates a new [`DerivedReadlenResult`].
     pub fn new(
         succeeded: bool,
-        consensus_read_length: Option<usize>,
+        consensus_read_length: Option<u32>,
         majority_pct_detected: f64,
-        evidence: Vec<(usize, i32)>,
+        evidence: Vec<(u32, u64)>,
     ) -> Self {
         DerivedReadlenResult {
             succeeded,
@@ -43,7 +43,7 @@ impl DerivedReadlenResult {
 /// return a result for the consensus read length. This may fail, and the
 /// resulting [`DerivedReadlenResult`] should be evaluated accordingly.
 pub fn predict(
-    read_lengths: HashMap<usize, i32>,
+    read_lengths: HashMap<u32, u64>,
     majority_vote_cutoff: f64,
 ) -> Result<DerivedReadlenResult, anyhow::Error> {
     let mut num_records = 0;
@@ -66,7 +66,7 @@ pub fn predict(
     let majority_detected = max_count as f64 / num_records as f64;
 
     // Sort the read lengths by their key for output.
-    let mut read_lengths: Vec<(usize, i32)> = read_lengths.into_iter().collect();
+    let mut read_lengths: Vec<(u32, u64)> = read_lengths.into_iter().collect();
     read_lengths.sort_by(|a, b| b.0.cmp(&a.0));
 
     let mut result =
