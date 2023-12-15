@@ -23,16 +23,16 @@ lazy_static! {
 #[derive(Debug, Clone)]
 pub struct OrderingFlagsCounts {
     /// The number of reads with the first in template flag set.
-    pub first: u64,
+    pub first: usize,
 
     /// The number of reads with the last in template flag set.
-    pub last: u64,
+    pub last: usize,
 
     /// The number of reads with both the first and last in template flags set.
-    pub both: u64,
+    pub both: usize,
 
     /// The number of reads with neither the first nor last in template flags set.
-    pub neither: u64,
+    pub neither: usize,
 }
 impl OrderingFlagsCounts {
     /// Creates a new [`OrderingFlagsCounts`].
@@ -66,16 +66,16 @@ pub struct ReadGroupDerivedEndednessResult {
     pub endedness: String,
 
     /// The f+l- read count.
-    pub first: u64,
+    pub first: usize,
 
     /// The f-l+ read count.
-    pub last: u64,
+    pub last: usize,
 
     /// The f+l+ read count.
-    pub both: u64,
+    pub both: usize,
 
     /// The f-l- read count.
-    pub neither: u64,
+    pub neither: usize,
 
     /// The reads per template (RPT).
     /// Only available if `args.calc_rpt` is true.
@@ -115,16 +115,16 @@ pub struct DerivedEndednessResult {
     pub endedness: String,
 
     /// The overall f+l- read count.
-    pub first: u64,
+    pub first: usize,
 
     /// The overall f-l+ read count.
-    pub last: u64,
+    pub last: usize,
 
     /// The overall f+l+ read count.
-    pub both: u64,
+    pub both: usize,
 
     /// The overall f-l- read count.
-    pub neither: u64,
+    pub neither: usize,
 
     /// The overall reads per template (RPT).
     /// Only available if `args.calc_rpt` is true.
@@ -192,27 +192,27 @@ pub fn validate_read_group_info(
     return rgs_in_header_not_records;
 }
 
-fn calculate_reads_per_template<'rg>(
-    read_names: &HashMap<String, Vec<&'rg str>>,
-) -> HashMap<&'rg str, f64> {
-    let mut reads_per_template: HashMap<&str, f64> = HashMap::new();
-    let mut total_reads: u64 = 0;
-    let mut total_templates: u64 = 0;
-    let mut read_group_reads: HashMap<&str, u64> = HashMap::new();
-    let mut read_group_templates: HashMap<&str, u64> = HashMap::new();
+fn calculate_reads_per_template(
+    read_names: HashMap<String, Vec<Arc<String>>>,
+) -> HashMap<Arc<String>, f64> {
+    let mut reads_per_template: HashMap<Arc<String>, f64> = HashMap::new();
+    let mut total_reads: usize = 0;
+    let mut total_templates: usize = 0;
+    let mut read_group_reads: HashMap<Arc<String>, usize> = HashMap::new();
+    let mut read_group_templates: HashMap<Arc<String>, usize> = HashMap::new();
 
     for (read_name, read_groups) in read_names.iter() {
-        let num_reads = read_groups.len() as u64;
+        let num_reads = read_groups.len();
         total_reads += num_reads;
         total_templates += 1;
 
-        let read_group_set: HashSet<&str> = read_groups.iter().cloned().collect();
+        let read_group_set: HashSet<Arc<String>> = read_groups.iter().cloned().collect();
 
         if read_group_set.len() == 1 {
-            let read_group = read_group_set.iter().next().unwrap();
+            let read_group = Arc::clone(read_group_set.iter().next().unwrap());
 
             read_group_reads
-                .entry(&read_group)
+                .entry(Arc::clone(&read_group))
                 .and_modify(|e| *e += num_reads)
                 .or_insert(num_reads);
             read_group_templates
@@ -226,7 +226,7 @@ fn calculate_reads_per_template<'rg>(
             );
             for read_group in read_groups {
                 read_group_reads
-                    .entry(&read_group)
+                    .entry(Arc::clone(read_group))
                     .and_modify(|e| *e += 1)
                     .or_insert(1);
             }
@@ -240,14 +240,14 @@ fn calculate_reads_per_template<'rg>(
     }
 
     reads_per_template.insert(
-        OVERALL.as_str(),
+        Arc::clone(&OVERALL),
         total_reads as f64 / total_templates as f64,
     );
 
     for (read_group, num_reads) in read_group_reads.iter() {
         let num_templates = read_group_templates.get(read_group).unwrap();
         let rpt = *num_reads as f64 / *num_templates as f64;
-        reads_per_template.insert(read_group, rpt);
+        reads_per_template.insert(Arc::clone(read_group), rpt);
     }
 
     reads_per_template
@@ -301,7 +301,7 @@ fn predict_endedness(
     if first == 0 && last == 0 && both > 0 && neither == 0 {
         match reads_per_template {
             Some(rpt) => {
-                if *rpt == 1.0 || (round_rpt && rpt.round() as u64 == 1) {
+                if *rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
                     result.succeeded = true;
                     result.endedness = String::from("Single-End");
                 }
@@ -335,7 +335,7 @@ fn predict_endedness(
     if (first == last) || (lower_limit <= first_frac && first_frac <= upper_limit) {
         match reads_per_template {
             Some(rpt) => {
-                if *rpt == 2.0 || (round_rpt && rpt.round() as u64 == 2) {
+                if *rpt == 2.0 || (round_rpt && rpt.round() as usize == 2) {
                     result.succeeded = true;
                     result.endedness = String::from("Paired-End");
                 }
@@ -353,12 +353,12 @@ fn predict_endedness(
 /// return a result for the endedness of the file. This may fail, and the
 /// resulting [`DerivedEndednessResult`] should be evaluated accordingly.
 pub fn predict(
-    ordering_flags: &HashMap<&str, OrderingFlagsCounts>,
-    read_names: &HashMap<String, Vec<&str>>,
+    ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts>,
+    read_names: HashMap<String, Vec<Arc<String>>>,
     paired_deviance: f64,
     round_rpt: bool,
-) -> DerivedEndednessResult {
-    let mut rpts: HashMap<&str, f64> = HashMap::new();
+) -> Result<DerivedEndednessResult, anyhow::Error> {
+    let mut rpts: HashMap<Arc<String>, f64> = HashMap::new();
     if !read_names.is_empty() {
         rpts = calculate_reads_per_template(read_names);
     }
@@ -372,7 +372,7 @@ pub fn predict(
     );
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
-        if (*read_group == UNKNOWN_READ_GROUP.as_str())
+        if (*read_group == *UNKNOWN_READ_GROUP)
             && (rg_ordering_flags.first == 0
                 && rg_ordering_flags.last == 0
                 && rg_ordering_flags.both == 0
@@ -409,9 +409,9 @@ mod tests {
 
     #[test]
     fn test_predict_endedness() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 1,
                 last: 1,
@@ -421,11 +421,13 @@ mod tests {
         );
         let result = predict_endedness(
             "overall".to_string(),
-            &ordering_flags.get(OVERALL.as_str()).unwrap(),
+            &ordering_flags.get(&Arc::clone(&OVERALL)).unwrap(),
             0.0,
             None,
             false,
         );
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Paired-End");
         assert_eq!(result.first, 1);
@@ -457,9 +459,9 @@ mod tests {
 
     #[test]
     fn test_derive_endedness_from_only_first() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 1,
                 last: 0,
@@ -467,7 +469,9 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 1);
@@ -480,9 +484,9 @@ mod tests {
 
     #[test]
     fn test_derive_endedness_from_only_last() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 0,
                 last: 1,
@@ -490,7 +494,9 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 0);
@@ -503,9 +509,9 @@ mod tests {
 
     #[test]
     fn test_derive_endedness_from_only_both() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -513,7 +519,9 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Single-End");
         assert_eq!(result.first, 0);
@@ -526,9 +534,9 @@ mod tests {
 
     #[test]
     fn test_derive_endedness_from_only_neither() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -536,7 +544,9 @@ mod tests {
                 neither: 1,
             },
         );
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 0);
@@ -549,9 +559,9 @@ mod tests {
 
     #[test]
     fn test_derive_endedness_from_first_and_last() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 1,
                 last: 1,
@@ -559,7 +569,9 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Paired-End");
         assert_eq!(result.first, 1);
@@ -572,28 +584,48 @@ mod tests {
 
     #[test]
     fn test_calculate_reads_per_template() {
-        let mut read_names: HashMap<String, Vec<&str>> = HashMap::new();
-        let rg_paired = "rg_paired";
-        let rg_single = "rg_single";
-        read_names.insert("read1".to_string(), vec![rg_paired, rg_paired]);
-        read_names.insert("read2".to_string(), vec![rg_paired, rg_paired, rg_single]);
-        read_names.insert("read3".to_string(), vec![rg_single]);
-        read_names.insert("read4".to_string(), vec![rg_paired, rg_paired]);
-        read_names.insert("read5".to_string(), vec![rg_paired, rg_paired, rg_single]);
-        let results = calculate_reads_per_template(&read_names);
+        let mut read_names: HashMap<String, Vec<Arc<String>>> = HashMap::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
+        read_names.insert(
+            "read1".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        let results = calculate_reads_per_template(read_names);
         assert_eq!(results.len(), 3);
-        assert_eq!(results.get("overall").unwrap(), &2.2);
-        assert_eq!(results.get(rg_paired).unwrap(), &2.0);
-        assert_eq!(results.get(rg_single).unwrap(), &1.0);
+        assert_eq!(results.get(&Arc::new("overall".to_string())).unwrap(), &2.2);
+        assert_eq!(results.get(&Arc::clone(&rg_paired)).unwrap(), &2.0);
+        assert_eq!(results.get(&Arc::clone(&rg_single)).unwrap(), &1.0);
     }
 
     #[test]
     fn test_derive_endedness_from_first_and_last_with_rpt() {
-        let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
-        let rg_paired = "rg_paired";
-        let rg_single = "rg_single";
+        let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
         ordering_flags.insert(
-            OVERALL.as_str(),
+            Arc::clone(&OVERALL),
             OrderingFlagsCounts {
                 first: 8,
                 last: 8,
@@ -602,7 +634,7 @@ mod tests {
             },
         );
         ordering_flags.insert(
-            rg_paired,
+            Arc::clone(&rg_paired),
             OrderingFlagsCounts {
                 first: 8,
                 last: 8,
@@ -611,7 +643,7 @@ mod tests {
             },
         );
         ordering_flags.insert(
-            rg_single,
+            Arc::clone(&rg_single),
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -619,13 +651,35 @@ mod tests {
                 neither: 0,
             },
         );
-        let mut read_names: HashMap<String, Vec<&str>> = HashMap::new();
-        read_names.insert("read1".to_string(), vec![rg_paired, rg_paired]);
-        read_names.insert("read2".to_string(), vec![rg_paired, rg_paired, rg_single]);
-        read_names.insert("read3".to_string(), vec![rg_single]);
-        read_names.insert("read4".to_string(), vec![rg_paired, rg_paired]);
-        read_names.insert("read5".to_string(), vec![rg_paired, rg_paired, rg_single]);
-        let result = predict(&ordering_flags, &read_names, 0.0, false);
+        let mut read_names: HashMap<String, Vec<Arc<String>>> = HashMap::new();
+        read_names.insert(
+            "read1".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        let result = predict(ordering_flags, read_names, 0.0, false);
+        assert!(result.is_ok());
+        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 8);
