@@ -94,13 +94,15 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => {
-                let rg = rg.as_str().unwrap();
-                if !found_rgs.contains(rg) {
-                    found_rgs.insert(rg.to_string());
+            Some(rg) => match rg.as_str() {
+                Some(rg) => {
+                    if !found_rgs.contains(rg) {
+                        found_rgs.insert(rg.to_string());
+                    }
+                    found_rgs.get(rg).unwrap()
                 }
-                found_rgs.get(rg).unwrap()
-            }
+                None => UNKNOWN_READ_GROUP.as_str(),
+            },
             None => UNKNOWN_READ_GROUP.as_str(),
         };
 
