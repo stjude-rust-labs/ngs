@@ -47,26 +47,19 @@ pub fn predict(
     num_samples: u64,
     majority_vote_cutoff: f64,
 ) -> Result<DerivedReadlenResult, anyhow::Error> {
-    let mut max_count = 0;
-    let mut max_read_length = 0;
-
-    for (read_length, count) in &read_lengths {
-        if *read_length > max_read_length {
-            max_read_length = *read_length;
-            max_count = *count;
-        }
-    }
-
     if num_samples <= 0 {
         bail!("No read lengths were detected in the file.");
     }
 
-    let consensus_read_length = max_read_length;
-    let majority_detected = max_count as f64 / num_samples as f64;
-
     // Sort the read lengths by their key for output.
     let mut read_lengths: Vec<(u32, u64)> = read_lengths.into_iter().collect();
     read_lengths.sort_by(|a, b| b.0.cmp(&a.0));
+
+    let max_read_length = read_lengths[0].0;
+    let max_count = read_lengths[0].1;
+
+    let consensus_read_length = max_read_length;
+    let majority_detected = max_count as f64 / num_samples as f64;
 
     let mut result =
         DerivedReadlenResult::new(false, None, majority_detected * 100.0, read_lengths);
