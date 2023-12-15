@@ -1,22 +1,16 @@
 //! Module holding the logic for computing the endedness of a BAM.
 
 use anyhow::bail;
-use lazy_static::lazy_static;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
-use std::sync::Arc;
 use tracing::warn;
 
-// Strings used to index into the HashMaps used to store the Read Group ordering flags.
-// Lazy statics are used to save memory.
-lazy_static! {
-    /// String used to index into the HashMaps used to store the "overall" ordering flags.
-    pub static ref OVERALL: Arc<String> = Arc::new(String::from("overall"));
+/// String used to index into the HashMaps used to store the "overall" ordering flags.
+pub static OVERALL: &str = "overall";
 
-    /// String used to index into th HashMaps used to store the "unknown_read_group" ordering flags.
-    pub static ref UNKNOWN_READ_GROUP: Arc<String> = Arc::new(String::from("unknown_read_group"));
-}
+/// String used to index into th HashMaps used to store the "unknown_read_group" ordering flags.
+pub static UNKNOWN_READ_GROUP: &str = "unknown_read_group";
 
 /// Struct holding the ordering flags for a single read group.
 #[derive(Debug, Clone)]
@@ -204,10 +198,7 @@ fn calculate_reads_per_template<'rg>(
         }
     }
 
-    reads_per_template.insert(
-        OVERALL.as_str(),
-        total_reads as f64 / total_templates as f64,
-    );
+    reads_per_template.insert(OVERALL, total_reads as f64 / total_templates as f64);
 
     for (read_group, num_reads) in read_group_reads.iter() {
         let num_templates = read_group_templates.get(read_group).unwrap();
@@ -330,7 +321,7 @@ pub fn predict(
     );
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
-        if (*read_group == UNKNOWN_READ_GROUP.as_str())
+        if (*read_group == UNKNOWN_READ_GROUP)
             && (rg_ordering_flags.first == 0
                 && rg_ordering_flags.last == 0
                 && rg_ordering_flags.both == 0
@@ -369,7 +360,7 @@ mod tests {
     fn test_predict_endedness() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 1,
                 last: 1,
@@ -379,7 +370,7 @@ mod tests {
         );
         let result = predict_endedness(
             "overall".to_string(),
-            &ordering_flags.get(OVERALL.as_str()).unwrap(),
+            &ordering_flags.get(OVERALL).unwrap(),
             0.0,
             None,
             false,
@@ -398,7 +389,7 @@ mod tests {
     #[test]
     fn test_derive_endedness_from_all_zero_counts() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
-        ordering_flags.insert(OVERALL.as_str(), OrderingFlagsCounts::new());
+        ordering_flags.insert(OVERALL, OrderingFlagsCounts::new());
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
         assert!(result.is_err());
     }
@@ -407,7 +398,7 @@ mod tests {
     fn test_derive_endedness_from_only_first() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 1,
                 last: 0,
@@ -432,7 +423,7 @@ mod tests {
     fn test_derive_endedness_from_only_last() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 0,
                 last: 1,
@@ -457,7 +448,7 @@ mod tests {
     fn test_derive_endedness_from_only_both() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -482,7 +473,7 @@ mod tests {
     fn test_derive_endedness_from_only_neither() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 0,
                 last: 0,
@@ -507,7 +498,7 @@ mod tests {
     fn test_derive_endedness_from_first_and_last() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 1,
                 last: 1,
@@ -551,7 +542,7 @@ mod tests {
         let rg_paired = "rg_paired";
         let rg_single = "rg_single";
         ordering_flags.insert(
-            OVERALL.as_str(),
+            OVERALL,
             OrderingFlagsCounts {
                 first: 8,
                 last: 8,

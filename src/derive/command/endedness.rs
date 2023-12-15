@@ -3,7 +3,6 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
@@ -64,8 +63,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     let mut found_rgs = HashSet::new();
 
     let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
-    ordering_flags.insert(OVERALL.as_str(), OrderingFlagsCounts::new());
-    ordering_flags.insert(UNKNOWN_READ_GROUP.as_str(), OrderingFlagsCounts::new());
+    ordering_flags.insert(OVERALL, OrderingFlagsCounts::new());
+    ordering_flags.insert(UNKNOWN_READ_GROUP, OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
     let mut read_names: HashMap<String, Vec<&str>> = HashMap::new();
@@ -101,9 +100,9 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     }
                     found_rgs.get(rg).unwrap()
                 }
-                None => UNKNOWN_READ_GROUP.as_str(),
+                None => UNKNOWN_READ_GROUP,
             },
-            None => UNKNOWN_READ_GROUP.as_str(),
+            None => UNKNOWN_READ_GROUP,
         };
 
         if args.calc_rpt {
@@ -129,10 +128,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             }
         }
 
-        let overall_rg = OVERALL.as_str();
-
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
+            ordering_flags.entry(OVERALL).and_modify(|e| {
                 e.first += 1;
             });
 
@@ -148,7 +145,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
+            ordering_flags.entry(OVERALL).and_modify(|e| {
                 e.last += 1;
             });
 
@@ -164,7 +161,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
+            ordering_flags.entry(OVERALL).and_modify(|e| {
                 e.both += 1;
             });
 
@@ -180,7 +177,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
+            ordering_flags.entry(OVERALL).and_modify(|e| {
                 e.neither += 1;
             });
 
