@@ -10,7 +10,9 @@ use tracing::info;
 use tracing::trace;
 
 use crate::derive::endedness::compute;
-use crate::derive::endedness::compute::{OrderingFlagsCounts, OVERALL, UNKNOWN_READ_GROUP};
+use crate::derive::endedness::compute::{
+    validate_read_group_info, OrderingFlagsCounts, OVERALL, UNKNOWN_READ_GROUP,
+};
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -202,6 +204,12 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                 break;
             }
         }
+    }
+
+    // (1.5) Validate the read group information.
+    let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed)
+    for rg_id in rgs_in_header_not_records {
+        ordering_flags.insert(&rg_id, OrderingFlagsCounts::new());
     }
 
     // (2) Derive the consensus endedness based on the ordering flags gathered.

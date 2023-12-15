@@ -1,6 +1,6 @@
 //! Module holding the logic for computing the endedness of a BAM.
 
-use anyhow::bail;
+use noodles::sam::header;
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
@@ -151,6 +151,40 @@ impl DerivedEndednessResult {
     }
 }
 
+pub fn validate_read_group_info(
+    found_rgs: &HashSet<String>,
+    header: &header::Header,
+) -> Vec<String> {
+    let mut rgs_in_header_not_records = Vec::new();
+    let mut rgs_in_records_not_header = Vec::new();
+
+    for (rg_id, _) in header.read_groups() {
+        if !found_rgs.contains(rg_id) {
+            rgs_in_header_not_records.push(rg_id.to_string());
+        }
+    }
+    if !rgs_in_header_not_records.is_empty() {
+        warn!(
+            "The following read groups were not found in the file: {:?}",
+            rgs_in_header_not_records
+        );
+    }
+
+    for rg_id in found_rgs {
+        if !header.read_groups().contains_key(rg_id) {
+            rgs_in_records_not_header.push(rg_id.to_string());
+        }
+    }
+    if !rgs_in_records_not_header.is_empty() {
+        warn!(
+            "The following read groups were not found in the header: {:?}",
+            rgs_in_records_not_header
+        );
+    }
+
+    return rgs_in_header_not_records;
+}
+
 fn calculate_reads_per_template<'rg>(
     read_names: &HashMap<String, Vec<&'rg str>>,
 ) -> HashMap<&'rg str, f64> {
@@ -215,7 +249,7 @@ fn predict_endedness(
     paired_deviance: f64,
     reads_per_template: Option<&f64>,
     round_rpt: bool,
-) -> Result<ReadGroupDerivedEndednessResult, anyhow::Error> {
+) -> ReadGroupDerivedEndednessResult {
     let first = rg_ordering_flags.first;
     let last = rg_ordering_flags.last;
     let both = rg_ordering_flags.both;
@@ -224,9 +258,16 @@ fn predict_endedness(
     // all zeroes (Perform this check before creating the result struct
     // so that we don't have to clone the read group name)
     if first == 0 && last == 0 && both == 0 && neither == 0 {
-        bail!(
+        warn!(
             "No reads were detected in this read group: {}",
             read_group_name
+        );
+        return ReadGroupDerivedEndednessResult::new(
+            read_group_name,
+            false,
+            "Unknown".to_string(),
+            rg_ordering_flags.clone(),
+            reads_per_template.copied(),
         );
     }
 
@@ -240,11 +281,11 @@ fn predict_endedness(
 
     // only first present
     if first > 0 && last == 0 && both == 0 && neither == 0 {
-        return Ok(result);
+        return result;
     }
     // only last present
     if first == 0 && last > 0 && both == 0 && neither == 0 {
-        return Ok(result);
+        return result;
     }
     // only both present
     if first == 0 && last == 0 && both > 0 && neither == 0 {
@@ -260,19 +301,19 @@ fn predict_endedness(
                 result.endedness = String::from("Single-End");
             }
         }
-        return Ok(result);
+        return result;
     }
     // only neither present
     if first == 0 && last == 0 && both == 0 && neither > 0 {
-        return Ok(result);
+        return result;
     }
     // first/last mixed with both/neither
     if (first > 0 || last > 0) && (both > 0 || neither > 0) {
-        return Ok(result);
+        return result;
     }
     // any mix of both/neither, regardless of first/last
     if both > 0 && neither > 0 {
-        return Ok(result);
+        return result;
     }
 
     // both and neither are now guarenteed to be 0
@@ -295,7 +336,7 @@ fn predict_endedness(
             }
         }
     }
-    Ok(result)
+    result
 }
 
 /// Main method to evaluate the collected ordering flags and
@@ -306,7 +347,7 @@ pub fn predict(
     read_names: &HashMap<String, Vec<&str>>,
     paired_deviance: f64,
     round_rpt: bool,
-) -> Result<DerivedEndednessResult, anyhow::Error> {
+) -> DerivedEndednessResult {
     let mut rpts: HashMap<&str, f64> = HashMap::new();
     if !read_names.is_empty() {
         rpts = calculate_reads_per_template(read_names);
@@ -335,7 +376,7 @@ pub fn predict(
             paired_deviance,
             rpts.get(read_group),
             round_rpt,
-        )?;
+        );
         if result.read_group == "overall" {
             final_result.endedness = result.endedness;
             final_result.first = result.first;
@@ -349,7 +390,7 @@ pub fn predict(
         }
     }
 
-    Ok(final_result)
+    final_result
 }
 
 #[cfg(test)]
@@ -375,8 +416,6 @@ mod tests {
             None,
             false,
         );
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Paired-End");
         assert_eq!(result.first, 1);
@@ -389,9 +428,21 @@ mod tests {
     #[test]
     fn test_derive_endedness_from_all_zero_counts() {
         let mut ordering_flags: HashMap<&str, OrderingFlagsCounts> = HashMap::new();
-        ordering_flags.insert(OVERALL, OrderingFlagsCounts::new());
-        let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_err());
+        ordering_flags.insert("rg1", OrderingFlagsCounts::new());
+        let result = predict_endedness(
+            "rg1".to_string(),
+            &ordering_flags.get("rg1").unwrap(),
+            0.0,
+            None,
+            false,
+        );
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
     }
 
     #[test]
@@ -407,8 +458,6 @@ mod tests {
             },
         );
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 1);
@@ -432,8 +481,6 @@ mod tests {
             },
         );
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 0);
@@ -457,8 +504,6 @@ mod tests {
             },
         );
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Single-End");
         assert_eq!(result.first, 0);
@@ -482,8 +527,6 @@ mod tests {
             },
         );
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 0);
@@ -507,8 +550,6 @@ mod tests {
             },
         );
         let result = predict(&ordering_flags, &HashMap::new(), 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(result.succeeded);
         assert_eq!(result.endedness, "Paired-End");
         assert_eq!(result.first, 1);
@@ -575,8 +616,6 @@ mod tests {
         read_names.insert("read4".to_string(), vec![rg_paired, rg_paired]);
         read_names.insert("read5".to_string(), vec![rg_paired, rg_paired, rg_single]);
         let result = predict(&ordering_flags, &read_names, 0.0, false);
-        assert!(result.is_ok());
-        let result = result.unwrap();
         assert!(!result.succeeded);
         assert_eq!(result.endedness, "Unknown");
         assert_eq!(result.first, 8);
