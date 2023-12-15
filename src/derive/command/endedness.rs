@@ -3,6 +3,7 @@
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
@@ -95,16 +96,14 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => match rg.as_str() {
-                Some(rg) => {
-                    if !found_rgs.contains(rg) {
-                        found_rgs.insert(rg.to_string());
-                    }
-                    found_rgs.get(rg).unwrap()
+            Some(rg) => {
+                let rg = rg.to_string();
+                if !found_rgs.contains(&rg) {
+                    found_rgs.insert(Arc::new(rg.clone()));
                 }
-                None => UNKNOWN_READ_GROUP,
-            },
-            None => UNKNOWN_READ_GROUP,
+                Arc::clone(found_rgs.get(&rg).unwrap())
+            }
+            None => Arc::clone(&UNKNOWN_READ_GROUP),
         };
 
         if args.calc_rpt {
@@ -133,7 +132,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         let overall_rg = Arc::clone(&OVERALL);
 
         if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(OVERALL).and_modify(|e| {
+            ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.first += 1;
             });
 
@@ -149,7 +148,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(OVERALL).and_modify(|e| {
+            ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.last += 1;
             });
 
@@ -165,7 +164,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(OVERALL).and_modify(|e| {
+            ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.both += 1;
             });
 
@@ -181,7 +180,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(OVERALL).and_modify(|e| {
+            ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.neither += 1;
             });
 
@@ -211,7 +210,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     // (1.5) Validate the read group information.
     let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed);
     for rg_id in rgs_in_header_not_records {
-        ordering_flags.insert(&rg_id, OrderingFlagsCounts::new());
+        ordering_flags.insert(Arc::new(rg_id), OrderingFlagsCounts::new());
     }
 
     // (2) Derive the consensus endedness based on the ordering flags gathered.

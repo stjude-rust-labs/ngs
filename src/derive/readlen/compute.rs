@@ -47,7 +47,7 @@ pub fn predict(
     num_samples: usize,
     majority_vote_cutoff: f64,
 ) -> Result<DerivedReadlenResult, anyhow::Error> {
-    if num_samples <= 0 {
+    if num_samples == 0 {
         bail!("No read lengths were detected in the file.");
     }
 
