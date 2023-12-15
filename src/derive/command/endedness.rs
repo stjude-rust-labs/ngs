@@ -207,7 +207,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     }
 
     // (1.5) Validate the read group information.
-    let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed)
+    let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed);
     for rg_id in rgs_in_header_not_records {
         ordering_flags.insert(&rg_id, OrderingFlagsCounts::new());
     }
@@ -218,8 +218,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         &read_names,
         args.paired_deviance.unwrap(),
         args.round_rpt,
-    )
-    .unwrap();
+    );
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
