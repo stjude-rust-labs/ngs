@@ -70,16 +70,15 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
             .and_modify(|e| *e += 1)
             .or_insert(1 as u64);
 
-        if sample_max > 0 {
-            samples += 1;
-            if samples > sample_max {
-                break;
-            }
+        samples += 1;
+        if sample_max > 0 && samples > sample_max {
+            break;
         }
     }
 
     // (2) Derive the consensus read length based on the read lengths gathered.
-    let result = compute::predict(read_lengths, args.majority_vote_cutoff.unwrap()).unwrap();
+    let result =
+        compute::predict(read_lengths, samples, args.majority_vote_cutoff.unwrap()).unwrap();
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
