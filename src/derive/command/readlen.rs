@@ -82,5 +82,5 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
     let output = serde_json::to_string_pretty(&result).unwrap();
     print!("{}", output);
 
-    Ok(())
+    anyhow::Ok(())
 }

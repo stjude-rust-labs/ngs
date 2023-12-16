@@ -69,7 +69,7 @@ pub fn predict(
         result.consensus_read_length = Some(consensus_read_length);
     }
 
-    Ok(result)
+    anyhow::Ok(result)
 }
 
 #[cfg(test)]
