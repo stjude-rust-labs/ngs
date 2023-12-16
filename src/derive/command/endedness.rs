@@ -74,7 +74,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
     let ParsedBAMFile {
         mut reader, header, ..
-    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::Full)?;
+    } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::None)?;
 
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
