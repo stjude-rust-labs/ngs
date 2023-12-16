@@ -1,3 +1,3 @@
-//! Supporting functionality for the `ngs derive instrument` subcommand.
+//! Supporting functionality for the `ngs derive readlen` subcommand.
 
 pub mod compute;
