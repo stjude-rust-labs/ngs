@@ -76,7 +76,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         mut reader, header, ..
     } = crate::utils::formats::bam::open_and_parse(args.src, IndexCheck::None)?;
 
-    // (1) Collect read lengths from reads within the
+    // (1) Collect ordering flags (and QNAMEs) from reads within the
     // file. Support for sampling only a portion of the reads is provided.
     let mut samples = 0;
     let mut sample_max = 0;
@@ -213,7 +213,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         ordering_flags.insert(Arc::new(rg_id), OrderingFlagsCounts::new());
     }
 
-    // (2) Derive the consensus endedness based on the ordering flags gathered.
+    // (2) Derive the endedness based on the ordering flags gathered.
     let result = compute::predict(
         ordering_flags,
         read_names,
