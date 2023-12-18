@@ -204,6 +204,8 @@ fn calculate_reads_per_template(
     let mut read_group_reads: HashMap<Arc<String>, usize> = HashMap::new();
     let mut read_group_templates: HashMap<Arc<String>, usize> = HashMap::new();
 
+    let mut warning_count: usize = 0;
+
     for (read_name, read_groups) in read_names.iter() {
         let num_reads = read_groups.len();
         total_reads += num_reads;
@@ -223,10 +225,20 @@ fn calculate_reads_per_template(
                 .and_modify(|e| *e += 1)
                 .or_insert(1);
         } else {
-            warn!(
-                "QNAME: '{}' is in multiple read groups: {:?}",
-                read_name, read_group_set
-            );
+            warning_count += 1;
+            match warning_count {
+                1..=100 => {
+                    warn!(
+                        "QNAME: '{}' is in multiple read groups: {:?}",
+                        read_name, read_group_set
+                    );
+                }
+                101 => warn!(
+                    "Too many warnings about QNAMEs in multiple read groups. Stopping warnings."
+                ),
+                _ => (),
+            }
+
             for read_group in read_groups {
                 read_group_reads
                     .entry(Arc::clone(read_group))
@@ -240,6 +252,13 @@ fn calculate_reads_per_template(
                     .or_insert(1);
             }
         }
+    }
+
+    if warning_count > 100 {
+        warn!(
+            "{} QNAMEs were found in multiple read groups.",
+            warning_count
+        );
     }
 
     reads_per_template.insert(
