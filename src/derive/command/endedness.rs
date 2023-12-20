@@ -5,6 +5,7 @@ use std::collections::HashSet;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use anyhow::Context;
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
 use num_format::Locale;
@@ -16,23 +17,11 @@ use crate::derive::endedness::compute;
 use crate::derive::endedness::compute::{
     validate_read_group_info, OrderingFlagsCounts, OVERALL, UNKNOWN_READ_GROUP,
 };
+use crate::utils::args::arg_in_range as deviance_in_range;
 use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
-
-/// Utility method to parse the Paired Deviance passed in on the command line and
-/// ensure the value is within the range [0.0, 0.5].
-pub fn deviance_in_range(deviance_raw: &str) -> Result<f64, String> {
-    let deviance: f64 = deviance_raw
-        .parse()
-        .map_err(|_| format!("{} isn't a float", deviance_raw))?;
-
-    match (0.0..=0.5).contains(&deviance) {
-        true => Ok(deviance),
-        false => Err(String::from("Paired Deviance must be between 0.0 and 0.5")),
-    }
-}
 
 /// Clap arguments for the `ngs derive endedness` subcommand.
 #[derive(Args)]
@@ -48,9 +37,8 @@ pub struct DeriveEndednessArgs {
     /// Distance from 0.5 split between number of f+l- reads and f-l+ reads
     /// allowed to be called 'Paired-End'. Default of `0.0` only appropriate
     /// if the whole file is being processed.
-    #[arg(long, value_name = "F64", default_value = "0.0")]
-    #[arg(value_parser = deviance_in_range)]
-    paired_deviance: Option<f64>,
+    #[arg(long, value_name = "F32", default_value = "0.0")]
+    paired_deviance: f32,
 
     /// Calculate and output Reads-Per-Template. This will produce a more
     /// sophisticated estimate for endedness, but uses substantially more memory.
@@ -65,6 +53,10 @@ pub struct DeriveEndednessArgs {
 
 /// Main function for the `ngs derive endedness` subcommand.
 pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
+    // (0) Parse arguments needed for subcommand.
+    let paired_deviance = deviance_in_range(args.paired_deviance, 0.0..=0.5)
+        .with_context(|| "Paired deviance is not within acceptable range")?;
+
     info!("Starting derive endedness subcommand.");
 
     let mut found_rgs = HashSet::new();
@@ -217,12 +209,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     }
 
     // (2) Derive the endedness based on the ordering flags gathered.
-    let result = compute::predict(
-        ordering_flags,
-        read_names,
-        args.paired_deviance.unwrap(),
-        args.round_rpt,
-    );
+    let result = compute::predict(ordering_flags, read_names, paired_deviance, args.round_rpt);
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).

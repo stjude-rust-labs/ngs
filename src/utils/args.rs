@@ -73,3 +73,20 @@ impl From<CompressionStrategy> for CompressionLevel {
         }
     }
 }
+
+//==============//
+// Float Parser //
+//==============//
+
+/// Utility method to parse command line floats and ensure they are
+/// within the range [MIN, MAX].
+pub fn arg_in_range(arg: f32, range: std::ops::RangeInclusive<f32>) -> anyhow::Result<f32> {
+    match range.contains(&arg) {
+        true => Ok(arg),
+        false => anyhow::bail!(
+            "Value must be between {} and {}",
+            range.start(),
+            range.end()
+        ),
+    }
+}

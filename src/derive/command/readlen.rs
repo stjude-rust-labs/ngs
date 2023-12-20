@@ -3,31 +3,18 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+use anyhow::Context;
 use clap::Args;
 use num_format::Locale;
 use num_format::ToFormattedString;
 use tracing::info;
 
 use crate::derive::readlen::compute;
+use crate::utils::args::arg_in_range as cutoff_in_range;
 use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
-
-/// Utility method to parse the Majority Vote Cutoff passed in on the command line and
-/// ensure the cutoff is within the range [0.0, 1.0].
-pub fn cutoff_in_range(cutoff_raw: &str) -> Result<f64, String> {
-    let cutoff: f64 = cutoff_raw
-        .parse()
-        .map_err(|_| format!("{} isn't a float", cutoff_raw))?;
-
-    match (0.0..=1.0).contains(&cutoff) {
-        true => Ok(cutoff),
-        false => Err(String::from(
-            "Majority Vote Cutoff must be between 0.0 and 1.0",
-        )),
-    }
-}
 
 /// Clap arguments for the `ngs derive readlen` subcommand.
 #[derive(Args)]
@@ -41,13 +28,16 @@ pub struct DeriveReadlenArgs {
     num_records: Option<usize>,
 
     /// Majority vote cutoff value as a fraction between [0.0, 1.0].
-    #[arg(short, long, value_name = "F64", default_value = "0.7")]
-    #[arg(value_parser = cutoff_in_range)]
-    majority_vote_cutoff: Option<f64>,
+    #[arg(short, long, value_name = "F32", default_value = "0.7")]
+    majority_vote_cutoff: f32,
 }
 
 /// Main function for the `ngs derive readlen` subcommand.
 pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
+    // (0) Parse arguments needed for subcommand.
+    let majority_vote_cutoff = cutoff_in_range(args.majority_vote_cutoff, 0.0..=1.0)
+        .with_context(|| "Majority vote cutoff is not within acceptable range")?;
+
     let mut read_lengths = HashMap::new();
 
     info!("Starting derive readlen subcommand.");
@@ -79,12 +69,7 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
     );
 
     // (2) Derive the consensus read length based on the read lengths gathered.
-    let result = compute::predict(
-        read_lengths,
-        counter.get(),
-        args.majority_vote_cutoff.unwrap(),
-    )
-    .unwrap();
+    let result = compute::predict(read_lengths, counter.get(), majority_vote_cutoff).unwrap();
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).

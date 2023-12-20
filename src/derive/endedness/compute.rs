@@ -278,7 +278,7 @@ fn calculate_reads_per_template(
 fn predict_endedness(
     read_group_name: String,
     rg_ordering_flags: &OrderingFlagsCounts,
-    paired_deviance: f64,
+    paired_deviance: f32,
     reads_per_template: Option<&f64>,
     round_rpt: bool,
 ) -> ReadGroupDerivedEndednessResult {
@@ -351,7 +351,7 @@ fn predict_endedness(
     // both and neither are now guarenteed to be 0
     // We only need to check first and last
 
-    let first_frac = first as f64 / (first + last) as f64;
+    let first_frac = first as f32 / (first + last) as f32;
     let lower_limit = 0.5 - paired_deviance;
     let upper_limit = 0.5 + paired_deviance;
     if (first == last) || (lower_limit <= first_frac && first_frac <= upper_limit) {
@@ -377,7 +377,7 @@ fn predict_endedness(
 pub fn predict(
     ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts>,
     read_names: HashMap<String, Vec<Arc<String>>>,
-    paired_deviance: f64,
+    paired_deviance: f32,
     round_rpt: bool,
 ) -> DerivedEndednessResult {
     let mut rpts: HashMap<Arc<String>, f64> = HashMap::new();
