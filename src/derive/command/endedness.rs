@@ -7,6 +7,8 @@ use std::sync::Arc;
 
 use clap::Args;
 use noodles::sam::record::data::field::Tag;
+use num_format::Locale;
+use num_format::ToFormattedString;
 use tracing::info;
 use tracing::trace;
 
@@ -14,6 +16,8 @@ use crate::derive::endedness::compute;
 use crate::derive::endedness::compute::{
     validate_read_group_info, OrderingFlagsCounts, OVERALL, UNKNOWN_READ_GROUP,
 };
+use crate::utils::args::NumberOfRecords;
+use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -78,12 +82,8 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
     // (1) Collect ordering flags (and QNAMEs) from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let mut samples = 0;
-    let mut sample_max = 0;
-
-    if let Some(s) = args.num_records {
-        sample_max = s;
-    }
+    let num_records = NumberOfRecords::from(args.num_records);
+    let mut counter = RecordCounter::new();
 
     for result in reader.records(&header.parsed) {
         let record = result?;
@@ -199,13 +199,16 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             unreachable!();
         }
 
-        if sample_max > 0 {
-            samples += 1;
-            if samples > sample_max {
-                break;
-            }
+        counter.inc();
+        if counter.time_to_break(&num_records) {
+            break;
         }
     }
+
+    info!(
+        "Processed {} records.",
+        counter.get().to_formatted_string(&Locale::en)
+    );
 
     // (1.5) Validate the read group information.
     let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed);

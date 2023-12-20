@@ -4,9 +4,13 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 
 use clap::Args;
+use num_format::Locale;
+use num_format::ToFormattedString;
 use tracing::info;
 
 use crate::derive::readlen::compute;
+use crate::utils::args::NumberOfRecords;
+use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -54,12 +58,8 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
 
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let mut samples = 0;
-    let mut sample_max = 0;
-
-    if let Some(s) = args.num_records {
-        sample_max = s;
-    }
+    let num_records = NumberOfRecords::from(args.num_records);
+    let mut counter = RecordCounter::new();
 
     for result in reader.records(&header.parsed) {
         let record = result?;
@@ -67,15 +67,24 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
 
         read_lengths.entry(len).and_modify(|e| *e += 1).or_insert(1);
 
-        samples += 1;
-        if sample_max > 0 && samples > sample_max {
+        counter.inc();
+        if counter.time_to_break(&num_records) {
             break;
         }
     }
 
+    info!(
+        "Processed {} records.",
+        counter.get().to_formatted_string(&Locale::en)
+    );
+
     // (2) Derive the consensus read length based on the read lengths gathered.
-    let result =
-        compute::predict(read_lengths, samples, args.majority_vote_cutoff.unwrap()).unwrap();
+    let result = compute::predict(
+        read_lengths,
+        counter.get(),
+        args.majority_vote_cutoff.unwrap(),
+    )
+    .unwrap();
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
