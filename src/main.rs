@@ -101,6 +101,9 @@ fn main() -> anyhow::Result<()> {
             derive::command::DeriveSubcommand::Readlen(args) => {
                 derive::command::readlen::derive(args)?
             }
+            derive::command::DeriveSubcommand::JunctionAnnotation(args) => {
+                derive::command::junction_annotation::derive(args)?
+            }
         },
         Subcommands::Generate(args) => generate::command::generate(args)?,
         Subcommands::Index(args) => index::command::index(args)?,

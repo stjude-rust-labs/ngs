@@ -3,6 +3,7 @@
 pub mod encoding;
 pub mod endedness;
 pub mod instrument;
+pub mod junction_annotation;
 pub mod readlen;
 
 use clap::Args;
@@ -34,4 +35,10 @@ pub enum DeriveSubcommand {
 
     /// Derives the read length of the file.
     Readlen(self::readlen::DeriveReadlenArgs),
+
+    /// Annotates junctions in the file.
+    /// This subcommand requires a GFF file with features to annotate.
+    /// This subcommand does not "derive" anything, but is included here for
+    /// convenience.
+    JunctionAnnotation(self::junction_annotation::JunctionAnnotationArgs),
 }
