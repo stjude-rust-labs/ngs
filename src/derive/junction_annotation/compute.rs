@@ -264,15 +264,24 @@ pub fn summarize(
     params: &JunctionAnnotationParameters,
 ) -> anyhow::Result<()> {
     // Filter out junctions that are too short or don't have enough read support.
+    let mut num_rejected: usize = 0;
     let mut num_junctions_too_short: usize = 0;
     let mut num_not_enough_support: usize = 0;
     for (_, v) in results.junction_annotations.known.iter_mut() {
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
+                if *count < params.min_read_support as usize {
+                    num_not_enough_support += 1;
+                }
+                num_rejected += 1;
                 false
             } else if *count < params.min_read_support as usize {
                 num_not_enough_support += 1;
+                if end.get() - start.get() < params.min_intron_length {
+                    num_junctions_too_short += 1;
+                }
+                num_rejected += 1;
                 false
             } else {
                 true
@@ -283,9 +292,17 @@ pub fn summarize(
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
+                if *count < params.min_read_support as usize {
+                    num_not_enough_support += 1;
+                }
+                num_rejected += 1;
                 false
             } else if *count < params.min_read_support as usize {
                 num_not_enough_support += 1;
+                if end.get() - start.get() < params.min_intron_length {
+                    num_junctions_too_short += 1;
+                }
+                num_rejected += 1;
                 false
             } else {
                 true
@@ -296,9 +313,17 @@ pub fn summarize(
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
+                if *count < params.min_read_support as usize {
+                    num_not_enough_support += 1;
+                }
+                num_rejected += 1;
                 false
             } else if *count < params.min_read_support as usize {
                 num_not_enough_support += 1;
+                if end.get() - start.get() < params.min_intron_length {
+                    num_junctions_too_short += 1;
+                }
+                num_rejected += 1;
                 false
             } else {
                 true
@@ -313,15 +338,24 @@ pub fn summarize(
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
+                if *count < params.min_read_support as usize {
+                    num_not_enough_support += 1;
+                }
+                num_rejected += 1;
                 false
             } else if *count < params.min_read_support as usize {
                 num_not_enough_support += 1;
+                if end.get() - start.get() < params.min_intron_length {
+                    num_junctions_too_short += 1;
+                }
+                num_rejected += 1;
                 false
             } else {
                 true
             }
         });
     }
+    results.summary.total_rejected_junctions = num_rejected;
     results.summary.intron_too_short = num_junctions_too_short;
     results.summary.junctions_with_not_enough_read_support = num_not_enough_support;
 
@@ -332,7 +366,7 @@ pub fn summarize(
         .values()
         .map(|v| v.len())
         .sum();
-    results.summary.known_spliced_reads = results
+    results.summary.known_junctions_read_support = results
         .junction_annotations
         .known
         .values()
@@ -344,7 +378,7 @@ pub fn summarize(
         .values()
         .map(|v| v.len())
         .sum();
-    results.summary.partial_novel_spliced_reads = results
+    results.summary.partial_novel_junctions_read_support = results
         .junction_annotations
         .partial_novel
         .values()
@@ -356,7 +390,7 @@ pub fn summarize(
         .values()
         .map(|v| v.len())
         .sum();
-    results.summary.complete_novel_spliced_reads = results
+    results.summary.complete_novel_junctions_read_support = results
         .junction_annotations
         .complete_novel
         .values()
@@ -368,7 +402,7 @@ pub fn summarize(
         .values()
         .map(|v| v.len())
         .sum();
-    results.summary.unannotated_reference_spliced_reads = results
+    results.summary.unannotated_reference_junctions_read_support = results
         .junction_annotations
         .unannotated_reference
         .values()
@@ -380,10 +414,34 @@ pub fn summarize(
         + results.summary.partial_novel_junctions
         + results.summary.complete_novel_junctions
         + results.summary.unannotated_reference_junctions;
-    results.summary.total_spliced_reads = results.summary.known_spliced_reads
-        + results.summary.partial_novel_spliced_reads
-        + results.summary.complete_novel_spliced_reads
-        + results.summary.unannotated_reference_spliced_reads;
+    results.summary.total_junctions_read_support = results.summary.known_junctions_read_support
+        + results.summary.partial_novel_junctions_read_support
+        + results.summary.complete_novel_junctions_read_support
+        + results.summary.unannotated_reference_junctions_read_support;
+
+    // Calculate percentages.
+    let total_junctions = results.summary.total_junctions as f64
+        - results.summary.unannotated_reference_junctions as f64;
+    results.summary.known_junctions_percent =
+        results.summary.known_junctions as f64 / total_junctions * 100.0;
+    results.summary.partial_novel_junctions_percent =
+        results.summary.partial_novel_junctions as f64 / total_junctions * 100.0;
+    results.summary.complete_novel_junctions_percent =
+        results.summary.complete_novel_junctions as f64 / total_junctions * 100.0;
+
+    // Calculate average read support.
+    results.summary.average_junction_read_support = results.summary.total_junctions_read_support
+        as f64
+        / results.summary.total_junctions as f64;
+    results.summary.average_known_junction_read_support =
+        results.summary.known_junctions_read_support as f64
+            / results.summary.known_junctions as f64;
+    results.summary.average_partial_novel_junction_read_support =
+        results.summary.partial_novel_junctions_read_support as f64
+            / results.summary.partial_novel_junctions as f64;
+    results.summary.average_complete_novel_junction_read_support =
+        results.summary.complete_novel_junctions_read_support as f64
+            / results.summary.complete_novel_junctions as f64;
 
     Ok(())
 }

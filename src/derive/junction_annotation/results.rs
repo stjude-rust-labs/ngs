@@ -75,6 +75,7 @@ impl Serialize for JunctionAnnotations {
 #[derive(Clone, Default, Serialize)]
 pub struct RecordMetrics {
     /// The number of records that have been fully processed.
+    /// This is the number of spliced records that have been considered.
     pub processed: usize,
 
     /// The number of records that have been ignored because of their flags.
@@ -101,7 +102,10 @@ pub struct SummaryResults {
     pub total_junctions: usize,
 
     /// The total number of spliced reads observed in the file.
-    pub total_spliced_reads: usize,
+    pub total_junctions_read_support: usize,
+
+    /// The average number of spliced reads supporting a junction.
+    pub average_junction_read_support: f64,
 
     /// The total number of known junctions observed in the file.
     pub known_junctions: usize,
@@ -117,24 +121,56 @@ pub struct SummaryResults {
     pub unannotated_reference_junctions: usize,
 
     /// The total number of known spliced reads observed in the file.
-    pub known_spliced_reads: usize,
+    pub known_junctions_read_support: usize,
 
     /// The total number of partially novel spliced reads observed in the file.
-    pub partial_novel_spliced_reads: usize,
+    pub partial_novel_junctions_read_support: usize,
 
     /// The total number of complete novel spliced reads observed in the file.
-    pub complete_novel_spliced_reads: usize,
+    pub complete_novel_junctions_read_support: usize,
 
     /// The total number of spliced reads on reference sequences for which
     /// junction annotations were not found.
-    pub unannotated_reference_spliced_reads: usize,
+    pub unannotated_reference_junctions_read_support: usize,
+
+    /// The percentage of junctions that are known.
+    /// This percentage excludes junctions on reference sequences for which
+    /// junction annotations were not found.
+    pub known_junctions_percent: f64,
+
+    /// The percentage of junctions that are partially novel.
+    /// This percentage excludes junctions on reference sequences for which
+    /// junction annotations were not found.
+    pub partial_novel_junctions_percent: f64,
+
+    /// The percentage of junctions that are completely novel.
+    /// This percentage excludes junctions on reference sequences for which
+    /// junction annotations were not found.
+    pub complete_novel_junctions_percent: f64,
+
+    /// Average number of reads supporting known junctions.
+    pub average_known_junction_read_support: f64,
+
+    /// Average number of reads supporting partially novel junctions.
+    pub average_partial_novel_junction_read_support: f64,
+
+    /// Average number of reads supporting completely novel junctions.
+    pub average_complete_novel_junction_read_support: f64,
+
+    /// The total number of junctions that have been rejected because
+    /// they failed the min_read_support or the min_intron_length filter.
+    /// A junction can be rejected for both reasons, so do not expect this
+    /// number to be equal to the sum of `junctions_with_not_enough_read_support`
+    /// and `intron_too_short`.
+    pub total_rejected_junctions: usize,
 
     /// The total number of junctions which were discarded due to lack of
-    /// read support.
+    /// read support. This is not mutually exclusive with `intron_too_short`.
     pub junctions_with_not_enough_read_support: usize,
 
     /// The number of junctions that have been ignored because
     /// they failed the min_intron_length filter.
+    /// This is not mutually exclusive with `junctions_with_not_enough_read_support`.
     pub intron_too_short: usize,
 }
 
