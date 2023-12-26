@@ -21,7 +21,17 @@ pub struct JunctionAnnotationParameters {
     pub min_read_support: u8,
 
     /// Minumum mapping quality for a record to be considered.
+    /// 0 if MAPQ shouldn't be considered.
     pub min_mapq: u8,
+
+    /// Do not count supplementary alignments.
+    pub no_supplementary: bool,
+
+    /// Do count secondary alignments.
+    pub count_secondary: bool,
+
+    /// Do count duplicates.
+    pub count_duplicates: bool,
 }
 
 /// Main function to annotate junctions one record at a time.
@@ -39,16 +49,19 @@ pub fn process(
         _ => bail!("Could not parse read name"),
     };
 
-    // (2) Parse the flags so we can see if the read is mapped.
+    // (2) Parse the flags so we can see if the read should be ignored.
     let flags = record.flags();
 
-    // (3) If the read is unmapped, just return—no need to throw an error.
-    if flags.is_unmapped() {
+    if flags.is_unmapped()
+        || (params.no_supplementary && flags.is_supplementary())
+        || (!params.count_secondary && flags.is_secondary())
+        || (!params.count_duplicates && flags.is_duplicate())
+    {
         results.records.ignored_flags += 1;
         return Ok(());
     }
 
-    // (4) Parse the CIGAR string from the record.
+    // (3) Parse the CIGAR string from the record.
     // We only care about reads with introns, so if there are no introns
     // we can skip this read.
     let cigar = record.cigar();
@@ -57,19 +70,24 @@ pub fn process(
         return Ok(());
     }
 
-    // (5) If the read has a MAPQ below our threshold, just return.
-    // No need to throw an error, unless the MAPQ could not be parsed.
-    match record.mapping_quality() {
-        Some(mapq) => {
-            if mapq.get() < params.min_mapq {
-                results.records.low_mapq += 1;
+    // (4) If the user is filtering by MAPQ, check if this read passes.
+    // Log if the read is filtered out for a too low MAPQ or a missing MAPQ.
+    if params.min_mapq > 0 {
+        match record.mapping_quality() {
+            Some(mapq) => {
+                if mapq.get() < params.min_mapq {
+                    results.records.low_mapq += 1;
+                    return Ok(());
+                }
+            }
+            None => {
+                results.records.missing_mapq += 1;
                 return Ok(());
             }
         }
-        _ => results.records.couldnt_parse += 1,
     }
 
-    // (6) Parse the reference sequence id from the record.
+    // (5) Parse the reference sequence id from the record.
     let id = match record.reference_sequence_id() {
         Some(id) => id,
         _ => {
@@ -80,7 +98,7 @@ pub fn process(
         }
     };
 
-    // (7) Map the parsed reference sequence id to a reference sequence name.
+    // (6) Map the parsed reference sequence id to a reference sequence name.
     let seq_name = match header
         .reference_sequences()
         .get_index(id)
@@ -95,20 +113,20 @@ pub fn process(
         }
     };
 
-    // (8) Check if there will be annotations for this reference sequence.
+    // (7) Check if there will be annotations for this reference sequence.
     let mut ref_is_annotated = true;
     if !exon_starts.contains_key(&seq_name) || !exon_ends.contains_key(&seq_name) {
         ref_is_annotated = false;
     }
 
-    // (9) Calculate the start position of this read. This will
+    // (8) Calculate the start position of this read. This will
     // later be used to find the position of any introns.
     let start = match record.alignment_start() {
         Some(s) => usize::from(s),
         _ => bail!("Could not parse record's start position."),
     };
 
-    // (10) Find introns
+    // (9) Find introns
     let mut cur_pos = start;
     for op in cigar.iter() {
         match op.kind() {

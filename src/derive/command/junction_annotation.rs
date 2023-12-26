@@ -29,7 +29,7 @@ pub struct JunctionAnnotationArgs {
     features_gff: PathBuf,
 
     /// Name of the exon region feature for the gene model used.
-    #[arg(short, long, value_name = "STRING", default_value = "exon")]
+    #[arg(long, value_name = "STRING", default_value = "exon")]
     pub exon_feature_name: String,
 
     /// Minimum intron length to consider.
@@ -46,8 +46,22 @@ pub struct JunctionAnnotationArgs {
     pub min_read_support: u8,
 
     /// Minumum mapping quality for a record to be considered.
+    /// Set to 0 to disable this filter and allow reads _without_
+    /// a mapping quality to be considered.
     #[arg(short, long, value_name = "U8", default_value = "30")]
     pub min_mapq: u8,
+
+    /// Do not count supplementary alignments.
+    #[arg(long)]
+    pub no_supplementary: bool,
+
+    /// Do count secondary alignments.
+    #[arg(long)]
+    pub count_secondary: bool,
+
+    /// Do count duplicates.
+    #[arg(long)]
+    pub count_duplicates: bool,
 }
 
 /// Main function for the `ngs derive junction_annotation` subcommand.
@@ -74,11 +88,11 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     debug!("Tabulating GFF exon features.");
     for record in &exon_records {
         let seq_name = record.reference_sequence_name();
-        let start = record.start().into();
-        let end = record.end().into();
+        let start: usize = record.start().into();
+        let end: usize = record.end().into();
 
         exon_starts.entry(seq_name).or_default().push(start);
-        exon_ends.entry(seq_name).or_default().push(end);
+        exon_ends.entry(seq_name).or_default().push(end + 1); // TODO why +1? It works
     }
 
     debug!("Finalizing GFF features lookup.");
@@ -100,6 +114,9 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
         fuzzy_junction_match_range: args.fuzzy_junction_match_range,
         min_read_support: args.min_read_support,
         min_mapq: args.min_mapq,
+        no_supplementary: args.no_supplementary,
+        count_secondary: args.count_secondary,
+        count_duplicates: args.count_duplicates,
     };
 
     let ParsedBAMFile {
