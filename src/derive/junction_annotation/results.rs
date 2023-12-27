@@ -101,7 +101,10 @@ pub struct SummaryResults {
     /// The total number of junctions observed in the file.
     pub total_junctions: usize,
 
-    /// The total number of spliced reads observed in the file.
+    /// The total number of splices detected observed in the file.
+    /// More than one splice can be observed per read, especially
+    /// with long read data, so this number is not necessarily equal
+    /// to the number of spliced reads. It may be greater.
     pub total_junctions_read_support: usize,
 
     /// The average number of spliced reads supporting a junction.
@@ -120,17 +123,27 @@ pub struct SummaryResults {
     /// annotations were not found.
     pub unannotated_reference_junctions: usize,
 
-    /// The total number of known spliced reads observed in the file.
+    /// The number of reads supporting known junctions.
+    /// If a read supports more than one known junction, it is counted more than once.
+    /// A read with more one junction may also contribute to the support of
+    /// partially novel or completely novel junctions.
     pub known_junctions_read_support: usize,
 
-    /// The total number of partially novel spliced reads observed in the file.
+    /// The number of reads supporting partially novel junctions.
+    /// If a read supports more than one partially novel junction, it is counted more than once.
+    /// A read with more one junction may also contribute to the support of
+    /// known or completely novel junctions.
     pub partial_novel_junctions_read_support: usize,
 
-    /// The total number of complete novel spliced reads observed in the file.
+    /// The number of reads supporting completely novel junctions.
+    /// If a read supports more than one completely novel junction, it is counted more than once.
+    /// A read with more one junction may also contribute to the support of
+    /// known or partially novel junctions.
     pub complete_novel_junctions_read_support: usize,
 
-    /// The total number of spliced reads on reference sequences for which
+    /// The number of reads supporting junctions on reference sequences for which
     /// junction annotations were not found.
+    /// If a read supports more than one junction, it is counted more than once.
     pub unannotated_reference_junctions_read_support: usize,
 
     /// The percentage of junctions that are known.
@@ -160,17 +173,17 @@ pub struct SummaryResults {
     /// The total number of junctions that have been rejected because
     /// they failed the min_read_support or the min_intron_length filter.
     /// A junction can be rejected for both reasons, so do not expect this
-    /// number to be equal to the sum of `junctions_with_not_enough_read_support`
-    /// and `intron_too_short`.
+    /// number to be equal to the sum of junctions_with_not_enough_read_support
+    /// and intron_too_short.
     pub total_rejected_junctions: usize,
 
     /// The total number of junctions which were discarded due to lack of
-    /// read support. This is not mutually exclusive with `intron_too_short`.
+    /// read support. This is not mutually exclusive with intron_too_short.
     pub junctions_with_not_enough_read_support: usize,
 
     /// The number of junctions that have been ignored because
     /// they failed the min_intron_length filter.
-    /// This is not mutually exclusive with `junctions_with_not_enough_read_support`.
+    /// This is not mutually exclusive with junctions_with_not_enough_read_support.
     pub intron_too_short: usize,
 }
 
