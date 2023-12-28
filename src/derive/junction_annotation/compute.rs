@@ -555,7 +555,7 @@ mod tests {
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
 
-        // Test partial novel junction (again for more read supprt)
+        // Test partial novel junction (again for more read support)
         let mut record = Record::default();
         let r3_name: ReadName = "partial2".parse().unwrap();
         *record.read_name_mut() = Some(r3_name);
@@ -651,7 +651,7 @@ mod tests {
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
 
-        // Test complete novel junction (again for more read supprt)
+        // Test complete novel junction (again for more read support)
         let mut record = Record::default();
         let r6_name: ReadName = "novel2".parse().unwrap();
         *record.read_name_mut() = Some(r6_name);
@@ -795,7 +795,7 @@ mod tests {
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);
 
-        // Test unannoted reference (again for more read supprt)
+        // Test unannoted reference (again for more read support)
         let mut record = Record::default();
         let r11_name: ReadName = "unannotated2".parse().unwrap();
         *record.read_name_mut() = Some(r11_name);
