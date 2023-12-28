@@ -143,12 +143,12 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     );
 
     // (3) Summarize found junctions.
-    compute::summarize(&mut results, &params)?;
+    compute::summarize(&mut results, &params);
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&results).unwrap();
     print!("{}", output);
 
-    Ok(())
+    anyhow::Ok(())
 }

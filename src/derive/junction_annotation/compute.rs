@@ -1,6 +1,7 @@
 //! Module holding the logic for annotating junctions.
 
 use anyhow::bail;
+use anyhow::Ok;
 use noodles::sam::alignment::Record;
 use noodles::sam::record::cigar::op::Kind;
 use noodles::sam::Header;
@@ -259,10 +260,7 @@ pub fn process(
 }
 
 /// Main function to summarize the results of the junction_annotation subcommand.
-pub fn summarize(
-    results: &mut JunctionAnnotationResults,
-    params: &JunctionAnnotationParameters,
-) -> anyhow::Result<()> {
+pub fn summarize(results: &mut JunctionAnnotationResults, params: &JunctionAnnotationParameters) {
     // Filter out junctions that are too short or don't have enough read support.
     let mut num_rejected: usize = 0;
     let mut num_junctions_too_short: usize = 0;
@@ -442,6 +440,6 @@ pub fn summarize(
     results.summary.average_complete_novel_junction_read_support =
         results.summary.complete_novel_junctions_read_support as f64
             / results.summary.complete_novel_junctions as f64;
+}
 
-    Ok(())
 }
