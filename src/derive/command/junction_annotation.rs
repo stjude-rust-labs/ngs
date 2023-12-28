@@ -34,15 +34,15 @@ pub struct JunctionAnnotationArgs {
 
     /// Minimum intron length to consider.
     /// An intron is defined as an `N` CIGAR operation of any length.
-    #[arg(long, value_name = "USIZE", default_value = "50")]
+    #[arg(short = 'i', long, value_name = "USIZE", default_value = "50")]
     pub min_intron_length: usize,
 
     /// Add +- this amount to intron positions when looking up exon positions.
-    #[arg(long, value_name = "U8", default_value = "0")]
+    #[arg(short = 'k', long, value_name = "U8", default_value = "0")]
     pub fuzzy_junction_match_range: u8,
 
     /// Minimum number of reads supporting a junction to be considered.
-    #[arg(long, value_name = "U8", default_value = "2")]
+    #[arg(short = 'r', long, value_name = "U8", default_value = "2")]
     pub min_read_support: u8,
 
     /// Minumum mapping quality for a record to be considered.
