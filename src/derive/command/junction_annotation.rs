@@ -1,6 +1,7 @@
 //! Functionality relating to the `ngs derive junction_annotation` subcommand itself.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -37,13 +38,9 @@ pub struct JunctionAnnotationArgs {
     #[arg(short = 'i', long, value_name = "USIZE", default_value = "50")]
     pub min_intron_length: usize,
 
-    /// Add +- this amount to intron positions when looking up exon positions.
-    #[arg(short = 'k', long, value_name = "U8", default_value = "0")]
-    pub fuzzy_junction_match_range: u8,
-
     /// Minimum number of reads supporting a junction to be considered.
-    #[arg(short = 'r', long, value_name = "U8", default_value = "2")]
-    pub min_read_support: u8,
+    #[arg(short = 'r', long, value_name = "usize", default_value = "2")]
+    pub min_read_support: usize,
 
     /// Minumum mapping quality for a record to be considered.
     /// Set to 0 to disable this filter and allow reads _without_
@@ -68,8 +65,8 @@ pub struct JunctionAnnotationArgs {
 pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     info!("Starting derive junction_annotation subcommand.");
 
-    let mut exon_starts: HashMap<&str, Vec<usize>> = HashMap::new();
-    let mut exon_ends: HashMap<&str, Vec<usize>> = HashMap::new();
+    let mut exon_starts: HashMap<&str, HashSet<usize>> = HashMap::new();
+    let mut exon_ends: HashMap<&str, HashSet<usize>> = HashMap::new();
 
     // (1) Parse the GFF file and collect all exon features.
     debug!("Reading all records in GFF.");
@@ -91,18 +88,8 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
         let start: usize = record.start().into();
         let end: usize = record.end().into();
 
-        exon_starts.entry(seq_name).or_default().push(start);
-        exon_ends.entry(seq_name).or_default().push(end + 1); // TODO why +1? It works
-    }
-
-    debug!("Finalizing GFF features lookup.");
-    for starts in exon_starts.values_mut() {
-        starts.sort_unstable();
-        starts.dedup();
-    }
-    for ends in exon_ends.values_mut() {
-        ends.sort_unstable();
-        ends.dedup();
+        exon_starts.entry(seq_name).or_default().insert(start);
+        exon_ends.entry(seq_name).or_default().insert(end + 1); // TODO why +1? It works
     }
 
     debug!("Done reading GFF.");
@@ -111,7 +98,6 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     let mut results = JunctionAnnotationResults::default();
     let params = compute::JunctionAnnotationParameters {
         min_intron_length: args.min_intron_length,
-        fuzzy_junction_match_range: args.fuzzy_junction_match_range,
         min_read_support: args.min_read_support,
         min_mapq: args.min_mapq,
         no_supplementary: args.no_supplementary,

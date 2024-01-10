@@ -6,6 +6,7 @@ use noodles::sam::alignment::Record;
 use noodles::sam::record::cigar::op::Kind;
 use noodles::sam::Header;
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::num::NonZeroUsize;
 
 use crate::derive::junction_annotation::results::JunctionAnnotationResults;
@@ -15,11 +16,8 @@ pub struct JunctionAnnotationParameters {
     /// Minimum intron length to consider.
     pub min_intron_length: usize,
 
-    /// Add +- this amount to intron positions when looking up exon positions.
-    pub fuzzy_junction_match_range: u8,
-
     /// Minimum number of reads supporting a junction to be considered.
-    pub min_read_support: u8,
+    pub min_read_support: usize,
 
     /// Minumum mapping quality for a record to be considered.
     /// 0 if MAPQ shouldn't be considered.
@@ -38,8 +36,8 @@ pub struct JunctionAnnotationParameters {
 /// Main function to annotate junctions one record at a time.
 pub fn process(
     record: &Record,
-    exon_starts: &HashMap<&str, Vec<usize>>,
-    exon_ends: &HashMap<&str, Vec<usize>>,
+    exon_starts: &HashMap<&str, HashSet<usize>>,
+    exon_ends: &HashMap<&str, HashSet<usize>>,
     header: &Header,
     params: &JunctionAnnotationParameters,
     results: &mut JunctionAnnotationResults,
@@ -177,28 +175,11 @@ pub fn process(
 
                 let mut intron_start_known = false;
                 let mut intron_end_known = false;
-                // To allow collapsing fuzzy junctions,
-                // we need to store the reference positions of the exon boundaries.
-                // We initialize these values to the position of the found intron.
-                let mut ref_intron_start = intron_start;
-                let mut ref_intron_end = intron_end;
-                for exon_end in exon_ends.iter() {
-                    if intron_start >= (exon_end - params.fuzzy_junction_match_range as usize)
-                        && intron_start <= (exon_end + params.fuzzy_junction_match_range as usize)
-                    {
-                        intron_start_known = true;
-                        ref_intron_start = *exon_end;
-                        break;
-                    }
+                if exon_ends.contains(&intron_start) {
+                    intron_start_known = true;
                 }
-                for exon_start in exon_starts.iter() {
-                    if intron_end >= (exon_start - params.fuzzy_junction_match_range as usize)
-                        && intron_end <= (exon_start + params.fuzzy_junction_match_range as usize)
-                    {
-                        intron_end_known = true;
-                        ref_intron_end = *exon_start;
-                        break;
-                    }
+                if exon_starts.contains(&intron_end) {
+                    intron_end_known = true;
                 }
 
                 match (intron_start_known, intron_end_known) {
@@ -211,8 +192,8 @@ pub fn process(
                             .entry(seq_name.to_string())
                             .or_default()
                             .entry((
-                                NonZeroUsize::new(ref_intron_start).unwrap(),
-                                NonZeroUsize::new(ref_intron_end).unwrap(),
+                                NonZeroUsize::new(intron_start).unwrap(),
+                                NonZeroUsize::new(intron_end).unwrap(),
                             ))
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
@@ -227,8 +208,8 @@ pub fn process(
                             .entry(seq_name.to_string())
                             .or_default()
                             .entry((
-                                NonZeroUsize::new(ref_intron_start).unwrap(),
-                                NonZeroUsize::new(ref_intron_end).unwrap(),
+                                NonZeroUsize::new(intron_start).unwrap(),
+                                NonZeroUsize::new(intron_end).unwrap(),
                             ))
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
@@ -242,8 +223,8 @@ pub fn process(
                             .entry(seq_name.to_string())
                             .or_default()
                             .entry((
-                                NonZeroUsize::new(ref_intron_start).unwrap(),
-                                NonZeroUsize::new(ref_intron_end).unwrap(),
+                                NonZeroUsize::new(intron_start).unwrap(),
+                                NonZeroUsize::new(intron_end).unwrap(),
                             ))
                             .and_modify(|e| *e += 1)
                             .or_insert(1);
@@ -269,12 +250,12 @@ pub fn summarize(results: &mut JunctionAnnotationResults, params: &JunctionAnnot
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
-                if *count < params.min_read_support as usize {
+                if *count < params.min_read_support {
                     num_not_enough_support += 1;
                 }
                 num_rejected += 1;
                 false
-            } else if *count < params.min_read_support as usize {
+            } else if *count < params.min_read_support {
                 num_not_enough_support += 1;
                 if end.get() - start.get() < params.min_intron_length {
                     num_junctions_too_short += 1;
@@ -290,12 +271,12 @@ pub fn summarize(results: &mut JunctionAnnotationResults, params: &JunctionAnnot
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
-                if *count < params.min_read_support as usize {
+                if *count < params.min_read_support {
                     num_not_enough_support += 1;
                 }
                 num_rejected += 1;
                 false
-            } else if *count < params.min_read_support as usize {
+            } else if *count < params.min_read_support {
                 num_not_enough_support += 1;
                 if end.get() - start.get() < params.min_intron_length {
                     num_junctions_too_short += 1;
@@ -311,12 +292,12 @@ pub fn summarize(results: &mut JunctionAnnotationResults, params: &JunctionAnnot
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
-                if *count < params.min_read_support as usize {
+                if *count < params.min_read_support {
                     num_not_enough_support += 1;
                 }
                 num_rejected += 1;
                 false
-            } else if *count < params.min_read_support as usize {
+            } else if *count < params.min_read_support {
                 num_not_enough_support += 1;
                 if end.get() - start.get() < params.min_intron_length {
                     num_junctions_too_short += 1;
@@ -336,12 +317,12 @@ pub fn summarize(results: &mut JunctionAnnotationResults, params: &JunctionAnnot
         v.retain(|(start, end), count| {
             if end.get() - start.get() < params.min_intron_length {
                 num_junctions_too_short += 1;
-                if *count < params.min_read_support as usize {
+                if *count < params.min_read_support {
                     num_not_enough_support += 1;
                 }
                 num_rejected += 1;
                 false
-            } else if *count < params.min_read_support as usize {
+            } else if *count < params.min_read_support {
                 num_not_enough_support += 1;
                 if end.get() - start.get() < params.min_intron_length {
                     num_junctions_too_short += 1;
@@ -458,7 +439,6 @@ mod tests {
         let mut results = JunctionAnnotationResults::default();
         let params = JunctionAnnotationParameters {
             min_intron_length: 10,
-            fuzzy_junction_match_range: 0,
             min_read_support: 2,
             min_mapq: 30,
             no_supplementary: false,
@@ -476,12 +456,12 @@ mod tests {
                 Map::<ReferenceSequence>::new(NonZeroUsize::try_from(400).unwrap()),
             )
             .build();
-        let exon_starts: HashMap<&str, Vec<usize>> =
-            HashMap::from([("sq1", vec![1, 11, 21, 31, 41, 51, 61, 71])]);
+        let exon_starts: HashMap<&str, HashSet<usize>> =
+            HashMap::from([("sq1", HashSet::from([1, 11, 21, 31, 41, 51, 61, 71]))]);
         let exon_ends = exon_starts
             .iter()
             .map(|(k, v)| (*k, v.iter().map(|e| e + 10).collect()))
-            .collect::<HashMap<&str, Vec<usize>>>();
+            .collect::<HashMap<&str, HashSet<usize>>>();
 
         // Test known junction
         let mut record = Record::default();
