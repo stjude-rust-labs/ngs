@@ -11,6 +11,9 @@ use crate::utils::read_groups::{OVERALL, UNKNOWN_READ_GROUP};
 /// Struct holding the ordering flags for a single read group.
 #[derive(Debug, Clone)]
 pub struct OrderingFlagsCounts {
+    /// The number of reads without 0x1 set.
+    pub unsegmented: usize,
+
     /// The number of reads with the first in template flag set.
     pub first: usize,
 
@@ -27,6 +30,7 @@ impl OrderingFlagsCounts {
     /// Creates a new [`OrderingFlagsCounts`].
     pub fn new() -> Self {
         OrderingFlagsCounts {
+            unsegmented: 0,
             first: 0,
             last: 0,
             both: 0,
@@ -53,6 +57,9 @@ pub struct ReadGroupDerivedEndednessResult {
 
     /// The endedness of this read group or "Unknown".
     pub endedness: String,
+
+    /// The number of reads without 0x1 set.
+    pub unsegmented: usize,
 
     /// The f+l- read count.
     pub first: usize,
@@ -84,6 +91,7 @@ impl ReadGroupDerivedEndednessResult {
             read_group,
             succeeded,
             endedness,
+            unsegmented: counts.unsegmented,
             first: counts.first,
             last: counts.last,
             both: counts.both,
@@ -102,6 +110,9 @@ pub struct DerivedEndednessResult {
 
     /// The overall endedness of the file or "Unknown".
     pub endedness: String,
+
+    /// The number of reads without 0x1 set.
+    pub unsegmented: usize,
 
     /// The overall f+l- read count.
     pub first: usize,
@@ -137,6 +148,7 @@ impl DerivedEndednessResult {
         DerivedEndednessResult {
             succeeded,
             endedness,
+            unsegmented: counts.unsegmented,
             first: counts.first,
             last: counts.last,
             both: counts.both,
@@ -234,6 +246,7 @@ fn predict_endedness(
     reads_per_template: Option<&f64>,
     round_rpt: bool,
 ) -> ReadGroupDerivedEndednessResult {
+    let unsegmented = rg_ordering_flags.unsegmented;
     let first = rg_ordering_flags.first;
     let last = rg_ordering_flags.last;
     let both = rg_ordering_flags.both;
@@ -241,7 +254,7 @@ fn predict_endedness(
 
     // all zeroes (Perform this check before creating the result struct
     // so that we don't have to clone the read group name)
-    if first == 0 && last == 0 && both == 0 && neither == 0 {
+    if unsegmented == 0 && first == 0 && last == 0 && both == 0 && neither == 0 {
         warn!(
             "No reads were detected in this read group: {}",
             read_group_name
@@ -262,6 +275,28 @@ fn predict_endedness(
         rg_ordering_flags.clone(),
         reads_per_template.copied(),
     );
+
+    // only unsegmented present
+    if unsegmented > 0 && first == 0 && last == 0 && both == 0 && neither == 0 {
+        match reads_per_template {
+            Some(rpt) => {
+                if *rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
+                    result.succeeded = true;
+                    result.endedness = String::from("Single-End");
+                }
+            }
+            None => {
+                result.succeeded = true;
+                result.endedness = String::from("Single-End");
+            }
+        }
+        return result;
+    }
+    // unsegmented reads are present, and so are other types of reads.
+    if unsegmented > 0 {
+        return result;
+    }
+    // now unsegmented is guarenteed to be 0
 
     // only first present
     if first > 0 && last == 0 && both == 0 && neither == 0 {
@@ -347,7 +382,8 @@ pub fn predict(
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
         if (*read_group == *UNKNOWN_READ_GROUP)
-            && (rg_ordering_flags.first == 0
+            && (rg_ordering_flags.unsegmented == 0
+                && rg_ordering_flags.first == 0
                 && rg_ordering_flags.last == 0
                 && rg_ordering_flags.both == 0
                 && rg_ordering_flags.neither == 0)
@@ -363,6 +399,7 @@ pub fn predict(
         );
         if result.read_group == "overall" {
             final_result.endedness = result.endedness;
+            final_result.unsegmented = result.unsegmented;
             final_result.first = result.first;
             final_result.last = result.last;
             final_result.both = result.both;
@@ -381,12 +418,14 @@ pub fn predict(
 mod tests {
     use super::*;
 
+    // TODO add tests for unsegmented reads
     #[test]
     fn test_predict_endedness() {
         let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 1,
                 last: 1,
                 both: 0,
@@ -435,6 +474,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 1,
                 last: 0,
                 both: 0,
@@ -458,6 +498,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 0,
                 last: 1,
                 both: 0,
@@ -481,6 +522,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 0,
                 last: 0,
                 both: 1,
@@ -504,6 +546,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 0,
                 last: 0,
                 both: 0,
@@ -527,6 +570,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 1,
                 last: 1,
                 both: 0,
@@ -589,6 +633,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&OVERALL),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 8,
                 last: 8,
                 both: 2,
@@ -598,6 +643,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&rg_paired),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 8,
                 last: 8,
                 both: 0,
@@ -607,6 +653,7 @@ mod tests {
         ordering_flags.insert(
             Arc::clone(&rg_single),
             OrderingFlagsCounts {
+                unsegmented: 0,
                 first: 0,
                 last: 0,
                 both: 2,

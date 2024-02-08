@@ -122,7 +122,24 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
         let overall_rg = Arc::clone(&OVERALL);
 
-        if record.flags().is_first_segment() && !record.flags().is_last_segment() {
+        if !record.flags().is_segmented() {
+            ordering_flags.entry(overall_rg).and_modify(|e| {
+                e.unsegmented += 1;
+            });
+
+            ordering_flags
+                .entry(read_group)
+                .and_modify(|e| {
+                    e.unsegmented += 1;
+                })
+                .or_insert(OrderingFlagsCounts {
+                    unsegmented: 1,
+                    first: 0,
+                    last: 0,
+                    both: 0,
+                    neither: 0,
+                });
+        } else if record.flags().is_first_segment() && !record.flags().is_last_segment() {
             ordering_flags.entry(overall_rg).and_modify(|e| {
                 e.first += 1;
             });
@@ -133,6 +150,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     e.first += 1;
                 })
                 .or_insert(OrderingFlagsCounts {
+                    unsegmented: 0,
                     first: 1,
                     last: 0,
                     both: 0,
@@ -149,6 +167,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     e.last += 1;
                 })
                 .or_insert(OrderingFlagsCounts {
+                    unsegmented: 0,
                     first: 0,
                     last: 1,
                     both: 0,
@@ -165,6 +184,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     e.both += 1;
                 })
                 .or_insert(OrderingFlagsCounts {
+                    unsegmented: 0,
                     first: 0,
                     last: 0,
                     both: 1,
@@ -181,6 +201,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     e.neither += 1;
                 })
                 .or_insert(OrderingFlagsCounts {
+                    unsegmented: 0,
                     first: 0,
                     last: 0,
                     both: 0,
