@@ -1,3 +1,5 @@
+//! This module contains functions to validate the read group information in the header and the records.
+
 use noodles::sam::header;
 use std::collections::HashSet;
 use std::sync::Arc;

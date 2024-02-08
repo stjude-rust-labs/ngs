@@ -1,6 +1,7 @@
 //! Functionality relating to the `ngs derive strandedness` subcommand itself.
 
 use std::collections::HashMap;
+use std::collections::HashSet;
 use std::fs::File;
 use std::path::PathBuf;
 
@@ -9,14 +10,13 @@ use anyhow::Context;
 use clap::Args;
 use noodles::bam;
 use noodles::gff;
-use noodles::sam;
 use rust_lapper::{Interval, Lapper};
 use tracing::debug;
 use tracing::info;
+use tracing::warn;
 
 use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
-use crate::derive::strandedness::compute::StrandednessFilters;
 use crate::utils::formats;
 
 /// Clap arguments for the `ngs derive strandedness` subcommand.
@@ -47,7 +47,7 @@ pub struct DeriveStrandednessArgs {
     /// Minimum mapping quality for a record to be considered.
     /// Set to 0 to disable this filter and allow reads _without_
     /// a mapping quality to be considered.
-    #[arg(short = 'q', long, value_name = "U8", default_value = "30")]
+    #[arg(long, value_name = "U8", default_value = "30")]
     min_mapq: u8,
 
     /// Consider all genes, not just protein coding genes.
@@ -137,9 +137,13 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         bail!("No gene records matched criteria. Check your GFF file and `--gene-feature-name` and `--all-genes` options.");
     }
     if exon_records.is_empty() {
-        // TODO move this below?
         bail!("No exon records matched criteria. Check your GFF file and `--exon-feature-name` option.");
     }
+    debug!(
+        "Found {} gene records and {} exon records.",
+        gene_records.len(),
+        exon_records.len()
+    );
 
     let mut exon_intervals: HashMap<&str, Vec<Interval<usize, gff::record::Strand>>> =
         HashMap::new();
@@ -161,6 +165,14 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         });
     }
 
+    if exon_metrics.bad_strand == exon_metrics.total {
+        bail!("All exons were discarded due to bad strand information. Check your GFF file.");
+    }
+    debug!(
+        "{} exons were discarded due to bad strand information.",
+        exon_metrics.bad_strand
+    );
+
     let mut exons: HashMap<&str, Lapper<usize, gff::record::Strand>> = HashMap::new();
     for (seq_name, intervals) in exon_intervals {
         exons.insert(seq_name, Lapper::new(intervals));
@@ -172,20 +184,24 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         .map(bam::Reader::new)
         .with_context(|| format!("opening BAM file: {}", args.src.display()))?;
     let header = reader.read_header()?.parse()?;
-    let index = bam::bai::read(&args.src.with_extension("bam.bai")).with_context(|| {
+    let index = bam::bai::read(args.src.with_extension("bam.bai")).with_context(|| {
         format!(
             "reading BAM index: {}",
             args.src.with_extension("bam.bai").display()
         )
     })?;
 
-    let parsed_bam = ParsedBAMFile {
+    let mut parsed_bam = ParsedBAMFile {
         reader,
         header,
         index,
     };
 
-    let filters = StrandednessFilters {
+    let max_iterations_per_try = args.max_iterations_per_try.unwrap_or(args.num_genes * 10);
+
+    let params = compute::StrandednessParams {
+        num_genes: args.num_genes,
+        max_iterations_per_try,
         min_reads_per_gene: args.min_reads_per_gene,
         min_mapq: args.min_mapq,
         count_qc_failed: args.count_qc_failed,
@@ -194,25 +210,47 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         count_duplicates: args.count_duplicates,
     };
 
-    let max_iterations_per_try = args.max_iterations_per_try.unwrap_or(args.num_genes * 10);
-    let max_iterations_per_try = match max_iterations_per_try > gene_records.len() {
-        true => gene_records.len(),
-        false => max_iterations_per_try,
+    let mut all_counts = compute::AllReadGroupsCounts {
+        counts: HashMap::new(),
+        found_rgs: HashSet::new(),
+    };
+    let mut metrics = compute::RecordTracker {
+        genes: gene_metrics,
+        exons: exon_metrics,
+        reads: compute::ReadRecordMetrics::default(),
     };
 
+    let mut result: compute::DerivedStrandednessResult;
     for try_num in 1..=args.max_tries {
         info!("Starting try {} of {}", try_num, args.max_tries);
 
-        compute::predict(
-            &parsed_bam,
+        result = compute::predict(
+            &mut parsed_bam,
             &mut gene_records,
             &exons,
-            max_iterations_per_try,
-            args.num_genes,
-            &filters,
-            &mut gene_metrics,
-            &mut exon_metrics,
+            &mut all_counts,
+            &params,
+            &mut metrics,
         )?;
+
+        if result.succeeded {
+            info!("Strandedness test succeeded.");
+
+            // (#) Print the output to stdout as JSON (more support for different output
+            // types may be added in the future, but for now, only JSON).
+            let output = serde_json::to_string_pretty(&result).unwrap();
+            print!("{}", output);
+            break;
+        } else {
+            warn!("Strandedness test inconclusive.");
+
+            if try_num >= args.max_tries {
+                info!("Strandedness test failed after {} tries.", args.max_tries);
+                let output = serde_json::to_string_pretty(&result).unwrap();
+                print!("{}", output);
+                break;
+            }
+        }
     }
 
     anyhow::Ok(())

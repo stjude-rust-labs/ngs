@@ -1,8 +1,7 @@
 //! Module holding the logic for computing the strandedness.
 
-use anyhow::bail;
 use noodles::bam;
-use noodles::core::{Position, Region};
+use noodles::core::Region;
 use noodles::gff;
 use noodles::sam;
 use noodles::sam::record::data::field::Tag;
@@ -13,10 +12,10 @@ use std::collections::HashMap;
 use std::collections::HashSet;
 use std::sync::Arc;
 
-use crate::utils::read_groups::{validate_read_group_info, OVERALL, UNKNOWN_READ_GROUP};
+use crate::utils::read_groups::{validate_read_group_info, UNKNOWN_READ_GROUP};
 
-const STRANDED_THRESHOLD: f64 = 0.80;
-const UNSTRANDED_THRESHOLD: f64 = 0.40;
+const STRANDED_THRESHOLD: f64 = 80.0;
+const UNSTRANDED_THRESHOLD: f64 = 40.0;
 
 /// General gene metrics that are tallied as a part of the
 /// strandedness subcommand.
@@ -59,7 +58,7 @@ pub struct ReadRecordMetrics {
     /// The number of records that have been filtered because of their flags.
     /// (i.e. they were qc_fail, duplicates, secondary, or supplementary)
     /// These conditions can be toggled on/off with CL flags
-    pub ignored_flags: usize,
+    pub filtered_by_flags: usize,
 
     /// The number of records that have been filtered because
     /// they failed the MAPQ filter.
@@ -75,9 +74,22 @@ pub struct ReadRecordMetrics {
     pub single_end_reads: usize,
 }
 
+/// Struct for managing record tracking.
+#[derive(Clone, Default, Debug)]
+pub struct RecordTracker {
+    /// Gene metrics.
+    pub genes: GeneRecordMetrics,
+
+    /// Exon metrics.
+    pub exons: ExonRecordMetrics,
+
+    /// Read metrics.
+    pub reads: ReadRecordMetrics,
+}
+
 /// Struct for tracking count results.
 #[derive(Clone, Default)]
-struct Counts {
+pub struct Counts {
     /// The number of reads that are evidence of Forward Strandedness.
     forward: usize,
 
@@ -187,9 +199,7 @@ impl DerivedStrandednessResult {
         forward: usize,
         reverse: usize,
         read_groups: Vec<ReadGroupDerivedStrandednessResult>,
-        read_metrics: ReadRecordMetrics,
-        gene_metrics: GeneRecordMetrics,
-        exon_metrics: ExonRecordMetrics,
+        metrics: RecordTracker,
     ) -> Self {
         DerivedStrandednessResult {
             succeeded,
@@ -200,9 +210,9 @@ impl DerivedStrandednessResult {
             forward_pct: (forward as f64 / (forward + reverse) as f64) * 100.0,
             reverse_pct: (reverse as f64 / (forward + reverse) as f64) * 100.0,
             read_groups,
-            read_metrics,
-            gene_metrics,
-            exon_metrics,
+            read_metrics: metrics.reads,
+            gene_metrics: metrics.genes,
+            exon_metrics: metrics.exons,
         }
     }
 }
@@ -259,13 +269,34 @@ impl TryFrom<sam::record::Flags> for SegmentOrder {
 
 /// Struct holding the parsed BAM file and its index.
 pub struct ParsedBAMFile {
+    /// The BAM reader.
     pub reader: bam::Reader<noodles::bgzf::Reader<std::fs::File>>,
+
+    /// The BAM header.
     pub header: sam::Header,
+
+    /// The BAM index.
     pub index: bam::bai::Index,
 }
 
-/// Filters defining how to calculate strandedness.
-pub struct StrandednessFilters {
+/// Struct holding the counts for all read groups.
+/// Also holds the set of read groups found in the BAM.
+pub struct AllReadGroupsCounts {
+    /// The counts for all read groups.
+    pub counts: HashMap<Arc<String>, Counts>,
+
+    /// The set of read groups found in the BAM.
+    pub found_rgs: HashSet<Arc<String>>,
+}
+
+/// Parameters defining how to calculate strandedness.
+pub struct StrandednessParams {
+    /// The number of genes to test for strandedness.
+    pub num_genes: usize,
+
+    /// The maximum number of iterations to try before giving up.
+    pub max_iterations_per_try: usize,
+
     /// Minimum number of reads mapped to a gene to be considered
     /// for evidence of strandedness.
     pub min_reads_per_gene: usize,
@@ -315,13 +346,13 @@ fn disqualify_gene(
 }
 
 fn query_filtered_reads(
-    parsed_bam: &ParsedBAMFile,
+    parsed_bam: &mut ParsedBAMFile,
     gene: &gff::Record,
-    filters: &StrandednessFilters,
+    params: &StrandednessParams,
     read_metrics: &mut ReadRecordMetrics,
 ) -> Vec<sam::alignment::Record> {
-    let start = Position::from(gene.start());
-    let end = Position::from(gene.end());
+    let start = gene.start();
+    let end = gene.end();
     let region = Region::new(gene.reference_sequence_name(), start..=end);
 
     let mut filtered_reads = Vec::new();
@@ -335,20 +366,20 @@ fn query_filtered_reads(
 
         // (1) Parse the flags so we can see if the read should be discarded.
         let flags = read.flags();
-        if (!filters.count_qc_failed && flags.is_qc_fail())
-            || (filters.no_supplementary && flags.is_supplementary())
-            || (!filters.count_secondary && flags.is_secondary())
-            || (!filters.count_duplicates && flags.is_duplicate())
+        if (!params.count_qc_failed && flags.is_qc_fail())
+            || (params.no_supplementary && flags.is_supplementary())
+            || (!params.count_secondary && flags.is_secondary())
+            || (!params.count_duplicates && flags.is_duplicate())
         {
-            read_metrics.ignored_flags += 1;
+            read_metrics.filtered_by_flags += 1;
             continue;
         }
 
         // (2) If the user is filtering by MAPQ, check if this read passes.
-        if filters.min_mapq > 0 {
+        if params.min_mapq > 0 {
             match read.mapping_quality() {
                 Some(mapq) => {
-                    if mapq.get() < filters.min_mapq {
+                    if mapq.get() < params.min_mapq {
                         read_metrics.low_mapq += 1;
                         continue;
                     }
@@ -363,33 +394,31 @@ fn query_filtered_reads(
         filtered_reads.push(read);
     }
 
-    if filtered_reads.len() < filters.min_reads_per_gene {
+    if filtered_reads.len() < params.min_reads_per_gene {
         filtered_reads.clear();
     }
 
-    return filtered_reads;
+    filtered_reads
 }
 
 fn classify_read(
     read: &sam::alignment::Record,
-    gene_strand: &gff::record::Strand,
-    all_counts: &mut HashMap<&str, Counts>,
+    gene_strand: &Strand,
+    all_counts: &mut AllReadGroupsCounts,
     read_metrics: &mut ReadRecordMetrics,
 ) {
-    let gene_strand = Strand::try_from(gene_strand).unwrap();
-
     let read_group = match read.data().get(Tag::ReadGroup) {
-        Some(rg) => rg.as_str().unwrap_or_else(|| {
-            tracing::warn!("Could not parse a RG tag from a read in the file.");
-            UNKNOWN_READ_GROUP.as_str()
-        }),
-        None => UNKNOWN_READ_GROUP.as_str(),
+        Some(rg) => {
+            let rg = rg.to_string();
+            if !all_counts.found_rgs.contains(&rg) {
+                all_counts.found_rgs.insert(Arc::new(rg.clone()));
+            }
+            Arc::clone(all_counts.found_rgs.get(&rg).unwrap())
+        }
+        None => Arc::clone(&UNKNOWN_READ_GROUP),
     };
 
-    let overall_counts = all_counts
-        .entry(OVERALL.as_str())
-        .or_insert(Counts::default());
-    let rg_counts = all_counts.entry(read_group).or_insert(Counts::default());
+    let rg_counts = all_counts.counts.entry(read_group).or_default();
 
     let read_strand = Strand::from(read.flags());
     if read.flags().is_segmented() {
@@ -403,14 +432,12 @@ fn classify_read(
             | (SegmentOrder::Last, Strand::Forward, Strand::Reverse)
             | (SegmentOrder::Last, Strand::Reverse, Strand::Forward) => {
                 rg_counts.forward += 1;
-                overall_counts.forward += 1;
             }
             (SegmentOrder::First, Strand::Forward, Strand::Reverse)
             | (SegmentOrder::First, Strand::Reverse, Strand::Forward)
             | (SegmentOrder::Last, Strand::Forward, Strand::Forward)
             | (SegmentOrder::Last, Strand::Reverse, Strand::Reverse) => {
                 rg_counts.reverse += 1;
-                overall_counts.reverse += 1;
             }
         }
     } else {
@@ -419,11 +446,9 @@ fn classify_read(
         match (read_strand, gene_strand) {
             (Strand::Forward, Strand::Forward) | (Strand::Reverse, Strand::Reverse) => {
                 rg_counts.forward += 1;
-                overall_counts.forward += 1;
             }
             (Strand::Forward, Strand::Reverse) | (Strand::Reverse, Strand::Forward) => {
                 rg_counts.reverse += 1;
-                overall_counts.reverse += 1;
             }
         }
     }
@@ -463,89 +488,98 @@ fn predict_strandedness(rg_name: &str, counts: &Counts) -> ReadGroupDerivedStran
         result.strandedness = "Unstranded".to_string();
     }
 
-    return result;
+    result
 }
 
 /// Main method to evaluate the observed strand state and
 /// return a result for the derived strandedness. This may fail, and the
 /// resulting [`DerivedStrandednessResult`] should be evaluated accordingly.
 pub fn predict(
-    parsed_bam: &ParsedBAMFile,
+    parsed_bam: &mut ParsedBAMFile,
     gene_records: &mut Vec<gff::Record>,
     exons: &HashMap<&str, Lapper<usize, gff::record::Strand>>,
-    max_iterations_per_try: usize,
-    num_genes: usize,
-    filters: &StrandednessFilters,
-    gene_metrics: &mut GeneRecordMetrics,
-    exon_metrics: &mut ExonRecordMetrics,
-    read_metrics: &mut ReadRecordMetrics,
+    all_counts: &mut AllReadGroupsCounts,
+    params: &StrandednessParams,
+    metrics: &mut RecordTracker,
 ) -> Result<DerivedStrandednessResult, anyhow::Error> {
     let mut rng = rand::thread_rng();
     let mut num_tested_genes: usize = 0; // Local to this attempt
-    let mut all_counts: HashMap<&str, Counts> = HashMap::new();
+    let genes_remaining = gene_records.len();
 
-    all_counts.insert(UNKNOWN_READ_GROUP.as_str(), Counts::default());
-    all_counts.insert(OVERALL.as_str(), Counts::default());
+    let max_iters = if params.max_iterations_per_try > genes_remaining {
+        tracing::warn!(
+            "The number of genes remaining ({}) is less than the maximum iterations per try ({}).",
+            genes_remaining,
+            params.max_iterations_per_try,
+        );
+        genes_remaining
+    } else {
+        params.max_iterations_per_try
+    };
 
-    for _ in 0..max_iterations_per_try {
-        if num_tested_genes > num_genes {
+    for _ in 0..max_iters {
+        if num_tested_genes >= params.num_genes {
+            tracing::info!("Reached the maximum number of genes for this try.");
             break;
         }
 
         let cur_gene = gene_records.swap_remove(rng.gen_range(0..gene_records.len()));
 
         if disqualify_gene(&cur_gene, exons) {
-            gene_metrics.bad_strands += 1;
+            metrics.genes.bad_strands += 1;
             continue;
         }
+        let cur_gene_strand = Strand::try_from(cur_gene.strand()).unwrap();
 
         let mut enough_reads = false;
-        for read in query_filtered_reads(parsed_bam, &cur_gene, filters, read_metrics) {
+        for read in query_filtered_reads(parsed_bam, &cur_gene, params, &mut metrics.reads) {
             enough_reads = true;
 
-            classify_read(&read, &cur_gene.strand(), &mut all_counts, read_metrics);
+            classify_read(&read, &cur_gene_strand, all_counts, &mut metrics.reads);
         }
         if enough_reads {
             num_tested_genes += 1;
         } else {
-            gene_metrics.not_enough_reads += 1;
+            metrics.genes.not_enough_reads += 1;
         }
     }
+    if num_tested_genes < params.num_genes {
+        tracing::warn!(
+            "Reached the maximum number of iterations before testing the requested amount of genes for this try."
+        );
+    }
 
-    gene_metrics.tested += num_tested_genes; // Add to any other attempts
+    metrics.genes.tested += num_tested_genes; // Add to any other attempts
 
-    // Overly complicated but IDK how to simplify this
-    let found_rgs = all_counts
-        .keys()
-        .cloned()
-        .map(|rg| rg.to_string())
-        .collect::<Vec<_>>();
-    let found_rgs_arc = found_rgs
-        .iter()
-        .map(|rg| Arc::new(rg.clone()))
-        .collect::<HashSet<_>>();
-
-    let rgs_in_header_not_found = validate_read_group_info(&found_rgs_arc, &parsed_bam.header);
+    // TODO: Should this be done in derive()? Will re-run for each attempt.
+    // Might cause false positives?
+    let rgs_in_header_not_found =
+        validate_read_group_info(&all_counts.found_rgs, &parsed_bam.header);
     for rg in rgs_in_header_not_found {
-        all_counts.insert(rg.as_str(), Counts::default());
+        all_counts
+            .counts
+            .insert(Arc::new(rg.to_string()), Counts::default());
     }
 
-    let mut final_result = DerivedStrandednessResult::new(
-        true,
-        "Inconclusive".to_string(),
-        0,
-        0,
-        Vec::new(),
-        read_metrics.clone(),
-        gene_metrics.clone(),
-        exon_metrics.clone(),
+    let mut overall_counts = Counts::default();
+    let mut rg_results = Vec::new();
+    for (rg, counts) in &all_counts.counts {
+        overall_counts.forward += counts.forward;
+        overall_counts.reverse += counts.reverse;
+
+        let result = predict_strandedness(rg, counts);
+        rg_results.push(result)
+    }
+
+    let overall_result = predict_strandedness("overall", &overall_counts);
+    let final_result = DerivedStrandednessResult::new(
+        overall_result.succeeded,
+        overall_result.strandedness,
+        overall_result.forward,
+        overall_result.reverse,
+        rg_results,
+        metrics.clone(),
     );
-
-    for (rg, counts) in all_counts {
-        if rg == UNKNOWN_READ_GROUP.as_str() && counts.forward == 0 && counts.reverse == 0 {
-            continue;
-        }
-    }
 
     anyhow::Ok(final_result)
 }
