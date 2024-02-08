@@ -56,7 +56,7 @@ pub fn process(
         || (!params.count_secondary && flags.is_secondary())
         || (!params.count_duplicates && flags.is_duplicate())
     {
-        results.records.ignored_flags += 1;
+        results.records.filtered_by_flags += 1;
         return Ok(());
     }
 
@@ -482,7 +482,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 1);
-        assert_eq!(results.records.ignored_flags, 0);
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -506,7 +506,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 1);
-        assert_eq!(results.records.ignored_flags, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -530,7 +530,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 2);
-        assert_eq!(results.records.ignored_flags, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -554,7 +554,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 3);
-        assert_eq!(results.records.ignored_flags, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -578,7 +578,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 4);
-        assert_eq!(results.records.ignored_flags, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -602,7 +602,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 4);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -626,7 +626,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 5);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -650,7 +650,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 0);
         assert_eq!(results.records.missing_mapq, 0);
@@ -674,7 +674,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 0);
@@ -698,7 +698,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);
@@ -722,7 +722,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 7); // Still gets processed, will be filtered later
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);
@@ -746,7 +746,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 7);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 1);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);
@@ -770,7 +770,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 8);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 1);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);
@@ -794,7 +794,7 @@ mod tests {
         )
         .unwrap();
         assert_eq!(results.records.processed, 9);
-        assert_eq!(results.records.ignored_flags, 2);
+        assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 1);
         assert_eq!(results.records.low_mapq, 1);
         assert_eq!(results.records.missing_mapq, 1);

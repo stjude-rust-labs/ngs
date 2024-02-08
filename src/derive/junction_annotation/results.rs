@@ -81,7 +81,7 @@ pub struct RecordMetrics {
     /// The number of records that have been ignored because of their flags.
     /// (i.e. they were unmapped, duplicates, secondary, or supplementary)
     /// The last 3 conditions can be toggled on/off with CL flags
-    pub ignored_flags: usize,
+    pub filtered_by_flags: usize,
 
     /// The number of records that have been ignored because they were not
     /// spliced.
