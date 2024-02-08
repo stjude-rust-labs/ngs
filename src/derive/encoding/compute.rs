@@ -72,7 +72,7 @@ pub fn predict(score_set: HashSet<u8>) -> Result<DerivedEncodingResult, anyhow::
             result.succeeded = true;
             result.encoding = Some("Sanger/Illumina 1.8".to_string());
         }
-        _ => bail!("This shouldn't be possible!"),
+        _ => unreachable!(),
     }
 
     anyhow::Ok(result)

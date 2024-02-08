@@ -31,34 +31,34 @@ pub struct JunctionAnnotationArgs {
 
     /// Name of the exon region feature for the gene model used.
     #[arg(long, value_name = "STRING", default_value = "exon")]
-    pub exon_feature_name: String,
+    exon_feature_name: String,
 
     /// Minimum intron length to consider.
     /// An intron is defined as an `N` CIGAR operation of any length.
     #[arg(short = 'i', long, value_name = "USIZE", default_value = "50")]
-    pub min_intron_length: usize,
+    min_intron_length: usize,
 
     /// Minimum number of reads supporting a junction to be considered.
-    #[arg(short = 'r', long, value_name = "usize", default_value = "2")]
-    pub min_read_support: usize,
+    #[arg(short = 'r', long, value_name = "USIZE", default_value = "2")]
+    min_read_support: usize,
 
     /// Minumum mapping quality for a record to be considered.
     /// Set to 0 to disable this filter and allow reads _without_
     /// a mapping quality to be considered.
     #[arg(short, long, value_name = "U8", default_value = "30")]
-    pub min_mapq: u8,
+    min_mapq: u8,
 
     /// Do not count supplementary alignments.
     #[arg(long)]
-    pub no_supplementary: bool,
+    no_supplementary: bool,
 
     /// Do count secondary alignments.
     #[arg(long)]
-    pub count_secondary: bool,
+    count_secondary: bool,
 
     /// Do count duplicates.
     #[arg(long)]
-    pub count_duplicates: bool,
+    count_duplicates: bool,
 }
 
 /// Main function for the `ngs derive junction_annotation` subcommand.
@@ -131,7 +131,7 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     // (3) Summarize found junctions.
     compute::summarize(&mut results, &params);
 
-    // (3) Print the output to stdout as JSON (more support for different output
+    // (4) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&results).unwrap();
     print!("{}", output);

@@ -6,3 +6,4 @@ pub mod endedness;
 pub mod instrument;
 pub mod junction_annotation;
 pub mod readlen;
+pub mod strandedness;

@@ -5,6 +5,7 @@ pub mod endedness;
 pub mod instrument;
 pub mod junction_annotation;
 pub mod readlen;
+pub mod strandedness;
 
 use clap::Args;
 use clap::Subcommand;
@@ -35,6 +36,10 @@ pub enum DeriveSubcommand {
 
     /// Derives the read length of the file.
     Readlen(self::readlen::DeriveReadlenArgs),
+
+    /// Derives the strandedness of the RNA-Seq file.
+    /// This subcommand requires a GFF file.
+    Strandedness(self::strandedness::DeriveStrandednessArgs),
 
     /// Annotates junctions in the file.
     /// This subcommand requires a GFF file with features to annotate.

@@ -14,14 +14,13 @@ use tracing::info;
 use tracing::trace;
 
 use crate::derive::endedness::compute;
-use crate::derive::endedness::compute::{
-    validate_read_group_info, OrderingFlagsCounts, OVERALL, UNKNOWN_READ_GROUP,
-};
+use crate::derive::endedness::compute::OrderingFlagsCounts;
 use crate::utils::args::arg_in_range as deviance_in_range;
 use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
+use crate::utils::read_groups::{validate_read_group_info, OVERALL, UNKNOWN_READ_GROUP};
 
 /// Clap arguments for the `ngs derive endedness` subcommand.
 #[derive(Args)]
