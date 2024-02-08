@@ -137,6 +137,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         bail!("No gene records matched criteria. Check your GFF file and `--gene-feature-name` and `--all-genes` options.");
     }
     if exon_records.is_empty() {
+        // TODO move this below?
         bail!("No exon records matched criteria. Check your GFF file and `--exon-feature-name` option.");
     }
 
@@ -147,6 +148,11 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         let start: usize = record.start().into();
         let stop: usize = record.end().into();
         let strand = record.strand();
+
+        if strand != gff::record::Strand::Forward && strand != gff::record::Strand::Reverse {
+            exon_metrics.bad_strand += 1;
+            continue;
+        }
 
         exon_intervals.entry(seq_name).or_default().push(Interval {
             start,
