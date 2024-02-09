@@ -5,11 +5,13 @@ use anyhow::Ok;
 use noodles::core::Position;
 use noodles::sam::alignment::Record;
 use noodles::sam::record::cigar::op::Kind;
+use noodles::sam::record::MappingQuality;
 use noodles::sam::Header;
 use std::collections::HashMap;
 use std::collections::HashSet;
 
 use crate::derive::junction_annotation::results;
+use crate::utils::alignment::filter_by_mapq;
 
 /// Struct to hold starts and ends of exons.
 pub struct ExonSets<'a> {
@@ -30,7 +32,7 @@ pub struct JunctionAnnotationParameters {
 
     /// Minumum mapping quality for a record to be considered.
     /// 0 if MAPQ shouldn't be considered.
-    pub min_mapq: u8,
+    pub min_mapq: Option<MappingQuality>,
 
     /// Do not count supplementary alignments.
     pub no_supplementary: bool,
@@ -65,6 +67,27 @@ fn increment_junction_map(
     );
 }
 
+/// Function to filter out records based on their flags.
+fn filter_by_flags(record: &Record, params: &JunctionAnnotationParameters) -> bool {
+    let flags = record.flags();
+    if flags.is_unmapped()
+        || (params.no_supplementary && flags.is_supplementary())
+        || (!params.count_secondary && flags.is_secondary())
+        || (!params.count_duplicates && flags.is_duplicate())
+    {
+        return true;
+    }
+    false
+}
+
+/// Function to filter out records that don't have introns.
+fn filter_by_cigar(record: &Record) -> bool {
+    !record
+        .cigar()
+        .iter()
+        .any(|op| matches!(op.kind(), Kind::Skip))
+}
+
 /// Main function to annotate junctions one record at a time.
 pub fn process(
     record: &Record,
@@ -79,42 +102,24 @@ pub fn process(
         _ => bail!("Could not parse read name"),
     };
 
-    // (2) Parse the flags so we can see if the read should be ignored.
-    let flags = record.flags();
-
-    if flags.is_unmapped()
-        || (params.no_supplementary && flags.is_supplementary())
-        || (!params.count_secondary && flags.is_secondary())
-        || (!params.count_duplicates && flags.is_duplicate())
-    {
+    // (2) Filter by record flags.
+    if filter_by_flags(record, params) {
         results.records.filtered_by_flags += 1;
         return Ok(());
     }
 
-    // (3) Parse the CIGAR string from the record.
+    // (3) Filter by CIGAR.
     // We only care about reads with introns, so if there are no introns
     // we can skip this read.
-    let cigar = record.cigar();
-    if !cigar.iter().any(|op| matches!(op.kind(), Kind::Skip)) {
+    if filter_by_cigar(record) {
         results.records.not_spliced += 1;
         return Ok(());
     }
 
-    // (4) If the user is filtering by MAPQ, check if this read passes.
-    // Log if the read is filtered out for a too low MAPQ or a missing MAPQ.
-    if params.min_mapq > 0 {
-        match record.mapping_quality() {
-            Some(mapq) => {
-                if mapq.get() < params.min_mapq {
-                    results.records.low_mapq += 1;
-                    return Ok(());
-                }
-            }
-            None => {
-                results.records.missing_mapq += 1;
-                return Ok(());
-            }
-        }
+    // (4) Filter by MAPQ
+    if filter_by_mapq(record, params.min_mapq) {
+        results.records.bad_mapq += 1;
+        return Ok(());
     }
 
     // (5) Parse the reference sequence from the record.
@@ -144,7 +149,7 @@ pub fn process(
 
     // (8) Find introns
     let cur_pos = start;
-    for op in cigar.iter() {
+    for op in record.cigar().iter() {
         match op.kind() {
             // This is an intron.
             Kind::Skip => {
@@ -356,13 +361,110 @@ mod tests {
     use std::num::NonZeroUsize;
 
     #[test]
+    fn test_filter_by_flags() {
+        // Setup
+        let mut record = Record::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+
+        // Test that records are filtered out correctly
+        record.flags_mut().set(0x4.into(), true);
+        assert!(filter_by_flags(&record, &params));
+        record.flags_mut().set(0x4.into(), false);
+        record.flags_mut().set(0x800.into(), true);
+        assert!(!filter_by_flags(&record, &params));
+        record.flags_mut().set(0x800.into(), false);
+        record.flags_mut().set(0x100.into(), true);
+        assert!(filter_by_flags(&record, &params));
+        record.flags_mut().set(0x100.into(), false);
+        record.flags_mut().set(0x400.into(), true);
+        assert!(filter_by_flags(&record, &params));
+        record.flags_mut().set(0x400.into(), false);
+        assert!(!filter_by_flags(&record, &params));
+    }
+
+    #[test]
+    fn test_filter_by_cigar() {
+        // Setup
+        let mut record = Record::default();
+
+        // Test that records are filtered out correctly
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        assert!(!filter_by_cigar(&record));
+        *record.cigar_mut() = "10M".parse().unwrap();
+        assert!(filter_by_cigar(&record));
+    }
+
+    #[test]
+    fn test_filter_junction_map() {
+        // Setup
+        let mut junction_map = results::JunctionsMap::default();
+        junction_map.insert(
+            "sq1".to_string(),
+            HashMap::from([
+                ((Position::new(1).unwrap(), Position::new(11).unwrap()), 1),
+                ((Position::new(1).unwrap(), Position::new(5).unwrap()), 1),
+            ]),
+        );
+        junction_map.insert(
+            "sq2".to_string(),
+            HashMap::from([((Position::new(1).unwrap(), Position::new(11).unwrap()), 2)]),
+        );
+        let min_intron_length = 10;
+        let min_read_support = 2;
+        let mut metrics = results::SummaryResults::default();
+
+        // Test that junctions are filtered out correctly
+        filter_junction_map(
+            &mut junction_map,
+            min_intron_length,
+            min_read_support,
+            &mut metrics,
+        );
+        assert_eq!(junction_map.len(), 1);
+        assert_eq!(junction_map.get("sq1"), None);
+        assert_eq!(junction_map.get("sq2").unwrap().len(), 1);
+        assert_eq!(metrics.intron_too_short, 1);
+        assert_eq!(metrics.junctions_with_not_enough_read_support, 2);
+        assert_eq!(metrics.total_rejected_junctions, 2);
+    }
+
+    #[test]
+    fn test_tally_junctions_and_support() {
+        // Setup
+        let mut junction_map = results::JunctionsMap::default();
+        junction_map.insert(
+            "sq1".to_string(),
+            HashMap::from([
+                ((Position::new(1).unwrap(), Position::new(11).unwrap()), 1),
+                ((Position::new(1).unwrap(), Position::new(5).unwrap()), 1),
+            ]),
+        );
+        junction_map.insert(
+            "sq2".to_string(),
+            HashMap::from([((Position::new(1).unwrap(), Position::new(11).unwrap()), 2)]),
+        );
+
+        // Test that junctions are tallied correctly
+        let (juncs, support) = tally_junctions_and_support(&junction_map);
+        assert_eq!(juncs, 3);
+        assert_eq!(support, 4);
+    }
+
+    #[test]
     fn test_process_and_summarize() {
         // Setup
         let mut results = results::JunctionAnnotationResults::default();
         let params = JunctionAnnotationParameters {
             min_intron_length: 10,
             min_read_support: 2,
-            min_mapq: 30,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
             no_supplementary: false,
             count_secondary: false,
             count_duplicates: false,
@@ -413,8 +515,7 @@ mod tests {
         assert_eq!(results.records.processed, 1);
         assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // Test that unmapped gets ignored
         let mut record = Record::default();
@@ -429,8 +530,7 @@ mod tests {
         assert_eq!(results.records.processed, 1);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // Test partial novel junction
         let mut record = Record::default();
@@ -445,8 +545,7 @@ mod tests {
         assert_eq!(results.records.processed, 2);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // Test partial novel junction (again for more read support)
         let mut record = Record::default();
@@ -461,8 +560,7 @@ mod tests {
         assert_eq!(results.records.processed, 3);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // Test that supplementary alignments get counted
         let mut record = Record::default();
@@ -478,8 +576,7 @@ mod tests {
         assert_eq!(results.records.processed, 4);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // Test that secondary alignments don't get counted
         let mut record = Record::default();
@@ -495,8 +592,7 @@ mod tests {
         assert_eq!(results.records.processed, 4);
         assert_eq!(results.records.filtered_by_flags, 2);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.low_mapq, 0);
-        assert_eq!(results.records.missing_mapq, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
         // TODO: Below tests are not working as expected. Need to fix them.
         // Test complete novel junction

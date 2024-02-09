@@ -11,12 +11,8 @@ pub struct ReadRecordMetrics {
     /// These conditions can be toggled on/off with CL flags
     pub filtered_by_flags: usize,
 
-    /// The number of records that have been filtered because
-    /// they failed the MAPQ filter.
-    pub low_mapq: usize,
-
-    /// The number of records whose MAPQ couldn't be parsed and were thus discarded.
-    pub missing_mapq: usize,
+    /// The number of records that have been ignored because they failed the MAPQ filter.
+    pub bad_mapq: usize,
 
     /// The number of records determined to be Paired-End.
     pub paired_end_reads: usize,

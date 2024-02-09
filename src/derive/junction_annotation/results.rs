@@ -100,10 +100,8 @@ pub struct RecordMetrics {
 
     /// The number of records with junctions that have been ignored because
     /// they failed the MAPQ filter.
-    pub low_mapq: usize,
-
-    /// The number of records whose MAPQ couldn't be parsed and were thus ignored.
-    pub missing_mapq: usize,
+    /// This could either mean the MAPQ was too low or it was missing.
+    pub bad_mapq: usize,
 }
 
 /// Summary statistics for the junction-annotation subcommand.

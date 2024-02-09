@@ -5,6 +5,7 @@ use noodles::core::Region;
 use noodles::gff;
 use noodles::sam;
 use noodles::sam::record::data::field::Tag;
+use noodles::sam::record::MappingQuality;
 use rand::Rng;
 use rust_lapper::Lapper;
 use std::collections::HashMap;
@@ -12,6 +13,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 
 use crate::derive::strandedness::results;
+use crate::utils::alignment::filter_by_mapq;
 use crate::utils::read_groups::{validate_read_group_info, UNKNOWN_READ_GROUP};
 
 const STRANDED_THRESHOLD: f64 = 80.0;
@@ -27,6 +29,7 @@ pub struct Counts {
     reverse: usize,
 }
 
+/// Struct for tracking possible strand orientations.
 #[derive(Clone, Copy, Debug)]
 enum Strand {
     Forward,
@@ -55,6 +58,7 @@ impl TryFrom<gff::record::Strand> for Strand {
     }
 }
 
+/// Struct for tracking the order of segments in a record.
 #[derive(Clone, Copy, Debug)]
 enum SegmentOrder {
     First,
@@ -113,7 +117,7 @@ pub struct StrandednessParams {
 
     /// Minumum mapping quality for a record to be considered.
     /// 0 if MAPQ shouldn't be considered.
-    pub min_mapq: u8,
+    pub min_mapq: Option<MappingQuality>,
 
     /// Allow qc failed reads to be counted.
     pub count_qc_failed: bool,
@@ -128,6 +132,7 @@ pub struct StrandednessParams {
     pub count_duplicates: bool,
 }
 
+/// Function to disqualify a gene based on its strand and exons.
 fn disqualify_gene(
     gene: &gff::Record,
     exons: &HashMap<&str, Lapper<usize, gff::record::Strand>>,
@@ -155,6 +160,21 @@ fn disqualify_gene(
     true
 }
 
+/// Function to filter out records based on their flags.
+fn filter_by_flags(record: &sam::alignment::Record, params: &StrandednessParams) -> bool {
+    let flags = record.flags();
+    if (!params.count_qc_failed && flags.is_qc_fail())
+        || (params.no_supplementary && flags.is_supplementary())
+        || (!params.count_secondary && flags.is_secondary())
+        || (!params.count_duplicates && flags.is_duplicate())
+    {
+        return true;
+    }
+    false
+}
+
+/// Function to query the BAM file and filter the records based on the
+/// parameters provided.
 fn query_and_filter(
     parsed_bam: &mut ParsedBAMFile,
     gene: &gff::Record,
@@ -174,31 +194,16 @@ fn query_and_filter(
     for read in query {
         let read = read.unwrap();
 
-        // (1) Parse the flags so we can see if the read should be discarded.
-        let flags = read.flags();
-        if (!params.count_qc_failed && flags.is_qc_fail())
-            || (params.no_supplementary && flags.is_supplementary())
-            || (!params.count_secondary && flags.is_secondary())
-            || (!params.count_duplicates && flags.is_duplicate())
-        {
+        // (1) Filter by flags.
+        if filter_by_flags(&read, params) {
             read_metrics.filtered_by_flags += 1;
             continue;
         }
 
-        // (2) If the user is filtering by MAPQ, check if this read passes.
-        if params.min_mapq > 0 {
-            match read.mapping_quality() {
-                Some(mapq) => {
-                    if mapq.get() < params.min_mapq {
-                        read_metrics.low_mapq += 1;
-                        continue;
-                    }
-                }
-                None => {
-                    read_metrics.missing_mapq += 1;
-                    continue;
-                }
-            }
+        // (2) Filter by MAPQ.
+        if filter_by_mapq(&read, params.min_mapq) {
+            read_metrics.bad_mapq += 1;
+            continue;
         }
 
         filtered_reads.push(read);
@@ -211,6 +216,7 @@ fn query_and_filter(
     filtered_reads
 }
 
+/// Function to classify a read based on its strand and the strand of the gene.
 fn classify_read(
     read: &sam::alignment::Record,
     gene_strand: &Strand,
@@ -475,8 +481,7 @@ mod tests {
         assert_eq!(read_metrics.paired_end_reads, 0);
         assert_eq!(read_metrics.single_end_reads, 1);
         assert_eq!(read_metrics.filtered_by_flags, 0);
-        assert_eq!(read_metrics.low_mapq, 0);
-        assert_eq!(read_metrics.missing_mapq, 0);
+        assert_eq!(read_metrics.bad_mapq, 0);
         let counts = all_counts.counts.get(&counts_key).unwrap();
         assert_eq!(counts.forward, 1);
         assert_eq!(counts.reverse, 0);
@@ -490,8 +495,7 @@ mod tests {
         assert_eq!(read_metrics.paired_end_reads, 1);
         assert_eq!(read_metrics.single_end_reads, 1);
         assert_eq!(read_metrics.filtered_by_flags, 0);
-        assert_eq!(read_metrics.low_mapq, 0);
-        assert_eq!(read_metrics.missing_mapq, 0);
+        assert_eq!(read_metrics.bad_mapq, 0);
         let counts = all_counts.counts.get(&counts_key).unwrap();
         assert_eq!(counts.forward, 2);
         assert_eq!(counts.reverse, 0);
@@ -505,8 +509,7 @@ mod tests {
         assert_eq!(read_metrics.paired_end_reads, 2);
         assert_eq!(read_metrics.single_end_reads, 1);
         assert_eq!(read_metrics.filtered_by_flags, 0);
-        assert_eq!(read_metrics.low_mapq, 0);
-        assert_eq!(read_metrics.missing_mapq, 0);
+        assert_eq!(read_metrics.bad_mapq, 0);
         let counts = all_counts.counts.get(&counts_key).unwrap();
         assert_eq!(counts.forward, 3);
         assert_eq!(counts.reverse, 0);
@@ -520,8 +523,7 @@ mod tests {
         assert_eq!(read_metrics.paired_end_reads, 3);
         assert_eq!(read_metrics.single_end_reads, 1);
         assert_eq!(read_metrics.filtered_by_flags, 0);
-        assert_eq!(read_metrics.low_mapq, 0);
-        assert_eq!(read_metrics.missing_mapq, 0);
+        assert_eq!(read_metrics.bad_mapq, 0);
         let counts = all_counts.counts.get(&counts_key).unwrap();
         assert_eq!(counts.forward, 3);
         assert_eq!(counts.reverse, 1);

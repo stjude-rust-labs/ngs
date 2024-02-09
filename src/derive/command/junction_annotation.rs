@@ -5,6 +5,7 @@ use std::path::PathBuf;
 
 use anyhow::Context;
 use clap::Args;
+use noodles::sam::record::MappingQuality;
 use num_format::Locale;
 use num_format::ToFormattedString;
 use tracing::debug;
@@ -45,7 +46,7 @@ pub struct JunctionAnnotationArgs {
     /// Set to 0 to disable this filter and allow reads _without_
     /// a mapping quality to be considered.
     #[arg(short, long, value_name = "U8", default_value = "30")]
-    min_mapq: u8,
+    min_mapq: Option<MappingQuality>,
 
     /// Do not count supplementary alignments.
     #[arg(long)]
@@ -95,6 +96,7 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
 
     debug!("Done reading GFF.");
 
+    // (1.5) Initialize variables (including opening the BAM).
     let mut counter = RecordCounter::new();
     let mut results = JunctionAnnotationResults::default();
     let params = compute::JunctionAnnotationParameters {

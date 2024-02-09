@@ -2,7 +2,7 @@
 
 use std::fmt::Display;
 
-use noodles::bgzf::writer::CompressionLevel;
+use noodles::{bgzf::writer::CompressionLevel, sam::record::MappingQuality};
 use tracing::debug;
 
 //===================//
@@ -74,9 +74,9 @@ impl From<CompressionStrategy> for CompressionLevel {
     }
 }
 
-//==============//
-// Float Parser //
-//==============//
+//=============//
+// Arg Parsers //
+//=============//
 
 /// Utility method to parse command line floats and ensure they are
 /// within the range [MIN, MAX].
@@ -89,4 +89,10 @@ pub fn arg_in_range(arg: f32, range: std::ops::RangeInclusive<f32>) -> anyhow::R
             range.end()
         ),
     }
+}
+
+/// Utility method to parse command line integers and ensure they are
+/// within the range [0, 255) and return them as MappingQualities.
+pub fn parse_min_mapq(s: &str) -> Result<Option<MappingQuality>, std::num::ParseIntError> {
+    s.parse().map(MappingQuality::new)
 }

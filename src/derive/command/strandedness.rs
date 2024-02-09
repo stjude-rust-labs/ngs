@@ -10,6 +10,7 @@ use anyhow::Context;
 use clap::Args;
 use noodles::bam;
 use noodles::gff;
+use noodles::sam::record::MappingQuality;
 use rust_lapper::{Interval, Lapper};
 use tracing::debug;
 use tracing::info;
@@ -17,6 +18,7 @@ use tracing::info;
 use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
 use crate::derive::strandedness::results;
+use crate::utils::args::parse_min_mapq;
 use crate::utils::formats;
 
 /// Clap arguments for the `ngs derive strandedness` subcommand.
@@ -45,10 +47,10 @@ pub struct DeriveStrandednessArgs {
     num_genes: usize,
 
     /// Minimum mapping quality for a record to be considered.
-    /// Set to 0 to disable this filter and allow reads _without_
-    /// a mapping quality to be considered.
-    #[arg(long, value_name = "U8", default_value = "30")]
-    min_mapq: u8,
+    /// Default is to ignore MAPQ values (allowing <missing> MAPQs to be considered).
+    /// Specify any u8 value to enable this filter.
+    #[arg(long, value_name = "U8", default_value = "30", value_parser = parse_min_mapq)]
+    min_mapq: Option<MappingQuality>,
 
     /// Consider all genes, not just protein coding genes.
     #[arg(long)]
@@ -88,7 +90,7 @@ pub struct DeriveStrandednessArgs {
 pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
     info!("Starting derive strandedness subcommand.");
 
-    // (1) Parse the GFF file and collect all gene features.
+    // (1) Parse the GFF file and collect all gene and exon features.
     debug!("Reading all records in GFF.");
     let mut gff = formats::gff::open(&args.features_gff)
         .with_context(|| format!("opening GFF file: {}", args.features_gff.display()))?;
@@ -130,9 +132,6 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
             exon_records.push(record);
         }
     }
-
-    debug!("Tabulating GFF gene and exon features.");
-
     if gene_records.is_empty() {
         bail!("No gene records matched criteria. Check your GFF file and `--gene-feature-name` and `--all-genes` options.");
     }
@@ -144,6 +143,9 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         gene_records.len(),
         exon_records.len()
     );
+
+    // (2) Parse exon features into proper data structure.
+    debug!("Tabulating GFF exon features.");
 
     let mut exon_intervals: HashMap<&str, Vec<Interval<usize, gff::record::Strand>>> =
         HashMap::new();
@@ -180,6 +182,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
 
     debug!("Done reading GFF.");
 
+    // (3) Initialize variables (including opening the BAM).
     let mut reader = File::open(&args.src)
         .map(bam::Reader::new)
         .with_context(|| format!("opening BAM file: {}", args.src.display()))?;
@@ -219,8 +222,9 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         exons: exon_metrics,
         reads: results::ReadRecordMetrics::default(),
     };
-
     let mut result: Option<results::DerivedStrandednessResult> = None;
+
+    // (4) Run the strandedness test.
     for try_num in 1..=args.max_tries {
         info!("Starting try {} of {}", try_num, args.max_tries);
 
@@ -247,7 +251,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         info!("Strandedness test failed after {} tries.", args.max_tries);
     }
 
-    // (4) Print the output to stdout as JSON (more support for different output
+    // (5) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&result).unwrap();
     print!("{}", output);
