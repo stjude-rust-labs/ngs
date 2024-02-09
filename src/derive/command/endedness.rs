@@ -7,7 +7,6 @@ use std::sync::Arc;
 
 use anyhow::Context;
 use clap::Args;
-use noodles::sam::record::data::field::Tag;
 use num_format::Locale;
 use num_format::ToFormattedString;
 use tracing::info;
@@ -20,7 +19,9 @@ use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
-use crate::utils::read_groups::{validate_read_group_info, OVERALL, UNKNOWN_READ_GROUP};
+use crate::utils::read_groups::{
+    get_read_group, validate_read_group_info, ReadGroupPtr, UNKNOWN_READ_GROUP,
+};
 
 /// Clap arguments for the `ngs derive endedness` subcommand.
 #[derive(Args)]
@@ -60,12 +61,12 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
     let mut found_rgs = HashSet::new();
 
-    let mut ordering_flags: HashMap<Arc<String>, OrderingFlagsCounts> = HashMap::new();
-    ordering_flags.insert(Arc::clone(&OVERALL), OrderingFlagsCounts::new());
+    let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+    // TODO change
     ordering_flags.insert(Arc::clone(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
-    let mut read_names: HashMap<String, Vec<Arc<String>>> = HashMap::new();
+    let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -86,16 +87,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             continue;
         }
 
-        let read_group = match record.data().get(Tag::ReadGroup) {
-            Some(rg) => {
-                let rg = rg.to_string();
-                if !found_rgs.contains(&rg) {
-                    found_rgs.insert(Arc::new(rg.clone()));
-                }
-                Arc::clone(found_rgs.get(&rg).unwrap())
-            }
-            None => Arc::clone(&UNKNOWN_READ_GROUP),
-        };
+        let read_group = get_read_group(&record, Some(&mut found_rgs));
 
         if args.calc_rpt {
             match record.read_name() {
@@ -120,13 +112,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             }
         }
 
-        let overall_rg = Arc::clone(&OVERALL);
-
         if !record.flags().is_segmented() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
-                e.unsegmented += 1;
-            });
-
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
@@ -140,10 +126,6 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
-                e.first += 1;
-            });
-
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
@@ -157,10 +139,6 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
-                e.last += 1;
-            });
-
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
@@ -174,10 +152,6 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
-                e.both += 1;
-            });
-
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
@@ -191,10 +165,6 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
                     neither: 0,
                 });
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(overall_rg).and_modify(|e| {
-                e.neither += 1;
-            });
-
             ordering_flags
                 .entry(read_group)
                 .and_modify(|e| {
