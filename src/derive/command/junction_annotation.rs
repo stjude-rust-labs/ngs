@@ -1,4 +1,4 @@
-//! Functionality relating to the `ngs derive junction_annotation` subcommand itself.
+//! Functionality relating to the `ngs derive junction-annotation` subcommand itself.
 
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -17,7 +17,7 @@ use crate::utils::formats;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
-/// Clap arguments for the `ngs derive junction_annotation` subcommand.
+/// Clap arguments for the `ngs derive junction-annotation` subcommand.
 #[derive(Args)]
 pub struct JunctionAnnotationArgs {
     /// Source BAM.
@@ -60,9 +60,9 @@ pub struct JunctionAnnotationArgs {
     count_duplicates: bool,
 }
 
-/// Main function for the `ngs derive junction_annotation` subcommand.
+/// Main function for the `ngs derive junction-annotation` subcommand.
 pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
-    info!("Starting derive junction_annotation subcommand.");
+    info!("Starting derive junction-annotation subcommand.");
 
     let mut exons = compute::ExonSets {
         starts: HashMap::new(),

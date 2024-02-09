@@ -1,4 +1,4 @@
-//! Results related to the `ngs derive junction_annotation` subcommand.
+//! Results related to the `ngs derive junction-annotation` subcommand.
 
 use noodles::core::Position;
 use serde::ser::SerializeStruct;
@@ -82,7 +82,7 @@ impl Serialize for JunctionAnnotations {
 }
 
 /// General record metrics that are tallied as a part of the
-/// junction_annotation subcommand.
+/// junction-annotation subcommand.
 #[derive(Clone, Default, Serialize)]
 pub struct RecordMetrics {
     /// The number of records that have been fully processed.
@@ -106,7 +106,7 @@ pub struct RecordMetrics {
     pub missing_mapq: usize,
 }
 
-/// Summary statistics for the junction_annotation subcommand.
+/// Summary statistics for the junction-annotation subcommand.
 #[derive(Clone, Default, Serialize)]
 pub struct SummaryResults {
     /// The total number of junctions observed in the file.
@@ -208,6 +208,6 @@ pub struct JunctionAnnotationResults {
     /// General record metrics.
     pub records: RecordMetrics,
 
-    /// Summary statistics for the junction_annotation subcommand.
+    /// Summary statistics for the junction-annotation subcommand.
     pub summary: SummaryResults,
 }

@@ -261,7 +261,7 @@ fn tally_junctions_and_support(junction_map: &results::JunctionsMap) -> (usize, 
     (junctions, support)
 }
 
-/// Main function to summarize the results of the junction_annotation subcommand.
+/// Main function to summarize the results of the junction-annotation subcommand.
 pub fn summarize(
     results: &mut results::JunctionAnnotationResults,
     params: &JunctionAnnotationParameters,
