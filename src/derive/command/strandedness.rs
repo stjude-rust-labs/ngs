@@ -232,13 +232,14 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
             &params,
             &mut metrics,
         )?;
-
-        if attempt.succeeded {
+        let success = attempt.succeeded;
+        result = Some(attempt);
+        if success {
             info!("Strandedness test succeeded.");
+            break;
         } else {
             info!("Strandedness test inconclusive.");
         }
-        result = Some(attempt);
     }
     let result = result.unwrap();
 
