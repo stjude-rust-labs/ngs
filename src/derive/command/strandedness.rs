@@ -13,10 +13,10 @@ use noodles::gff;
 use rust_lapper::{Interval, Lapper};
 use tracing::debug;
 use tracing::info;
-use tracing::warn;
 
 use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
+use crate::derive::strandedness::results;
 use crate::utils::formats;
 
 /// Clap arguments for the `ngs derive strandedness` subcommand.
@@ -95,8 +95,8 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
 
     let mut gene_records = Vec::new();
     let mut exon_records = Vec::new();
-    let mut gene_metrics = compute::GeneRecordMetrics::default();
-    let mut exon_metrics = compute::ExonRecordMetrics::default();
+    let mut gene_metrics = results::GeneRecordMetrics::default();
+    let mut exon_metrics = results::ExonRecordMetrics::default();
     for result in gff.records() {
         let record = result.unwrap();
         if record.ty() == args.gene_feature_name {
@@ -214,17 +214,17 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         counts: HashMap::new(),
         found_rgs: HashSet::new(),
     };
-    let mut metrics = compute::RecordTracker {
+    let mut metrics = results::RecordTracker {
         genes: gene_metrics,
         exons: exon_metrics,
-        reads: compute::ReadRecordMetrics::default(),
+        reads: results::ReadRecordMetrics::default(),
     };
 
-    let mut result: compute::DerivedStrandednessResult;
+    let mut result: Option<results::DerivedStrandednessResult> = None;
     for try_num in 1..=args.max_tries {
         info!("Starting try {} of {}", try_num, args.max_tries);
 
-        result = compute::predict(
+        let attempt = compute::predict(
             &mut parsed_bam,
             &mut gene_records,
             &exons,
@@ -233,25 +233,23 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
             &mut metrics,
         )?;
 
-        if result.succeeded {
+        if attempt.succeeded {
             info!("Strandedness test succeeded.");
-
-            // (#) Print the output to stdout as JSON (more support for different output
-            // types may be added in the future, but for now, only JSON).
-            let output = serde_json::to_string_pretty(&result).unwrap();
-            print!("{}", output);
-            break;
         } else {
-            warn!("Strandedness test inconclusive.");
-
-            if try_num >= args.max_tries {
-                info!("Strandedness test failed after {} tries.", args.max_tries);
-                let output = serde_json::to_string_pretty(&result).unwrap();
-                print!("{}", output);
-                break;
-            }
+            info!("Strandedness test inconclusive.");
         }
+        result = Some(attempt);
     }
+    let result = result.unwrap();
+
+    if !result.succeeded {
+        info!("Strandedness test failed after {} tries.", args.max_tries);
+    }
+
+    // (4) Print the output to stdout as JSON (more support for different output
+    // types may be added in the future, but for now, only JSON).
+    let output = serde_json::to_string_pretty(&result).unwrap();
+    print!("{}", output);
 
     anyhow::Ok(())
 }
