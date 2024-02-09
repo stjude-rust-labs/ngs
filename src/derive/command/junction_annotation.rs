@@ -1,7 +1,6 @@
 //! Functionality relating to the `ngs derive junction_annotation` subcommand itself.
 
 use std::collections::HashMap;
-use std::collections::HashSet;
 use std::path::PathBuf;
 
 use anyhow::Context;
@@ -65,8 +64,10 @@ pub struct JunctionAnnotationArgs {
 pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     info!("Starting derive junction_annotation subcommand.");
 
-    let mut exon_starts: HashMap<&str, HashSet<usize>> = HashMap::new();
-    let mut exon_ends: HashMap<&str, HashSet<usize>> = HashMap::new();
+    let mut exons = compute::ExonSets {
+        starts: HashMap::new(),
+        ends: HashMap::new(),
+    };
 
     // (1) Parse the GFF file and collect all exon features.
     debug!("Reading all records in GFF.");
@@ -85,11 +86,11 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     debug!("Tabulating GFF exon features.");
     for record in &exon_records {
         let seq_name = record.reference_sequence_name();
-        let start: usize = record.start().into();
-        let end: usize = record.end().into();
+        let start = record.start();
+        let end = record.end().checked_add(1).unwrap(); // TODO: why +1? It works.
 
-        exon_starts.entry(seq_name).or_default().insert(start);
-        exon_ends.entry(seq_name).or_default().insert(end + 1); // TODO why +1? It works
+        exons.starts.entry(seq_name).or_default().insert(start);
+        exons.ends.entry(seq_name).or_default().insert(end);
     }
 
     debug!("Done reading GFF.");
@@ -112,14 +113,7 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     // (2) Process each record in the BAM file.
     for result in reader.records(&header.parsed) {
         let record = result?;
-        compute::process(
-            &record,
-            &exon_starts,
-            &exon_ends,
-            &header.parsed,
-            &params,
-            &mut results,
-        )?;
+        compute::process(&record, &exons, &header.parsed, &params, &mut results)?;
         counter.inc();
     }
 

@@ -252,17 +252,17 @@ enum SegmentOrder {
 }
 
 impl TryFrom<sam::record::Flags> for SegmentOrder {
-    type Error = ();
+    type Error = String;
 
     fn try_from(flags: sam::record::Flags) -> Result<Self, Self::Error> {
         if !flags.is_segmented() {
-            Err(())
+            Err("Expected segmented record.".to_string())
         } else if flags.is_first_segment() && !flags.is_last_segment() {
             Ok(SegmentOrder::First)
         } else if flags.is_last_segment() && !flags.is_first_segment() {
             Ok(SegmentOrder::Last)
         } else {
-            Err(())
+            Err("Expected first or last segment.".to_string())
         }
     }
 }
@@ -345,7 +345,7 @@ fn disqualify_gene(
     true
 }
 
-fn query_filtered_reads(
+fn query_and_filter(
     parsed_bam: &mut ParsedBAMFile,
     gene: &gff::Record,
     params: &StrandednessParams,
@@ -519,7 +519,10 @@ pub fn predict(
 
     for _ in 0..max_iters {
         if num_tested_genes >= params.num_genes {
-            tracing::info!("Reached the maximum number of genes for this try.");
+            tracing::info!(
+                "Reached the maximum number of genes ({}) for this try.",
+                num_tested_genes,
+            );
             break;
         }
 
@@ -532,7 +535,7 @@ pub fn predict(
         let cur_gene_strand = Strand::try_from(cur_gene.strand()).unwrap();
 
         let mut enough_reads = false;
-        for read in query_filtered_reads(parsed_bam, &cur_gene, params, &mut metrics.reads) {
+        for read in query_and_filter(parsed_bam, &cur_gene, params, &mut metrics.reads) {
             enough_reads = true;
 
             classify_read(&read, &cur_gene_strand, all_counts, &mut metrics.reads);
@@ -545,7 +548,10 @@ pub fn predict(
     }
     if num_tested_genes < params.num_genes {
         tracing::warn!(
-            "Reached the maximum number of iterations before testing the requested amount of genes for this try."
+            "Reached the maximum number of iterations ({}) before testing the requested amount of genes ({}) for this try. Only tested {} genes.",
+            max_iters,
+            params.num_genes,
+            num_tested_genes,
         );
     }
 
@@ -582,4 +588,180 @@ pub fn predict(
     );
 
     anyhow::Ok(final_result)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rust_lapper::Interval;
+
+    #[test]
+    fn test_disqualify_gene() {
+        let mut exons = HashMap::new();
+        exons.insert(
+            "chr1",
+            Lapper::new(vec![
+                Interval {
+                    start: 1,
+                    stop: 10,
+                    val: gff::record::Strand::Forward,
+                },
+                Interval {
+                    start: 11,
+                    stop: 20,
+                    val: gff::record::Strand::Reverse,
+                },
+            ]),
+        );
+
+        let gene = gff::Record::default();
+        assert!(disqualify_gene(&gene, &exons));
+
+        let mut exons = HashMap::new();
+        exons.insert(
+            "chr1",
+            Lapper::new(vec![
+                Interval {
+                    start: 1,
+                    stop: 10,
+                    val: gff::record::Strand::Forward,
+                },
+                Interval {
+                    start: 11,
+                    stop: 20,
+                    val: gff::record::Strand::Forward,
+                },
+            ]),
+        );
+
+        let s = "chr1\tNOODLES\tgene\t8\t13\t.\t+\t.\tgene_id=ndls0;gene_name=gene0";
+        let record = s.parse::<gff::Record>().unwrap();
+        assert!(!disqualify_gene(&record, &exons));
+    }
+
+    #[test]
+    fn test_query_and_filter() { // TODO
+    }
+
+    #[test]
+    fn test_classify_read() {
+        // Set up
+        let mut all_counts = AllReadGroupsCounts {
+            counts: HashMap::new(),
+            found_rgs: HashSet::new(),
+        };
+        let mut read_metrics = ReadRecordMetrics::default();
+        let counts_key = Arc::new("rg1".to_string());
+        let rg_tag = sam::record::data::field::Value::String("rg1".to_string());
+
+        // Test Single-End read. Evidence for Forward Strandedness.
+        let mut read = sam::alignment::Record::default();
+        read.flags_mut().set(0x1.into(), false);
+        read.data_mut().insert(Tag::ReadGroup, rg_tag.clone());
+        classify_read(&read, &Strand::Forward, &mut all_counts, &mut read_metrics);
+        assert_eq!(read_metrics.paired_end_reads, 0);
+        assert_eq!(read_metrics.single_end_reads, 1);
+        assert_eq!(read_metrics.filtered_by_flags, 0);
+        assert_eq!(read_metrics.low_mapq, 0);
+        assert_eq!(read_metrics.missing_mapq, 0);
+        let counts = all_counts.counts.get(&counts_key).unwrap();
+        assert_eq!(counts.forward, 1);
+        assert_eq!(counts.reverse, 0);
+
+        // Test Paired-End read. Evidence for Forward Strandedness.
+        let mut read = sam::alignment::Record::default();
+        read.flags_mut().set(0x1.into(), true);
+        read.flags_mut().set(0x40.into(), true);
+        read.data_mut().insert(Tag::ReadGroup, rg_tag.clone());
+        classify_read(&read, &Strand::Forward, &mut all_counts, &mut read_metrics);
+        assert_eq!(read_metrics.paired_end_reads, 1);
+        assert_eq!(read_metrics.single_end_reads, 1);
+        assert_eq!(read_metrics.filtered_by_flags, 0);
+        assert_eq!(read_metrics.low_mapq, 0);
+        assert_eq!(read_metrics.missing_mapq, 0);
+        let counts = all_counts.counts.get(&counts_key).unwrap();
+        assert_eq!(counts.forward, 2);
+        assert_eq!(counts.reverse, 0);
+
+        // Test Paired-End read. Evidence for Forward Strandedness.
+        let mut read = sam::alignment::Record::default();
+        read.flags_mut().set(0x1.into(), true);
+        read.flags_mut().set(0x80.into(), true);
+        read.data_mut().insert(Tag::ReadGroup, rg_tag.clone());
+        classify_read(&read, &Strand::Reverse, &mut all_counts, &mut read_metrics);
+        assert_eq!(read_metrics.paired_end_reads, 2);
+        assert_eq!(read_metrics.single_end_reads, 1);
+        assert_eq!(read_metrics.filtered_by_flags, 0);
+        assert_eq!(read_metrics.low_mapq, 0);
+        assert_eq!(read_metrics.missing_mapq, 0);
+        let counts = all_counts.counts.get(&counts_key).unwrap();
+        assert_eq!(counts.forward, 3);
+        assert_eq!(counts.reverse, 0);
+
+        // Test Paired-End read. Evidence for Reverse Strandedness.
+        let mut read = sam::alignment::Record::default();
+        read.flags_mut().set(0x1.into(), true);
+        read.flags_mut().set(0x40.into(), true);
+        read.data_mut().insert(Tag::ReadGroup, rg_tag.clone());
+        classify_read(&read, &Strand::Reverse, &mut all_counts, &mut read_metrics);
+        assert_eq!(read_metrics.paired_end_reads, 3);
+        assert_eq!(read_metrics.single_end_reads, 1);
+        assert_eq!(read_metrics.filtered_by_flags, 0);
+        assert_eq!(read_metrics.low_mapq, 0);
+        assert_eq!(read_metrics.missing_mapq, 0);
+        let counts = all_counts.counts.get(&counts_key).unwrap();
+        assert_eq!(counts.forward, 3);
+        assert_eq!(counts.reverse, 1);
+    }
+
+    #[test]
+    fn test_predict_strandedness() {
+        let counts = Counts {
+            forward: 10,
+            reverse: 90,
+        };
+        let result = predict_strandedness("rg1", &counts);
+        assert!(result.succeeded);
+        assert_eq!(result.strandedness, "Reverse");
+        assert_eq!(result.forward, 10);
+        assert_eq!(result.reverse, 90);
+        assert_eq!(result.forward_pct, 10.0);
+        assert_eq!(result.reverse_pct, 90.0);
+
+        let counts = Counts {
+            forward: 50,
+            reverse: 50,
+        };
+        let result = predict_strandedness("rg1", &counts);
+        assert!(result.succeeded);
+        assert_eq!(result.strandedness, "Unstranded");
+        assert_eq!(result.forward, 50);
+        assert_eq!(result.reverse, 50);
+        assert_eq!(result.forward_pct, 50.0);
+        assert_eq!(result.reverse_pct, 50.0);
+
+        let counts = Counts {
+            forward: 90,
+            reverse: 10,
+        };
+        let result = predict_strandedness("rg1", &counts);
+        assert!(result.succeeded);
+        assert_eq!(result.strandedness, "Forward");
+        assert_eq!(result.forward, 90);
+        assert_eq!(result.reverse, 10);
+        assert_eq!(result.forward_pct, 90.0);
+        assert_eq!(result.reverse_pct, 10.0);
+
+        let counts = Counts {
+            forward: 0,
+            reverse: 0,
+        };
+        let result = predict_strandedness("rg1", &counts);
+        assert!(!result.succeeded);
+        assert_eq!(result.strandedness, "Inconclusive");
+        assert_eq!(result.forward, 0);
+        assert_eq!(result.reverse, 0);
+        assert_eq!(result.forward_pct, 0.0);
+        assert_eq!(result.reverse_pct, 0.0);
+    }
 }

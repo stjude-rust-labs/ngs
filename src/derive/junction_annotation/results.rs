@@ -1,63 +1,74 @@
 //! Results related to the `ngs derive junction_annotation` subcommand.
 
+use noodles::core::Position;
 use serde::ser::SerializeStruct;
 use serde::Serialize;
 use serde::Serializer;
 use std::collections::HashMap;
-use std::num::NonZeroUsize;
+
+/// A junction is a tuple of (start, end) coordinates.
+pub type Junction = (Position, Position);
+
+/// A junction counter is a HashMap where the key is a junction and the value is the number of
+/// spliced reads that support the junction.
+pub type JunctionCounter = HashMap<Junction, usize>;
+
+/// A map of junctions. The key is the reference name, and the value is a JunctionCounter.
+pub type JunctionsMap = HashMap<String, JunctionCounter>;
 
 /// Lists of annotated junctions.
 #[derive(Clone, Default)]
 pub struct JunctionAnnotations {
     /// Known junctions. The outer key is the referece name, and the value is another
-    /// HashMap. The inner key is the (start, end) coordinates of the junction,
+    /// HashMap. The inner key is the (start, end) coordinates of a junction,
     /// and the value is the number of spliced reads that support the junction.
-    pub known: HashMap<String, HashMap<(NonZeroUsize, NonZeroUsize), usize>>,
+    pub known: JunctionsMap,
 
     /// Partially novel junctions. The outer key is the referece name, and the value is another
-    /// HashMap. The inner key is the (start, end) coordinates of the junction,
+    /// HashMap. The inner key is the (start, end) coordinates of a junction,
     /// and the value is the number of spliced reads that support the junction.
-    pub partial_novel: HashMap<String, HashMap<(NonZeroUsize, NonZeroUsize), usize>>,
+    pub partial_novel: JunctionsMap,
 
     /// Complete novel junctions. The outer key is the referece name, and the value is another
-    /// HashMap. The inner key is the (start, end) coordinates of the junction,
+    /// HashMap. The inner key is the (start, end) coordinates of a junction,
     /// and the value is the number of spliced reads that support the junction.
-    pub complete_novel: HashMap<String, HashMap<(NonZeroUsize, NonZeroUsize), usize>>,
+    pub complete_novel: JunctionsMap,
 
     /// Junctions on reference sequences for which junction annotations were not found.
     /// The outer key is the referece name, and the value is another
-    /// HashMap. The inner key is the (start, end) coordinates of the junction,
+    /// HashMap. The inner key is the (start, end) coordinates of a junction,
     /// and the value is the number of spliced reads that support the junction.
-    pub unannotated_reference: HashMap<String, HashMap<(NonZeroUsize, NonZeroUsize), usize>>,
+    pub unannotated_reference: JunctionsMap,
 }
 
+// TODO: This is a temporary implementation. It should be replaced with something better.
 impl Serialize for JunctionAnnotations {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut known = Vec::new();
         for (ref_name, junctions) in &self.known {
             for ((start, end), count) in junctions {
-                known.push((ref_name, start, end, count));
+                known.push((ref_name, start.get(), end.get(), count));
             }
         }
 
         let mut partial_novel = Vec::new();
         for (ref_name, junctions) in &self.partial_novel {
             for ((start, end), count) in junctions {
-                partial_novel.push((ref_name, start, end, count));
+                partial_novel.push((ref_name, start.get(), end.get(), count));
             }
         }
 
         let mut complete_novel = Vec::new();
         for (ref_name, junctions) in &self.complete_novel {
             for ((start, end), count) in junctions {
-                complete_novel.push((ref_name, start, end, count));
+                complete_novel.push((ref_name, start.get(), end.get(), count));
             }
         }
 
         let mut unannotated_reference = Vec::new();
         for (ref_name, junctions) in &self.unannotated_reference {
             for ((start, end), count) in junctions {
-                unannotated_reference.push((ref_name, start, end, count));
+                unannotated_reference.push((ref_name, start.get(), end.get(), count));
             }
         }
 
@@ -101,7 +112,7 @@ pub struct SummaryResults {
     /// The total number of junctions observed in the file.
     pub total_junctions: usize,
 
-    /// The total number of splices detected observed in the file.
+    /// The total number of splices observed in the file.
     /// More than one splice can be observed per read, especially
     /// with long read data, so this number is not necessarily equal
     /// to the number of spliced reads. It may be greater.
@@ -171,9 +182,9 @@ pub struct SummaryResults {
     pub average_complete_novel_junction_read_support: f64,
 
     /// The total number of junctions that have been rejected because
-    /// they failed the min_read_support or the min_intron_length filter.
-    /// A junction can be rejected for both reasons, so do not expect this
-    /// number to be equal to the sum of junctions_with_not_enough_read_support
+    /// they failed the --min-read-support or the --min-intron-length filter.
+    /// A junction can be rejected for both reasons, so this
+    /// number may not be equal to the sum of junctions_with_not_enough_read_support
     /// and intron_too_short.
     pub total_rejected_junctions: usize,
 
