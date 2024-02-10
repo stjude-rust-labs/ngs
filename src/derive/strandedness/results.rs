@@ -32,16 +32,23 @@ pub struct GeneRecordMetrics {
     /// If --all-genes is set this will not be tallied.
     pub protein_coding: usize,
 
-    /// The number of genes tested.
-    pub tested: usize,
+    /// The number of genes which were discarded due to having
+    /// an unknown or missing strand.
+    pub bad_strand: usize,
+
+    /// The number of genes randomly selected for evaluation.
+    pub evaluated: usize,
 
     /// The number of genes which were discarded due to having
-    /// an unknown/invalid strand OR with exons on both strands.
-    pub bad_strands: usize,
+    /// mixed strands (the gene has exons on both strands).
+    pub mixed_strands: usize,
 
     /// The number of genes which were discarded due to not having
     /// enough reads.
     pub not_enough_reads: usize,
+
+    /// The number of genes considered for strandedness evidence.
+    pub considered: usize,
 }
 
 /// General exon metrics that are tallied as a part of the

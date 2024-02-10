@@ -41,7 +41,12 @@ pub struct DeriveStrandednessArgs {
     #[arg(short = 'm', long, value_name = "USIZE", default_value = "10")]
     min_reads_per_gene: usize,
 
-    /// How many genes to sample.
+    /// How many genes to use as evidence in strandendess classification per try.
+    /// This does not count genes which fail filtering
+    /// due to `--min-reads-per-gene` or are discarded
+    /// due to problematic Strand information in the GFF.
+    /// Problematic Strand information is caused by contradictions between
+    /// gene entries and overlapping exon entries.
     #[arg(short = 'n', long, value_name = "USIZE", default_value = "1000")]
     num_genes: usize,
 
@@ -53,7 +58,7 @@ pub struct DeriveStrandednessArgs {
     /// however, 255 is reserved by the spec for a missing MAPQ value.
     /// Therefore BAMs produced by aligners using 255 erroneously
     /// are not compatible with setting this option.
-    #[arg(short, long, value_name = "U8")]
+    #[arg(long, value_name = "U8")]
     min_mapq: Option<MappingQuality>,
 
     /// Consider all genes, not just protein coding genes.
@@ -84,10 +89,10 @@ pub struct DeriveStrandednessArgs {
     #[arg(long)]
     count_qc_failed: bool,
 
-    /// At most, search this many times for genes that satisfy our search criteria.
-    /// Default is 10 * --num-genes.
+    /// At most, evaluate this many genes
+    /// per try. Default is 10 * --num-genes.
     #[arg(long, value_name = "USIZE")]
-    max_iterations_per_try: Option<usize>,
+    max_genes_per_try: Option<usize>,
 }
 
 /// Main function for the `ngs derive strandedness` subcommand.
@@ -106,7 +111,9 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
     for result in gff.records() {
         let record = result.unwrap();
         if record.ty() == args.gene_feature_name {
-            // If --all-genes is set, keep the record.
+            gene_metrics.total += 1;
+
+            // If --all-genes is set, don't check the gene type or biotype.
             // Otherwise, check the gene type or biotype and keep the record if it's protein coding.
             // If the record does not have a gene type or biotype, discard it.
             let mut keep_record = false;
@@ -127,10 +134,20 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
                     }
                 }
             }
-            gene_metrics.total += 1;
-            if keep_record {
-                gene_records.push(record);
+            if !keep_record {
+                continue;
             }
+
+            // Make sure the gene record has a valid strand.
+            let gene_strand = record.strand();
+            if gene_strand != gff::record::Strand::Forward
+                && gene_strand != gff::record::Strand::Reverse
+            {
+                gene_metrics.bad_strand += 1;
+                continue;
+            }
+
+            gene_records.push(record);
         } else if record.ty() == args.exon_feature_name {
             exon_metrics.total += 1;
             exon_records.push(record);
@@ -204,11 +221,11 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         index,
     };
 
-    let max_iterations_per_try = args.max_iterations_per_try.unwrap_or(args.num_genes * 10);
+    let max_genes_per_try = args.max_genes_per_try.unwrap_or(args.num_genes * 10);
 
     let params = compute::StrandednessParams {
         num_genes: args.num_genes,
-        max_iterations_per_try,
+        max_genes_per_try,
         min_reads_per_gene: args.min_reads_per_gene,
         min_mapq: args.min_mapq,
         count_qc_failed: args.count_qc_failed,

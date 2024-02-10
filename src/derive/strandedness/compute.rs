@@ -110,7 +110,7 @@ pub struct StrandednessParams {
     pub num_genes: usize,
 
     /// The maximum number of iterations to try before giving up.
-    pub max_iterations_per_try: usize,
+    pub max_genes_per_try: usize,
 
     /// Minimum number of reads mapped to a gene to be considered
     /// for evidence of strandedness.
@@ -138,10 +138,8 @@ fn disqualify_gene(
     gene: &gff::Record,
     exons: &HashMap<&str, Lapper<usize, gff::record::Strand>>,
 ) -> bool {
+    // gene_strand guaranteed to be Forward or Reverse by initialization code.
     let gene_strand = gene.strand();
-    if gene_strand != gff::record::Strand::Forward && gene_strand != gff::record::Strand::Reverse {
-        return true;
-    }
     let mut all_on_same_strand = true;
     let mut at_least_one_exon = false;
 
@@ -323,26 +321,26 @@ pub fn predict(
     metrics: &mut results::RecordTracker,
 ) -> Result<results::DerivedStrandednessResult, anyhow::Error> {
     let mut rng = rand::thread_rng();
-    let mut num_tested_genes: usize = 0; // Local to this attempt
+    let mut num_genes_considered: usize = 0; // Local to this attempt
     let mut counter = RecordCounter::new(Some(1_000));
     let genes_remaining = gene_records.len();
 
-    let max_iters = if params.max_iterations_per_try > genes_remaining {
+    let max_iters = if params.max_genes_per_try > genes_remaining {
         tracing::warn!(
             "The number of genes remaining ({}) is less than the maximum iterations per try ({}).",
             genes_remaining,
-            params.max_iterations_per_try,
+            params.max_genes_per_try,
         );
         genes_remaining
     } else {
-        params.max_iterations_per_try
+        params.max_genes_per_try
     };
 
     for _ in 0..max_iters {
-        if num_tested_genes >= params.num_genes {
+        if num_genes_considered >= params.num_genes {
             tracing::info!(
-                "Reached the maximum number of genes ({}) for this try.",
-                num_tested_genes,
+                "Reached the maximum number of considered genes ({}) for this try.",
+                num_genes_considered,
             );
             break;
         }
@@ -351,7 +349,7 @@ pub fn predict(
         counter.inc();
 
         if disqualify_gene(&cur_gene, exons) {
-            metrics.genes.bad_strands += 1;
+            metrics.genes.mixed_strands += 1; // Tracked across attempts
             continue;
         }
         let cur_gene_strand = Strand::try_from(cur_gene.strand()).unwrap();
@@ -363,21 +361,22 @@ pub fn predict(
             classify_read(&read, &cur_gene_strand, all_counts, &mut metrics.reads);
         }
         if enough_reads {
-            num_tested_genes += 1;
+            num_genes_considered += 1;
         } else {
-            metrics.genes.not_enough_reads += 1;
+            metrics.genes.not_enough_reads += 1; // Tracked across attempts
         }
     }
-    if num_tested_genes < params.num_genes {
+    if num_genes_considered < params.num_genes {
         tracing::warn!(
-            "Reached the maximum number of iterations ({}) before testing the requested amount of genes ({}) for this try. Only tested {} genes.",
+            "Reached the maximum number of iterations ({}) before considering the requested amount of genes ({}) for this try. Only considering {} genes.",
             max_iters,
             params.num_genes,
-            num_tested_genes,
+            num_genes_considered,
         );
     }
 
-    metrics.genes.tested += num_tested_genes; // Add to any other attempts
+    metrics.genes.considered += num_genes_considered; // Add to any other attempts
+    metrics.genes.evaluated += counter.get(); // Add to any other attempts
 
     // TODO: Should this be done in derive()? Will re-run for each attempt.
     // Might cause false positives?
