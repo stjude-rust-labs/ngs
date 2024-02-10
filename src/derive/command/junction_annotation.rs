@@ -43,9 +43,14 @@ pub struct JunctionAnnotationArgs {
     min_read_support: usize,
 
     /// Minumum mapping quality for a record to be considered.
-    /// Set to 0 to disable this filter and allow reads _without_
-    /// a mapping quality to be considered.
-    #[arg(short, long, value_name = "U8", default_value = "30")]
+    /// Default behavior is to ignore MAPQ values,
+    /// which allows reads with _missing_ MAPQs to be considered.
+    /// Specify any u8 value (lower than 255) to enable this filter.
+    /// Some aligners erroneously use 255 as the score for a uniquely mapped read;
+    /// however, 255 is reserved by the spec for a missing MAPQ value.
+    /// Therefore BAMs produced by aligners using 255 erroneously
+    /// are not compatible with setting this option.
+    #[arg(short, long, value_name = "U8")]
     min_mapq: Option<MappingQuality>,
 
     /// Do not count supplementary alignments.

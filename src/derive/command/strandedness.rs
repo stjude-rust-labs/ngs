@@ -18,7 +18,6 @@ use tracing::info;
 use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
 use crate::derive::strandedness::results;
-use crate::utils::args::parse_min_mapq;
 use crate::utils::formats;
 
 /// Clap arguments for the `ngs derive strandedness` subcommand.
@@ -46,10 +45,15 @@ pub struct DeriveStrandednessArgs {
     #[arg(short = 'n', long, value_name = "USIZE", default_value = "1000")]
     num_genes: usize,
 
-    /// Minimum mapping quality for a record to be considered.
-    /// Default is to ignore MAPQ values (allowing <missing> MAPQs to be considered).
-    /// Specify any u8 value to enable this filter.
-    #[arg(long, value_name = "U8", default_value = "30", value_parser = parse_min_mapq)]
+    /// Minumum mapping quality for a record to be considered.
+    /// Default behavior is to ignore MAPQ values,
+    /// which allows reads with _missing_ MAPQs to be considered.
+    /// Specify any u8 value (lower than 255) to enable this filter.
+    /// Some aligners erroneously use 255 as the score for a uniquely mapped read;
+    /// however, 255 is reserved by the spec for a missing MAPQ value.
+    /// Therefore BAMs produced by aligners using 255 erroneously
+    /// are not compatible with setting this option.
+    #[arg(short, long, value_name = "U8")]
     min_mapq: Option<MappingQuality>,
 
     /// Consider all genes, not just protein coding genes.
