@@ -168,8 +168,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
     // (2) Parse exon features into proper data structure.
     debug!("Tabulating GFF exon features.");
 
-    let mut exon_intervals: HashMap<&str, Vec<Interval<usize, gff::record::Strand>>> =
-        HashMap::new();
+    let mut exon_intervals: HashMap<&str, Vec<Interval<usize, compute::Strand>>> = HashMap::new();
     for record in &exon_records {
         let seq_name = record.reference_sequence_name();
         let start: usize = record.start().into();
@@ -180,6 +179,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
             exon_metrics.bad_strand += 1;
             continue;
         }
+        let strand = compute::Strand::try_from(strand).unwrap(); // above check guarantees safety
 
         exon_intervals.entry(seq_name).or_default().push(Interval {
             start,
@@ -196,7 +196,7 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
         exon_metrics.bad_strand
     );
 
-    let mut exons: HashMap<&str, Lapper<usize, gff::record::Strand>> = HashMap::new();
+    let mut exons: HashMap<&str, Lapper<usize, compute::Strand>> = HashMap::new();
     for (seq_name, intervals) in exon_intervals {
         exons.insert(seq_name, Lapper::new(intervals));
     }

@@ -30,10 +30,13 @@ pub struct Counts {
     reverse: usize,
 }
 
-/// Struct for tracking possible strand orientations.
-#[derive(Clone, Copy, Debug)]
-enum Strand {
+/// Struct for possible (valid) strand orientations.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum Strand {
+    /// Forward strand.
     Forward,
+
+    /// Reverse strand.
     Reverse,
 }
 
@@ -134,12 +137,9 @@ pub struct StrandednessParams {
 }
 
 /// Function to disqualify a gene based on its strand and exons.
-fn disqualify_gene(
-    gene: &gff::Record,
-    exons: &HashMap<&str, Lapper<usize, gff::record::Strand>>,
-) -> bool {
+fn disqualify_gene(gene: &gff::Record, exons: &HashMap<&str, Lapper<usize, Strand>>) -> bool {
     // gene_strand guaranteed to be Forward or Reverse by initialization code.
-    let gene_strand = gene.strand();
+    let gene_strand = Strand::try_from(gene.strand()).unwrap();
     let mut all_on_same_strand = true;
     let mut at_least_one_exon = false;
 
@@ -315,19 +315,19 @@ fn predict_strandedness(
 pub fn predict(
     parsed_bam: &mut ParsedBAMFile,
     gene_records: &mut Vec<gff::Record>,
-    exons: &HashMap<&str, Lapper<usize, gff::record::Strand>>,
+    exons: &HashMap<&str, Lapper<usize, Strand>>,
     all_counts: &mut AllReadGroupsCounts,
     params: &StrandednessParams,
     metrics: &mut results::RecordTracker,
 ) -> Result<results::DerivedStrandednessResult, anyhow::Error> {
     let mut rng = rand::thread_rng();
-    let mut num_genes_considered: usize = 0; // Local to this attempt
+    let mut num_genes_considered = 0; // Local to this attempt
     let mut counter = RecordCounter::new(Some(1_000));
     let genes_remaining = gene_records.len();
 
     let max_iters = if params.max_genes_per_try > genes_remaining {
         tracing::warn!(
-            "The number of genes remaining ({}) is less than the maximum iterations per try ({}).",
+            "The number of genes remaining ({}) is less than the --max-genes-per-try ({}).",
             genes_remaining,
             params.max_genes_per_try,
         );
@@ -368,7 +368,7 @@ pub fn predict(
     }
     if num_genes_considered < params.num_genes {
         tracing::warn!(
-            "Reached the maximum number of iterations ({}) before considering the requested amount of genes ({}) for this try. Only considering {} genes.",
+            "Evaluated the maximum number of genes ({}) before considering the requested amount of genes ({}) for this try. Only considering {} genes.",
             max_iters,
             params.num_genes,
             num_genes_considered,
@@ -425,12 +425,12 @@ mod tests {
                 Interval {
                     start: 1,
                     stop: 10,
-                    val: gff::record::Strand::Forward,
+                    val: Strand::Forward,
                 },
                 Interval {
                     start: 11,
                     stop: 20,
-                    val: gff::record::Strand::Reverse,
+                    val: Strand::Reverse,
                 },
             ]),
         );
@@ -445,12 +445,12 @@ mod tests {
                 Interval {
                     start: 1,
                     stop: 10,
-                    val: gff::record::Strand::Forward,
+                    val: Strand::Forward,
                 },
                 Interval {
                     start: 11,
                     stop: 20,
-                    val: gff::record::Strand::Forward,
+                    val: Strand::Forward,
                 },
             ]),
         );
