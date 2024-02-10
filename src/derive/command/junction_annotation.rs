@@ -102,7 +102,7 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     debug!("Done reading GFF.");
 
     // (1.5) Initialize variables (including opening the BAM).
-    let mut counter = RecordCounter::new();
+    let mut counter = RecordCounter::default();
     let mut results = JunctionAnnotationResults::default();
     let params = compute::JunctionAnnotationParameters {
         min_intron_length: args.min_intron_length,

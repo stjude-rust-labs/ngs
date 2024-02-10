@@ -45,7 +45,7 @@ pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
     // (1) Collect quality scores from reads within the
     // file. Support for sampling only a portion of the reads is provided.
     let num_records = NumberOfRecords::from(args.num_records);
-    let mut counter = RecordCounter::new();
+    let mut counter = RecordCounter::default();
 
     for result in reader.lazy_records() {
         let record = result?;

@@ -49,7 +49,7 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
     let num_records = NumberOfRecords::from(args.num_records);
-    let mut counter = RecordCounter::new();
+    let mut counter = RecordCounter::default();
 
     for result in reader.records(&header.parsed) {
         let record = result?;

@@ -14,6 +14,7 @@ use std::sync::Arc;
 
 use crate::derive::strandedness::results;
 use crate::utils::alignment::filter_by_mapq;
+use crate::utils::display::RecordCounter;
 use crate::utils::read_groups::{validate_read_group_info, UNKNOWN_READ_GROUP};
 
 const STRANDED_THRESHOLD: f64 = 80.0;
@@ -323,6 +324,7 @@ pub fn predict(
 ) -> Result<results::DerivedStrandednessResult, anyhow::Error> {
     let mut rng = rand::thread_rng();
     let mut num_tested_genes: usize = 0; // Local to this attempt
+    let mut counter = RecordCounter::new(Some(1_000));
     let genes_remaining = gene_records.len();
 
     let max_iters = if params.max_iterations_per_try > genes_remaining {
@@ -346,6 +348,7 @@ pub fn predict(
         }
 
         let cur_gene = gene_records.swap_remove(rng.gen_range(0..gene_records.len()));
+        counter.inc();
 
         if disqualify_gene(&cur_gene, exons) {
             metrics.genes.bad_strands += 1;

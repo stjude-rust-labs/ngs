@@ -300,7 +300,7 @@ fn app(
         //====================================================================//
 
         info!("Starting first pass for QC stats.");
-        let mut counter = RecordCounter::new();
+        let mut counter = RecordCounter::default();
 
         for result in reader.records(&header.parsed) {
             let record = result?;
@@ -351,7 +351,7 @@ fn app(
         let index =
             bai::read(src.with_extension("bam.bai")).with_context(|| "reading BAM index")?;
 
-        let mut counter = RecordCounter::new();
+        let mut counter = RecordCounter::default();
 
         for (name, seq) in header.parsed.reference_sequences() {
             let start = Position::MIN;
