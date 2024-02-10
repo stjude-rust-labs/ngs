@@ -88,8 +88,9 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
         }
         exon_records.push(record);
     }
+    debug!("Read {} exon records.", exon_records.len());
 
-    debug!("Tabulating GFF exon features.");
+    debug!("Processing GFF exon features.");
     for record in &exon_records {
         let seq_name = record.reference_sequence_name();
         let start = record.start();

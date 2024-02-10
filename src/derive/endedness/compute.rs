@@ -3,6 +3,7 @@
 use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 use tracing::warn;
 
@@ -42,6 +43,30 @@ impl OrderingFlagsCounts {
 impl Default for OrderingFlagsCounts {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl Add for OrderingFlagsCounts {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        OrderingFlagsCounts {
+            unsegmented: self.unsegmented + other.unsegmented,
+            first: self.first + other.first,
+            last: self.last + other.last,
+            both: self.both + other.both,
+            neither: self.neither + other.neither,
+        }
+    }
+}
+
+impl AddAssign for OrderingFlagsCounts {
+    fn add_assign(&mut self, other: Self) {
+        self.unsegmented += other.unsegmented;
+        self.first += other.first;
+        self.last += other.last;
+        self.both += other.both;
+        self.neither += other.neither;
     }
 }
 
@@ -375,12 +400,7 @@ pub fn predict(
     let mut rg_results = Vec::new();
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
-        // TODO can make prettier?
-        overall_flags.unsegmented += rg_ordering_flags.unsegmented;
-        overall_flags.first += rg_ordering_flags.first;
-        overall_flags.last += rg_ordering_flags.last;
-        overall_flags.both += rg_ordering_flags.both;
-        overall_flags.neither += rg_ordering_flags.neither;
+        overall_flags += rg_ordering_flags.clone();
 
         let result = predict_endedness(
             read_group.to_string(),

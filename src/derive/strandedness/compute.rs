@@ -10,6 +10,7 @@ use rand::Rng;
 use rust_lapper::Lapper;
 use std::collections::HashMap;
 use std::collections::HashSet;
+use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 
 use crate::derive::strandedness::results;
@@ -28,6 +29,24 @@ pub struct Counts {
 
     /// The number of reads that are evidence of Reverse Strandedness.
     reverse: usize,
+}
+
+impl Add for Counts {
+    type Output = Self;
+
+    fn add(self, other: Self) -> Self {
+        Self {
+            forward: self.forward + other.forward,
+            reverse: self.reverse + other.reverse,
+        }
+    }
+}
+
+impl AddAssign for Counts {
+    fn add_assign(&mut self, other: Self) {
+        self.forward += other.forward;
+        self.reverse += other.reverse;
+    }
 }
 
 /// Struct for possible (valid) strand orientations.
@@ -120,7 +139,8 @@ pub struct StrandednessParams {
     pub min_reads_per_gene: usize,
 
     /// Minumum mapping quality for a record to be considered.
-    /// 0 if MAPQ shouldn't be considered.
+    /// `None` means no filtering by MAPQ. This also allows
+    /// for records _without_ a MAPQ to be counted.
     pub min_mapq: Option<MappingQuality>,
 
     /// Allow qc failed reads to be counted.
@@ -391,8 +411,7 @@ pub fn predict(
     let mut overall_counts = Counts::default();
     let mut rg_results = Vec::new();
     for (rg, counts) in &all_counts.counts {
-        overall_counts.forward += counts.forward;
-        overall_counts.reverse += counts.reverse;
+        overall_counts += counts.clone();
 
         let result = predict_strandedness(rg, counts);
         rg_results.push(result)

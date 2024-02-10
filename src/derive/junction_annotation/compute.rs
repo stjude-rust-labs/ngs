@@ -31,7 +31,8 @@ pub struct JunctionAnnotationParameters {
     pub min_read_support: usize,
 
     /// Minumum mapping quality for a record to be considered.
-    /// 0 if MAPQ shouldn't be considered.
+    /// `None` means no filtering by MAPQ. This also allows
+    /// for records _without_ a MAPQ to be counted.
     pub min_mapq: Option<MappingQuality>,
 
     /// Do not count supplementary alignments.
@@ -148,7 +149,7 @@ pub fn process(
     };
 
     // (8) Find introns
-    let cur_pos = start;
+    let mut cur_pos = start;
     for op in record.cigar().iter() {
         match op.kind() {
             // This is an intron.
@@ -158,7 +159,7 @@ pub fn process(
 
                 let intron_start = cur_pos;
                 // Update cur_pos to the end of the intron.
-                cur_pos.checked_add(op.len());
+                cur_pos = cur_pos.checked_add(op.len()).unwrap();
                 let intron_end = cur_pos;
                 let junction: results::Junction = (intron_start, intron_end);
 
@@ -216,9 +217,9 @@ pub fn process(
                     junction,
                 )
             }
-            // Operations (beside Skip which is handled above) that increment the reference position.
+            // Operations that increment the reference position (beside Skip which is handled above).
             Kind::Match | Kind::Deletion | Kind::SequenceMatch | Kind::SequenceMismatch => {
-                cur_pos.checked_add(op.len());
+                cur_pos = cur_pos.checked_add(op.len()).unwrap();
             }
             // Operations that do not increment the reference position.
             _ => {}
