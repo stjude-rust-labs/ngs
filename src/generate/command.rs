@@ -30,8 +30,8 @@ pub struct GenerateArgs {
     reference_providers: Vec<String>,
 
     /// The error rate for the sequencer as a fraction between [0.0, 1.0] (per base).
-    #[arg(short, long, value_name = "F32", default_value = "0.0001")]
-    error_rate: f32,
+    #[arg(short, long, value_name = "F64", default_value = "0.0001")]
+    error_rate: f64,
 
     /// Specifies the number of records to generate.
     #[arg(short, long, value_name = "USIZE", conflicts_with = "coverage")]

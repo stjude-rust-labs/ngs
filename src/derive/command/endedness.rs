@@ -19,9 +19,7 @@ use crate::utils::args::NumberOfRecords;
 use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
-use crate::utils::read_groups::{
-    get_read_group, validate_read_group_info, ReadGroupPtr, UNKNOWN_READ_GROUP,
-};
+use crate::utils::read_groups::{get_read_group, validate_read_group_info, ReadGroupPtr};
 
 /// Clap arguments for the `ngs derive endedness` subcommand.
 #[derive(Args)]
@@ -37,8 +35,8 @@ pub struct DeriveEndednessArgs {
     /// Distance from 0.5 split between number of f+l- reads and f-l+ reads
     /// allowed to be called 'Paired-End'. Default of `0.0` only appropriate
     /// if the whole file is being processed.
-    #[arg(long, value_name = "F32", default_value = "0.0")]
-    paired_deviance: f32,
+    #[arg(long, value_name = "F64", default_value = "0.0")]
+    paired_deviance: f64,
 
     /// Calculate and output Reads-Per-Template. This will produce a more
     /// sophisticated estimate for endedness, but uses substantially more memory.
@@ -62,8 +60,6 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     let mut found_rgs = HashSet::new();
 
     let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-    // TODO change
-    ordering_flags.insert(Arc::clone(&UNKNOWN_READ_GROUP), OrderingFlagsCounts::new());
 
     // only used if args.calc_rpt is true
     let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
@@ -113,70 +109,15 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         }
 
         if !record.flags().is_segmented() {
-            ordering_flags
-                .entry(read_group)
-                .and_modify(|e| {
-                    e.unsegmented += 1;
-                })
-                .or_insert(OrderingFlagsCounts {
-                    unsegmented: 1,
-                    first: 0,
-                    last: 0,
-                    both: 0,
-                    neither: 0,
-                });
+            ordering_flags.entry(read_group).or_default().unsegmented += 1;
         } else if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags
-                .entry(read_group)
-                .and_modify(|e| {
-                    e.first += 1;
-                })
-                .or_insert(OrderingFlagsCounts {
-                    unsegmented: 0,
-                    first: 1,
-                    last: 0,
-                    both: 0,
-                    neither: 0,
-                });
+            ordering_flags.entry(read_group).or_default().first += 1;
         } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags
-                .entry(read_group)
-                .and_modify(|e| {
-                    e.last += 1;
-                })
-                .or_insert(OrderingFlagsCounts {
-                    unsegmented: 0,
-                    first: 0,
-                    last: 1,
-                    both: 0,
-                    neither: 0,
-                });
+            ordering_flags.entry(read_group).or_default().last += 1;
         } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags
-                .entry(read_group)
-                .and_modify(|e| {
-                    e.both += 1;
-                })
-                .or_insert(OrderingFlagsCounts {
-                    unsegmented: 0,
-                    first: 0,
-                    last: 0,
-                    both: 1,
-                    neither: 0,
-                });
+            ordering_flags.entry(read_group).or_default().both += 1;
         } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags
-                .entry(read_group)
-                .and_modify(|e| {
-                    e.neither += 1;
-                })
-                .or_insert(OrderingFlagsCounts {
-                    unsegmented: 0,
-                    first: 0,
-                    last: 0,
-                    both: 0,
-                    neither: 1,
-                });
+            ordering_flags.entry(read_group).or_default().neither += 1;
         } else {
             unreachable!();
         }

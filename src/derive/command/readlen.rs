@@ -28,8 +28,8 @@ pub struct DeriveReadlenArgs {
     num_records: Option<usize>,
 
     /// Majority vote cutoff value as a fraction between [0.0, 1.0].
-    #[arg(short, long, value_name = "F32", default_value = "0.7")]
-    majority_vote_cutoff: f32,
+    #[arg(short, long, value_name = "F64", default_value = "0.7")]
+    majority_vote_cutoff: f64,
 }
 
 /// Main function for the `ngs derive readlen` subcommand.

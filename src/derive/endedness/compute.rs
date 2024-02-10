@@ -6,7 +6,7 @@ use std::collections::HashSet;
 use std::sync::Arc;
 use tracing::warn;
 
-use crate::utils::read_groups::{ReadGroupPtr, UNKNOWN_READ_GROUP};
+use crate::utils::read_groups::ReadGroupPtr;
 
 /// Struct holding the ordering flags for a single read group.
 #[derive(Debug, Clone)]
@@ -240,8 +240,8 @@ fn calculate_reads_per_template(
 fn predict_endedness(
     read_group_name: String,
     rg_ordering_flags: &OrderingFlagsCounts,
-    paired_deviance: f32,
-    reads_per_template: Option<&f64>,
+    paired_deviance: f64,
+    reads_per_template: Option<f64>,
     round_rpt: bool,
 ) -> ReadGroupDerivedEndednessResult {
     let unsegmented = rg_ordering_flags.unsegmented;
@@ -262,7 +262,7 @@ fn predict_endedness(
             false,
             "Unknown".to_string(),
             rg_ordering_flags.clone(),
-            reads_per_template.copied(),
+            reads_per_template,
         );
     }
 
@@ -271,14 +271,14 @@ fn predict_endedness(
         false,
         "Unknown".to_string(),
         rg_ordering_flags.clone(),
-        reads_per_template.copied(),
+        reads_per_template,
     );
 
     // only unsegmented present
     if unsegmented > 0 && first == 0 && last == 0 && both == 0 && neither == 0 {
         match reads_per_template {
             Some(rpt) => {
-                if *rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
+                if rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
                     result.succeeded = true;
                     result.endedness = String::from("Single-End");
                 }
@@ -306,18 +306,18 @@ fn predict_endedness(
     }
     // only both present
     if first == 0 && last == 0 && both > 0 && neither == 0 {
-        match reads_per_template {
-            Some(rpt) => {
-                if *rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
-                    result.succeeded = true;
-                    result.endedness = String::from("Single-End");
-                }
-            }
-            None => {
-                result.succeeded = true;
-                result.endedness = String::from("Single-End");
-            }
-        }
+        // match reads_per_template {
+        //     Some(rpt) => {
+        //         if rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
+        //             result.succeeded = true;
+        //             result.endedness = String::from("Single-End");
+        //         }
+        //     }
+        //     None => {
+        //         result.succeeded = true;
+        //         result.endedness = String::from("Single-End");
+        //     }
+        // }
         return result;
     }
     // only neither present
@@ -336,13 +336,13 @@ fn predict_endedness(
     // both and neither are now guarenteed to be 0
     // We only need to check first and last
 
-    let first_frac = first as f32 / (first + last) as f32;
+    let first_frac = first as f64 / (first + last) as f64;
     let lower_limit = 0.5 - paired_deviance;
     let upper_limit = 0.5 + paired_deviance;
     if (first == last) || (lower_limit <= first_frac && first_frac <= upper_limit) {
         match reads_per_template {
             Some(rpt) => {
-                if *rpt == 2.0 || (round_rpt && rpt.round() as usize == 2) {
+                if rpt == 2.0 || (round_rpt && rpt.round() as usize == 2) {
                     result.succeeded = true;
                     result.endedness = String::from("Paired-End");
                 }
@@ -362,30 +362,19 @@ fn predict_endedness(
 pub fn predict(
     ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts>,
     read_names: HashMap<String, Vec<ReadGroupPtr>>,
-    paired_deviance: f32,
+    paired_deviance: f64,
     round_rpt: bool,
 ) -> DerivedEndednessResult {
     let mut rg_rpts: HashMap<ReadGroupPtr, f64> = HashMap::new();
-    let mut overall_rpt: f64 = 0.0;
+    let mut overall_rpt: Option<f64> = None;
     if !read_names.is_empty() {
-        overall_rpt = calculate_reads_per_template(read_names, &mut rg_rpts);
+        overall_rpt = Some(calculate_reads_per_template(read_names, &mut rg_rpts));
     }
 
     let mut overall_flags = OrderingFlagsCounts::new();
     let mut rg_results = Vec::new();
 
     for (read_group, rg_ordering_flags) in ordering_flags.iter() {
-        // TODO consider refactor to make this unneccessary
-        if (*read_group == *UNKNOWN_READ_GROUP)
-            && (rg_ordering_flags.unsegmented == 0
-                && rg_ordering_flags.first == 0
-                && rg_ordering_flags.last == 0
-                && rg_ordering_flags.both == 0
-                && rg_ordering_flags.neither == 0)
-        {
-            continue;
-        }
-
         // TODO can make prettier?
         overall_flags.unsegmented += rg_ordering_flags.unsegmented;
         overall_flags.first += rg_ordering_flags.first;
@@ -397,7 +386,7 @@ pub fn predict(
             read_group.to_string(),
             rg_ordering_flags,
             paired_deviance,
-            rg_rpts.get(read_group),
+            rg_rpts.get(read_group).copied(),
             round_rpt,
         );
         rg_results.push(result);
@@ -407,11 +396,7 @@ pub fn predict(
         "overall".to_string(),
         &overall_flags,
         paired_deviance,
-        if overall_rpt == 0.0 {
-            None
-        } else {
-            Some(&overall_rpt)
-        },
+        overall_rpt,
         round_rpt,
     );
 
@@ -419,11 +404,7 @@ pub fn predict(
         overall_result.succeeded,
         overall_result.endedness,
         overall_flags,
-        if overall_rpt == 0.0 {
-            None
-        } else {
-            Some(overall_rpt)
-        },
+        overall_rpt,
         rg_results,
     )
 }

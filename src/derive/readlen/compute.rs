@@ -14,11 +14,11 @@ pub struct DerivedReadlenResult {
     /// The concsensus read length, if available.
     pub consensus_read_length: Option<usize>,
 
-    /// The majority vote percentage of the consensus read length, if available.
-    pub majority_pct_detected: f32,
+    /// The majority vote percentage of the consensus read length.
+    pub majority_pct_detected: f64,
 
     /// Status of the evidence that supports (or does not support) this
-    /// read length, if available.
+    /// read length.
     pub evidence: Vec<(usize, usize)>,
 }
 
@@ -27,7 +27,7 @@ impl DerivedReadlenResult {
     pub fn new(
         succeeded: bool,
         consensus_read_length: Option<usize>,
-        majority_pct_detected: f32,
+        majority_pct_detected: f64,
         evidence: Vec<(usize, usize)>,
     ) -> Self {
         DerivedReadlenResult {
@@ -45,7 +45,7 @@ impl DerivedReadlenResult {
 pub fn predict(
     read_lengths: HashMap<usize, usize>,
     num_samples: usize,
-    majority_vote_cutoff: f32,
+    majority_vote_cutoff: f64,
 ) -> Result<DerivedReadlenResult, anyhow::Error> {
     if num_samples == 0 {
         bail!("No read lengths were detected in the file.");
@@ -59,7 +59,7 @@ pub fn predict(
     let max_count = read_lengths[0].1;
 
     let consensus_read_length = max_read_length;
-    let majority_detected = max_count as f32 / num_samples as f32;
+    let majority_detected = max_count as f64 / num_samples as f64;
 
     let mut result =
         DerivedReadlenResult::new(false, None, majority_detected * 100.0, read_lengths);
