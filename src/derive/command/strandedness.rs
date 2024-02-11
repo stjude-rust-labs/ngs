@@ -19,6 +19,7 @@ use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
 use crate::derive::strandedness::results;
 use crate::utils::formats;
+use crate::utils::read_groups::validate_read_group_info;
 
 /// Clap arguments for the `ngs derive strandedness` subcommand.
 #[derive(Args)]
@@ -266,11 +267,25 @@ pub fn derive(args: DeriveStrandednessArgs) -> anyhow::Result<()> {
             info!("Strandedness test inconclusive.");
         }
     }
-    let result = result.unwrap();
+    let mut result = result.unwrap();
 
     if !result.succeeded {
-        info!("Strandedness test failed after {} tries.", args.max_tries);
+        info!(
+            "Strandedness test still failed after {} tries.",
+            args.max_tries
+        );
     }
+
+    let rgs_in_header_not_found =
+        validate_read_group_info(&all_counts.found_rgs, &parsed_bam.header);
+    let mut empty_rg_results = Vec::new();
+    for rg in rgs_in_header_not_found {
+        empty_rg_results.push(compute::predict_strandedness(
+            &rg,
+            &compute::Counts::default(),
+        ));
+    }
+    result.read_groups.extend(empty_rg_results);
 
     // (5) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).

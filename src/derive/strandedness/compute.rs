@@ -16,7 +16,7 @@ use std::sync::Arc;
 use crate::derive::strandedness::results;
 use crate::utils::alignment::filter_by_mapq;
 use crate::utils::display::RecordCounter;
-use crate::utils::read_groups::{validate_read_group_info, UNKNOWN_READ_GROUP};
+use crate::utils::read_groups::UNKNOWN_READ_GROUP;
 
 const STRANDED_THRESHOLD: f64 = 80.0;
 const UNSTRANDED_THRESHOLD: f64 = 40.0;
@@ -290,7 +290,7 @@ fn classify_read(
 }
 
 /// Method to predict the strandedness of a read group.
-fn predict_strandedness(
+pub fn predict_strandedness(
     rg_name: &str,
     counts: &Counts,
 ) -> results::ReadGroupDerivedStrandednessResult {
@@ -397,16 +397,6 @@ pub fn predict(
 
     metrics.genes.considered += num_genes_considered; // Add to any other attempts
     metrics.genes.evaluated += counter.get(); // Add to any other attempts
-
-    // TODO: Should this be done in derive()? Will re-run for each attempt.
-    // Might cause false positives?
-    let rgs_in_header_not_found =
-        validate_read_group_info(&all_counts.found_rgs, &parsed_bam.header);
-    for rg in rgs_in_header_not_found {
-        all_counts
-            .counts
-            .insert(Arc::new(rg.to_string()), Counts::default());
-    }
 
     let mut overall_counts = Counts::default();
     let mut rg_results = Vec::new();
