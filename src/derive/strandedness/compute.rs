@@ -1,22 +1,16 @@
 //! Module holding the logic for computing the strandedness.
 
-use noodles::bam;
-use noodles::core::Region;
-use noodles::gff;
-use noodles::sam;
-use noodles::sam::record::data::field::Tag;
 use noodles::sam::record::MappingQuality;
+use noodles::{bam, core::Region, gff, sam};
 use rand::Rng;
 use rust_lapper::Lapper;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 
 use crate::derive::strandedness::results;
-use crate::utils::alignment::filter_by_mapq;
-use crate::utils::display::RecordCounter;
-use crate::utils::read_groups::UNKNOWN_READ_GROUP;
+use crate::utils::read_groups;
+use crate::utils::{alignment::filter_by_mapq, display::RecordCounter};
 
 const STRANDED_THRESHOLD: f64 = 80.0;
 const UNSTRANDED_THRESHOLD: f64 = 40.0;
@@ -49,7 +43,7 @@ impl AddAssign for Counts {
     }
 }
 
-/// Struct for possible (valid) strand orientations.
+/// Struct for valid strand orientations.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Strand {
     /// Forward strand.
@@ -84,7 +78,10 @@ impl TryFrom<gff::record::Strand> for Strand {
 /// Struct for tracking the order of segments in a record.
 #[derive(Clone, Copy, Debug)]
 enum SegmentOrder {
+    /// The first segment in a record.
     First,
+
+    /// The last segment in a record.
     Last,
 }
 
@@ -105,6 +102,8 @@ impl TryFrom<sam::record::Flags> for SegmentOrder {
 }
 
 /// Struct holding the parsed BAM file and its index.
+/// TODO this code is repeated. Should be in a common module.
+/// Will be moved to utils::formats in a future PR.
 pub struct ParsedBAMFile {
     /// The BAM reader.
     pub reader: bam::Reader<noodles::bgzf::Reader<std::fs::File>>,
@@ -131,7 +130,7 @@ pub struct StrandednessParams {
     /// The number of genes to test for strandedness.
     pub num_genes: usize,
 
-    /// The maximum number of iterations to try before giving up.
+    /// The maximum number of genes to try before giving up.
     pub max_genes_per_try: usize,
 
     /// Minimum number of reads mapped to a gene to be considered
@@ -139,7 +138,7 @@ pub struct StrandednessParams {
     pub min_reads_per_gene: usize,
 
     /// Minumum mapping quality for a record to be considered.
-    /// `None` means no filtering by MAPQ. This also allows
+    /// `None` means no filtering by MAPQ. This allows
     /// for records _without_ a MAPQ to be counted.
     pub min_mapq: Option<MappingQuality>,
 
@@ -156,22 +155,23 @@ pub struct StrandednessParams {
     pub count_duplicates: bool,
 }
 
-/// Function to disqualify a gene based on its strand and exons.
+/// Function to disqualify a gene based on its strand and its exons' strand.
 fn disqualify_gene(gene: &gff::Record, exons: &HashMap<&str, Lapper<usize, Strand>>) -> bool {
     // gene_strand guaranteed to be Forward or Reverse by initialization code.
     let gene_strand = Strand::try_from(gene.strand()).unwrap();
     let mut all_on_same_strand = true;
-    let mut at_least_one_exon = false;
 
-    if let Some(intervals) = exons.get(gene.reference_sequence_name()) {
-        for exon in intervals.find(gene.start().into(), gene.end().into()) {
-            at_least_one_exon = true;
-            if exon.val != gene_strand {
-                all_on_same_strand = false;
-                break;
-            }
-        }
-    }
+    let at_least_one_exon = match exons.get(gene.reference_sequence_name()) {
+        Some(intervals) => intervals
+            .find(gene.start().into(), gene.end().into())
+            .any(|exon| {
+                if exon.val != gene_strand {
+                    all_on_same_strand = false;
+                }
+                true
+            }),
+        None => false,
+    };
 
     if all_on_same_strand && at_least_one_exon {
         return false;
@@ -242,16 +242,7 @@ fn classify_read(
     all_counts: &mut AllReadGroupsCounts,
     read_metrics: &mut results::ReadRecordMetrics,
 ) {
-    let read_group = match read.data().get(Tag::ReadGroup) {
-        Some(rg) => {
-            let rg = rg.to_string();
-            if !all_counts.found_rgs.contains(&rg) {
-                all_counts.found_rgs.insert(Arc::new(rg.clone()));
-            }
-            Arc::clone(all_counts.found_rgs.get(&rg).unwrap())
-        }
-        None => Arc::clone(&UNKNOWN_READ_GROUP),
-    };
+    let read_group = read_groups::get_read_group(read, Some(&mut all_counts.found_rgs));
 
     let rg_counts = all_counts.counts.entry(read_group).or_default();
 
@@ -324,7 +315,7 @@ pub fn predict_strandedness(
     {
         result.succeeded = true;
         result.strandedness = "Unstranded".to_string();
-    }
+    } // else Inconclusive
 
     result
 }
@@ -342,7 +333,7 @@ pub fn predict(
 ) -> Result<results::DerivedStrandednessResult, anyhow::Error> {
     let mut rng = rand::thread_rng();
     let mut num_genes_considered = 0; // Local to this attempt
-    let mut counter = RecordCounter::new(Some(1_000));
+    let mut counter = RecordCounter::new(Some(1_000)); // Also local to this attempt
     let genes_remaining = gene_records.len();
 
     let max_iters = if params.max_genes_per_try > genes_remaining {
@@ -366,12 +357,13 @@ pub fn predict(
         }
 
         let cur_gene = gene_records.swap_remove(rng.gen_range(0..gene_records.len()));
-        counter.inc();
+        counter.inc(); // Technically this is off-by-one, as the gene hasn't been processed yet.
 
         if disqualify_gene(&cur_gene, exons) {
             metrics.genes.mixed_strands += 1; // Tracked across attempts
             continue;
         }
+        // gene_strand guaranteed to be Forward or Reverse by initialization code.
         let cur_gene_strand = Strand::try_from(cur_gene.strand()).unwrap();
 
         let mut enough_reads = false;
@@ -388,7 +380,7 @@ pub fn predict(
     }
     if num_genes_considered < params.num_genes {
         tracing::warn!(
-            "Evaluated the maximum number of genes ({}) before considering the requested amount of genes ({}) for this try. Only considering {} genes.",
+            "Evaluated the maximum number of genes ({}) before considering the requested amount of genes ({}) for this try. Only considering an additional {} genes this try.",
             max_iters,
             params.num_genes,
             num_genes_considered,
@@ -423,6 +415,7 @@ pub fn predict(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use noodles::sam::record::data::field::Tag;
     use rust_lapper::Interval;
 
     #[test]

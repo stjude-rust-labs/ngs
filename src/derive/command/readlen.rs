@@ -55,7 +55,7 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
         let record = result?;
         let len = record.sequence().len();
 
-        read_lengths.entry(len).and_modify(|e| *e += 1).or_insert(1);
+        *read_lengths.entry(len).or_default() += 1;
 
         counter.inc();
         if counter.time_to_break(&num_records) {

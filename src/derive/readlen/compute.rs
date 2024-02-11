@@ -17,8 +17,8 @@ pub struct DerivedReadlenResult {
     /// The majority vote percentage of the consensus read length.
     pub majority_pct_detected: f64,
 
-    /// Status of the evidence that supports (or does not support) this
-    /// read length.
+    /// Status of the evidence that supports (or does not support) the
+    /// consensus read length.
     pub evidence: Vec<(usize, usize)>,
 }
 
@@ -61,15 +61,20 @@ pub fn predict(
     let consensus_read_length = max_read_length;
     let majority_detected = max_count as f64 / num_samples as f64;
 
-    let mut result =
-        DerivedReadlenResult::new(false, None, majority_detected * 100.0, read_lengths);
-
-    if majority_detected >= majority_vote_cutoff {
-        result.succeeded = true;
-        result.consensus_read_length = Some(consensus_read_length);
+    match majority_detected >= majority_vote_cutoff {
+        true => anyhow::Ok(DerivedReadlenResult::new(
+            true,
+            Some(consensus_read_length),
+            majority_detected * 100.0,
+            read_lengths,
+        )),
+        false => anyhow::Ok(DerivedReadlenResult::new(
+            false,
+            None,
+            majority_detected * 100.0,
+            read_lengths,
+        )),
     }
-
-    anyhow::Ok(result)
 }
 
 #[cfg(test)]

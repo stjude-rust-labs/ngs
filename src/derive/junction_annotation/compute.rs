@@ -142,7 +142,7 @@ pub fn process(
     }
 
     // (7) Calculate the start position of this read. This will
-    // later be used to find the position of any introns.
+    // be used to find the position of any introns.
     let start = match record.alignment_start() {
         Some(s) => s,
         _ => bail!("Could not parse record's start position."),
@@ -155,6 +155,7 @@ pub fn process(
             // This is an intron.
             Kind::Skip => {
                 // Check that `op.len() >= params.min_intron_length` later,
+                // once all reads supporting short junctions have been collected
                 // for better metric reporting.
 
                 let intron_start = cur_pos;
@@ -175,14 +176,10 @@ pub fn process(
                     continue;
                 }
 
-                let exon_starts = match exons.starts.get(seq_name) {
-                    Some(starts) => starts,
-                    _ => bail!("Could not find exon starts for contig: {}", seq_name),
-                };
-                let exon_ends = match exons.ends.get(seq_name) {
-                    Some(ends) => ends,
-                    _ => bail!("Could not find exon ends for contig: {}", seq_name),
-                };
+                // The following unwraps are safe because we checked that the reference
+                // sequence is annotated above.
+                let exon_starts = exons.starts.get(seq_name).unwrap();
+                let exon_ends = exons.ends.get(seq_name).unwrap();
 
                 let mut intron_start_known = false;
                 let mut intron_end_known = false;
@@ -299,27 +296,29 @@ pub fn summarize(
     );
 
     // Tally up observed junctions and spliced reads.
-    let mut juncs;
-    let mut support;
-    (juncs, support) = tally_junctions_and_support(&results.junction_annotations.known);
-    results.summary.known_junctions = juncs;
-    results.summary.known_junctions_read_support = support;
-    (juncs, support) = tally_junctions_and_support(&results.junction_annotations.partial_novel);
-    results.summary.partial_novel_junctions = juncs;
-    results.summary.partial_novel_junctions_read_support = support;
-    (juncs, support) = tally_junctions_and_support(&results.junction_annotations.complete_novel);
-    results.summary.complete_novel_junctions = juncs;
-    results.summary.complete_novel_junctions_read_support = support;
-    (juncs, support) =
-        tally_junctions_and_support(&results.junction_annotations.unannotated_reference);
-    results.summary.unannotated_reference_junctions = juncs;
-    results.summary.unannotated_reference_junctions_read_support = support;
+    (
+        results.summary.known_junctions,
+        results.summary.known_junctions_read_support,
+    ) = tally_junctions_and_support(&results.junction_annotations.known);
+    (
+        results.summary.partial_novel_junctions,
+        results.summary.partial_novel_junctions_read_support,
+    ) = tally_junctions_and_support(&results.junction_annotations.partial_novel);
+    (
+        results.summary.complete_novel_junctions,
+        results.summary.complete_novel_junctions_read_support,
+    ) = tally_junctions_and_support(&results.junction_annotations.complete_novel);
+    (
+        results.summary.unannotated_reference_junctions,
+        results.summary.unannotated_reference_junctions_read_support,
+    ) = tally_junctions_and_support(&results.junction_annotations.unannotated_reference);
 
-    // Tally up total junctions and spliced reads.
+    // Tally up total junctions.
     results.summary.total_junctions = results.summary.known_junctions
         + results.summary.partial_novel_junctions
         + results.summary.complete_novel_junctions
         + results.summary.unannotated_reference_junctions;
+    // Tally up total read support.
     results.summary.total_junctions_read_support = results.summary.known_junctions_read_support
         + results.summary.partial_novel_junctions_read_support
         + results.summary.complete_novel_junctions_read_support
@@ -327,7 +326,7 @@ pub fn summarize(
 
     // Calculate percentages.
     let total_junctions = results.summary.total_junctions as f64
-        - results.summary.unannotated_reference_junctions as f64;
+        - results.summary.unannotated_reference_junctions as f64; // exclude unannotated junctions from percentages
     results.summary.known_junctions_percent =
         results.summary.known_junctions as f64 / total_junctions * 100.0;
     results.summary.partial_novel_junctions_percent =
@@ -336,15 +335,19 @@ pub fn summarize(
         results.summary.complete_novel_junctions as f64 / total_junctions * 100.0;
 
     // Calculate average read support.
+    // Total
     results.summary.average_junction_read_support = results.summary.total_junctions_read_support
         as f64
         / results.summary.total_junctions as f64;
+    // Known
     results.summary.average_known_junction_read_support =
         results.summary.known_junctions_read_support as f64
             / results.summary.known_junctions as f64;
+    // Partial Novel
     results.summary.average_partial_novel_junction_read_support =
         results.summary.partial_novel_junctions_read_support as f64
             / results.summary.partial_novel_junctions as f64;
+    // Complete Novel
     results.summary.average_complete_novel_junction_read_support =
         results.summary.complete_novel_junctions_read_support as f64
             / results.summary.complete_novel_junctions as f64;

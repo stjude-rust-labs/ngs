@@ -1,16 +1,16 @@
 //! Module holding the logic for computing the endedness of a BAM.
 
-use serde::Serialize;
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 use tracing::warn;
 
+use crate::derive::endedness::results;
 use crate::utils::read_groups::ReadGroupPtr;
 
 /// Struct holding the ordering flags for a single read group.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct OrderingFlagsCounts {
     /// The number of reads without 0x1 set.
     pub unsegmented: usize,
@@ -40,12 +40,6 @@ impl OrderingFlagsCounts {
     }
 }
 
-impl Default for OrderingFlagsCounts {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl Add for OrderingFlagsCounts {
     type Output = Self;
 
@@ -70,120 +64,6 @@ impl AddAssign for OrderingFlagsCounts {
     }
 }
 
-/// Struct holding the per read group results for an `ngs derive endedness`
-/// subcommand call.
-#[derive(Debug, Serialize)]
-pub struct ReadGroupDerivedEndednessResult {
-    /// Name of the read group.
-    pub read_group: String,
-
-    /// Whether or not an endedness was determined for this read group.
-    pub succeeded: bool,
-
-    /// The endedness of this read group or "Unknown".
-    pub endedness: String,
-
-    /// The number of reads without 0x1 set.
-    pub unsegmented: usize,
-
-    /// The f+l- read count.
-    pub first: usize,
-
-    /// The f-l+ read count.
-    pub last: usize,
-
-    /// The f+l+ read count.
-    pub both: usize,
-
-    /// The f-l- read count.
-    pub neither: usize,
-
-    /// The reads per template (RPT).
-    /// Only available if `args.calc_rpt` is true.
-    pub rpt: Option<f64>,
-}
-
-impl ReadGroupDerivedEndednessResult {
-    /// Creates a new [`ReadGroupDerivedEndednessResult`].
-    fn new(
-        read_group: String,
-        succeeded: bool,
-        endedness: String,
-        counts: OrderingFlagsCounts,
-        rpt: Option<f64>,
-    ) -> Self {
-        ReadGroupDerivedEndednessResult {
-            read_group,
-            succeeded,
-            endedness,
-            unsegmented: counts.unsegmented,
-            first: counts.first,
-            last: counts.last,
-            both: counts.both,
-            neither: counts.neither,
-            rpt,
-        }
-    }
-}
-
-/// Struct holding the final results for an `ngs derive endedness` subcommand
-/// call.
-#[derive(Debug, Serialize)]
-pub struct DerivedEndednessResult {
-    /// Whether or not the `ngs derive endedness` subcommand succeeded.
-    pub succeeded: bool,
-
-    /// The overall endedness of the file or "Unknown".
-    pub endedness: String,
-
-    /// The number of reads without 0x1 set.
-    pub unsegmented: usize,
-
-    /// The overall f+l- read count.
-    pub first: usize,
-
-    /// The overall f-l+ read count.
-    pub last: usize,
-
-    /// The overall f+l+ read count.
-    pub both: usize,
-
-    /// The overall f-l- read count.
-    pub neither: usize,
-
-    /// The overall reads per template (RPT).
-    /// Only available if `args.calc_rpt` is true.
-    pub rpt: Option<f64>,
-
-    /// Vector of [`ReadGroupDerivedEndednessResult`]s.
-    /// One for each read group in the BAM,
-    /// and potentially one for any reads with an unknown read group.
-    pub read_groups: Vec<ReadGroupDerivedEndednessResult>,
-}
-
-impl DerivedEndednessResult {
-    /// Creates a new [`DerivedEndednessResult`].
-    pub fn new(
-        succeeded: bool,
-        endedness: String,
-        counts: OrderingFlagsCounts,
-        rpt: Option<f64>,
-        read_groups: Vec<ReadGroupDerivedEndednessResult>,
-    ) -> Self {
-        DerivedEndednessResult {
-            succeeded,
-            endedness,
-            unsegmented: counts.unsegmented,
-            first: counts.first,
-            last: counts.last,
-            both: counts.both,
-            neither: counts.neither,
-            rpt,
-            read_groups,
-        }
-    }
-}
-
 /// Calculate the reads per template overall and for each read group.
 fn calculate_reads_per_template(
     read_names: HashMap<String, Vec<ReadGroupPtr>>,
@@ -204,17 +84,16 @@ fn calculate_reads_per_template(
         let read_group_set: HashSet<ReadGroupPtr> = read_groups.iter().cloned().collect();
 
         if read_group_set.len() == 1 {
+            // All found read groups assigned to this QNAME are the same.
+            // We assume this means all the reads came from the same template.
             let read_group = Arc::clone(read_group_set.iter().next().unwrap());
 
-            read_group_reads
-                .entry(Arc::clone(&read_group))
-                .and_modify(|e| *e += num_reads)
-                .or_insert(num_reads);
-            read_group_templates
-                .entry(read_group)
-                .and_modify(|e| *e += 1)
-                .or_insert(1);
+            *read_group_reads.entry(Arc::clone(&read_group)).or_default() += num_reads;
+            *read_group_templates.entry(read_group).or_default() += 1;
         } else {
+            // The QNAME is in multiple read groups.
+            // We assume this means the reads came from multiple templates.
+            // More specifically, we assume that exactly one template will originate from each read group.
             warning_count += 1;
             match warning_count {
                 1..=100 => {
@@ -230,16 +109,10 @@ fn calculate_reads_per_template(
             }
 
             for read_group in read_groups {
-                read_group_reads
-                    .entry(Arc::clone(read_group))
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
+                *read_group_reads.entry(Arc::clone(read_group)).or_default() += 1;
             }
             for read_group in read_group_set {
-                read_group_templates
-                    .entry(read_group)
-                    .and_modify(|e| *e += 1)
-                    .or_insert(1);
+                *read_group_templates.entry(read_group).or_default() += 1;
             }
         }
     }
@@ -268,7 +141,7 @@ fn predict_endedness(
     paired_deviance: f64,
     reads_per_template: Option<f64>,
     round_rpt: bool,
-) -> ReadGroupDerivedEndednessResult {
+) -> results::ReadGroupDerivedEndednessResult {
     let unsegmented = rg_ordering_flags.unsegmented;
     let first = rg_ordering_flags.first;
     let last = rg_ordering_flags.last;
@@ -282,7 +155,7 @@ fn predict_endedness(
             "No reads were detected in this read group: {}",
             read_group_name
         );
-        return ReadGroupDerivedEndednessResult::new(
+        return results::ReadGroupDerivedEndednessResult::new(
             read_group_name,
             false,
             "Unknown".to_string(),
@@ -291,7 +164,7 @@ fn predict_endedness(
         );
     }
 
-    let mut result = ReadGroupDerivedEndednessResult::new(
+    let mut result = results::ReadGroupDerivedEndednessResult::new(
         read_group_name,
         false,
         "Unknown".to_string(),
@@ -331,6 +204,7 @@ fn predict_endedness(
     }
     // only both present
     if first == 0 && last == 0 && both > 0 && neither == 0 {
+        // Prior logic (before addition of unsegmented checks) left as comment for posterity
         // match reads_per_template {
         //     Some(rpt) => {
         //         if rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
@@ -389,7 +263,7 @@ pub fn predict(
     read_names: HashMap<String, Vec<ReadGroupPtr>>,
     paired_deviance: f64,
     round_rpt: bool,
-) -> DerivedEndednessResult {
+) -> results::DerivedEndednessResult {
     let mut rg_rpts: HashMap<ReadGroupPtr, f64> = HashMap::new();
     let mut overall_rpt: Option<f64> = None;
     if !read_names.is_empty() {
@@ -420,7 +294,7 @@ pub fn predict(
         round_rpt,
     );
 
-    DerivedEndednessResult::new(
+    results::DerivedEndednessResult::new(
         overall_result.succeeded,
         overall_result.endedness,
         overall_flags,

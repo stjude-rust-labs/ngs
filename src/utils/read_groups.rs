@@ -11,10 +11,8 @@ use tracing::warn;
 /// Type alias for a read group pointer.
 pub type ReadGroupPtr = Arc<String>;
 
-// Strings used to index into the HashMaps used to store the Read Group ordering flags.
-// Lazy statics are used to save memory.
 lazy_static! {
-    /// String used to index into th HashMaps used to store the "unknown_read_group" ordering flags.
+    /// String used to represent an unknown read group. Wrapped in an Arc to prevent redundant memory usage.
     pub static ref UNKNOWN_READ_GROUP: ReadGroupPtr = Arc::new(String::from("unknown_read_group"));
 }
 

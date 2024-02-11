@@ -41,6 +41,7 @@ pub struct JunctionAnnotations {
     pub unannotated_reference: JunctionsMap,
 }
 
+// TODO should contigs be sorted?
 impl Serialize for JunctionAnnotations {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut known = Vec::new();

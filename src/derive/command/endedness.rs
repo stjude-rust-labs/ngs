@@ -44,7 +44,7 @@ pub struct DeriveEndednessArgs {
     calc_rpt: bool,
 
     /// Round RPT to the nearest INT before comparing to expected values.
-    /// Appropriate if using `-n` > 0.
+    /// Appropriate if using `-n` > 0. Unrounded value is reported in output.
     #[arg(long, default_value = "false")]
     round_rpt: bool,
 }
@@ -108,18 +108,26 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
             }
         }
 
-        if !record.flags().is_segmented() {
-            ordering_flags.entry(read_group).or_default().unsegmented += 1;
-        } else if record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(read_group).or_default().first += 1;
-        } else if !record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(read_group).or_default().last += 1;
-        } else if record.flags().is_first_segment() && record.flags().is_last_segment() {
-            ordering_flags.entry(read_group).or_default().both += 1;
-        } else if !record.flags().is_first_segment() && !record.flags().is_last_segment() {
-            ordering_flags.entry(read_group).or_default().neither += 1;
-        } else {
-            unreachable!();
+        match (
+            record.flags().is_segmented(),
+            record.flags().is_first_segment(),
+            record.flags().is_last_segment(),
+        ) {
+            (false, _, _) => {
+                ordering_flags.entry(read_group).or_default().unsegmented += 1;
+            }
+            (true, true, false) => {
+                ordering_flags.entry(read_group).or_default().first += 1;
+            }
+            (true, false, true) => {
+                ordering_flags.entry(read_group).or_default().last += 1;
+            }
+            (true, true, true) => {
+                ordering_flags.entry(read_group).or_default().both += 1;
+            }
+            (true, false, false) => {
+                ordering_flags.entry(read_group).or_default().neither += 1;
+            }
         }
 
         counter.inc();
