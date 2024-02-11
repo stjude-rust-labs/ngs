@@ -5,7 +5,7 @@ use std::collections::HashSet;
 
 use regex::Regex;
 use serde::Serialize;
-use tracing::info;
+use tracing::debug;
 
 use super::flowcells;
 use super::instruments;
@@ -42,6 +42,31 @@ impl InstrumentDetectionResults {
     }
 }
 
+/// Metrics related to how read records were processed.
+#[derive(Debug, Default, Serialize)]
+pub struct RecordMetrics {
+    /// The total number of records that were processed.
+    pub total_records: usize,
+
+    /// The total number of records that couldn't be parsed
+    /// due to a missing or invalid read name.
+    pub bad_read_name: usize,
+
+    /// The total number of records that contained a valid
+    /// instrument name in their read name.
+    pub found_instrument_name: usize,
+
+    /// The total number of records that contained a valid
+    /// flowcell name in their read name.
+    pub found_flowcell_name: usize,
+
+    /// The number of unique instrument names that were detected.
+    pub unique_instrument_names: usize,
+
+    /// The number of unique flowcell names that were detected.
+    pub unique_flowcell_names: usize,
+}
+
 /// Struct holding the final results for an `ngs derive instrument` subcommand
 /// call.
 #[derive(Debug, Serialize)]
@@ -57,11 +82,14 @@ pub struct DerivedInstrumentResult {
     pub confidence: String,
 
     /// Status of the evidence that supports (or lack thereof) these predicted
-    /// instruments, if available.  
+    /// instruments, if available.
     pub evidence: Option<String>,
 
     /// A general comment field, if available.
     pub comment: Option<String>,
+
+    /// Metrics related to how read records were processed.
+    pub records: RecordMetrics,
 }
 
 impl DerivedInstrumentResult {
@@ -72,6 +100,7 @@ impl DerivedInstrumentResult {
         confidence: String,
         evidence: Option<String>,
         comment: Option<String>,
+        records: RecordMetrics,
     ) -> Self {
         DerivedInstrumentResult {
             succeeded,
@@ -79,6 +108,20 @@ impl DerivedInstrumentResult {
             confidence,
             evidence,
             comment,
+            records,
+        }
+    }
+}
+
+impl Default for DerivedInstrumentResult {
+    fn default() -> Self {
+        DerivedInstrumentResult {
+            succeeded: false,
+            instruments: None,
+            confidence: "unknown".to_string(),
+            evidence: None,
+            comment: None,
+            records: RecordMetrics::default(),
         }
     }
 }
@@ -114,7 +157,7 @@ pub fn possible_instruments_for_query(
         }
     }
 
-    info!(" [*] {}, Possible Instruments: {:?}", query, result);
+    debug!(" [*] {}, Possible Instruments: {:?}", query, result);
     result
 }
 
@@ -161,44 +204,34 @@ pub fn resolve_instrument_prediction(
     let possible_instruments_by_iid = iid_results.possible_instruments.unwrap_or_default();
     let possible_instruments_by_fcid = fcid_results.possible_instruments.unwrap_or_default();
 
+    let mut result = DerivedInstrumentResult::default();
+
     // (1) If the set of possible instruments as determined by the instrument id
     // is empty _and_ we have seen at least one machine, then the only possible
     // scenario is there are conflicting instrument ids.
     if possible_instruments_by_iid.is_empty() && iid_results.detected_at_least_one_machine {
-        return DerivedInstrumentResult::new(
-            false,
-            None,
-            "unknown".to_string(),
-            Some("instrument id".to_string()),
-            Some(
-                "multiple instruments were detected in this file via the instrument id".to_string(),
-            ),
+        result.evidence = Some("instrument id".to_string());
+        result.comment = Some(
+            "multiple instruments were detected in this file via the instrument id".to_string(),
         );
+        return result;
     }
 
     // (2) If the set of possible instruments as determined by the flowcell id
     // is empty _and_ we have seen at least one machine, then the only possible
     // scenario is there are conflicting flowcell ids.
     if possible_instruments_by_fcid.is_empty() && fcid_results.detected_at_least_one_machine {
-        return DerivedInstrumentResult::new(
-            false,
-            None,
-            "unknown".to_string(),
-            Some("flowcell id".to_string()),
-            Some("multiple instruments were detected in this file via the flowcell id".to_string()),
-        );
+        result.evidence = Some("flowcell id".to_string());
+        result.comment =
+            Some("multiple instruments were detected in this file via the flowcell id".to_string());
+        return result;
     }
 
     // (3) if neither result turns up anything, then we can simply say that the
     // machine was not able to be detected.
     if possible_instruments_by_iid.is_empty() && possible_instruments_by_fcid.is_empty() {
-        return DerivedInstrumentResult::new(
-            false,
-            None,
-            "unknown".to_string(),
-            None,
-            Some("no matching instruments were found".to_string()),
-        );
+        result.comment = Some("no matching instruments were found".to_string());
+        return result;
     }
 
     // (4) If both aren't empty and iid_results _is_ empty, then the fcid
@@ -211,13 +244,11 @@ pub fn resolve_instrument_prediction(
             _ => "low",
         };
 
-        return DerivedInstrumentResult::new(
-            true,
-            Some(instruments),
-            confidence.to_string(),
-            Some("flowcell id".to_string()),
-            None,
-        );
+        result.succeeded = true;
+        result.instruments = Some(instruments);
+        result.confidence = confidence.to_string();
+        result.evidence = Some("flowcell id".to_string());
+        return result;
     }
 
     // (5) Same as the block above, except now we are evaluating the opposite
@@ -229,13 +260,11 @@ pub fn resolve_instrument_prediction(
             _ => "low",
         };
 
-        return DerivedInstrumentResult::new(
-            true,
-            Some(instruments),
-            confidence.to_string(),
-            Some("instrument id".to_string()),
-            None,
-        );
+        result.succeeded = true;
+        result.instruments = Some(instruments);
+        result.confidence = confidence.to_string();
+        result.evidence = Some("instrument id".to_string());
+        return result;
     }
 
     let overlapping_instruments: HashSet<String> = possible_instruments_by_fcid
@@ -244,26 +273,21 @@ pub fn resolve_instrument_prediction(
         .collect();
 
     if overlapping_instruments.is_empty() {
-        return DerivedInstrumentResult::new(
-            false,
-            None,
-            "high".to_string(),
-            Some("instrument and flowcell id".to_string()),
-            Some(
-                "Case needs triaging, results from instrument id and \
+        result.confidence = "high".to_string();
+        result.evidence = Some("instrument and flowcell id".to_string());
+        result.comment = Some(
+            "Case needs triaging, results from instrument id and \
                          flowcell id are mutually exclusive."
-                    .to_string(),
-            ),
+                .to_string(),
         );
+        return result;
     }
 
-    DerivedInstrumentResult::new(
-        true,
-        Some(overlapping_instruments),
-        "high".to_string(),
-        Some("instrument and flowcell id".to_string()),
-        None,
-    )
+    result.succeeded = true;
+    result.instruments = Some(overlapping_instruments);
+    result.confidence = "high".to_string();
+    result.evidence = Some("instrument and flowcell id".to_string());
+    result
 }
 
 /// Main method to evaluate the detected instrument names and flowcell names and

@@ -1,15 +1,17 @@
 //! Functionality relating to the `ngs derive instrument` subcommand itself.
 
 use anyhow::bail;
+use clap::Args;
+use num_format::Locale;
+use num_format::ToFormattedString;
 use std::collections::HashSet;
 use std::path::PathBuf;
-use std::thread;
-
-use clap::Args;
 use tracing::info;
 
 use crate::derive::instrument::compute;
 use crate::derive::instrument::reads::IlluminaReadName;
+use crate::utils::args::NumberOfRecords;
+use crate::utils::display::RecordCounter;
 use crate::utils::formats::bam::ParsedBAMFile;
 use crate::utils::formats::utils::IndexCheck;
 
@@ -23,36 +25,16 @@ pub struct DeriveInstrumentArgs {
     /// Only examine the first n records in the file.
     #[arg(short, long, value_name = "USIZE")]
     num_records: Option<usize>,
-
-    /// Use a specific number of threads.
-    #[arg(short, long, value_name = "USIZE")]
-    threads: Option<usize>,
-}
-
-/// Entrypoint for the `ngs derive instrument` subcommand.
-pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
-    let first_n_reads: Option<usize> = args.num_records;
-    let threads = match args.threads {
-        Some(t) => t,
-        None => thread::available_parallelism().map(usize::from)?,
-    };
-
-    info!(
-        "Starting derive instrument subcommand with {} threads.",
-        threads
-    );
-
-    let rt = tokio::runtime::Builder::new_multi_thread()
-        .worker_threads(threads)
-        .build()?;
-
-    rt.block_on(app(args.src, first_n_reads))
 }
 
 /// Main function for the `ngs derive instrument` subcommand.
-async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
+pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
+    let src = args.src;
     let mut instrument_names = HashSet::new();
     let mut flowcell_names = HashSet::new();
+    let mut metrics = compute::RecordMetrics::default();
+
+    info!("Starting derive instrument subcommand.");
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -60,12 +42,8 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let mut samples = 0;
-    let mut sample_max = 0;
-
-    if let Some(s) = first_n_reads {
-        sample_max = s;
-    }
+    let num_records = NumberOfRecords::from(args.num_records);
+    let mut counter = RecordCounter::default();
 
     for result in reader.records(&header.parsed) {
         let record = result?;
@@ -76,8 +54,10 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
             match name.parse::<IlluminaReadName>() {
                 Ok(read) => {
                     instrument_names.insert(read.instrument_name);
+                    metrics.found_instrument_name += 1;
                     if let Some(fc) = read.flowcell {
                         flowcell_names.insert(fc);
+                        metrics.found_flowcell_name += 1;
                     }
                 }
                 Err(_) => {
@@ -87,24 +67,33 @@ async fn app(src: PathBuf, first_n_reads: Option<usize>) -> anyhow::Result<()> {
                     );
                 }
             }
+        } else {
+            metrics.bad_read_name += 1;
         }
 
-        if sample_max > 0 {
-            samples += 1;
-            if samples > sample_max {
-                break;
-            }
+        counter.inc();
+        if counter.time_to_break(&num_records) {
+            break;
         }
     }
 
+    info!(
+        "Processed {} records.",
+        counter.get().to_formatted_string(&Locale::en)
+    );
+    metrics.total_records = counter.get();
+    metrics.unique_instrument_names = instrument_names.len();
+    metrics.unique_flowcell_names = flowcell_names.len();
+
     // (2) Derive the predict instrument results based on these detected
     // instrument names and flowcell names.
-    let result = compute::predict(instrument_names, flowcell_names);
+    let mut result = compute::predict(instrument_names, flowcell_names);
+    result.records = metrics;
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&result).unwrap();
-    print!("{}", output);
+    println!("{}", output);
 
     Ok(())
 }
