@@ -72,7 +72,7 @@ pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&result).unwrap();
-    print!("{}", output);
+    println!("{}", output);
 
     Ok(())
 }

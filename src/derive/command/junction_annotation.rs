@@ -136,7 +136,7 @@ pub fn derive(args: JunctionAnnotationArgs) -> anyhow::Result<()> {
     // (4) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&results).unwrap();
-    print!("{}", output);
+    println!("{}", output);
 
     anyhow::Ok(())
 }
