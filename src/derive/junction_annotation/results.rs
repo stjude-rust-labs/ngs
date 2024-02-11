@@ -41,35 +41,42 @@ pub struct JunctionAnnotations {
     pub unannotated_reference: JunctionsMap,
 }
 
-// TODO: This is a temporary implementation. It should be replaced with something better.
 impl Serialize for JunctionAnnotations {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut known = Vec::new();
         for (ref_name, junctions) in &self.known {
+            let mut junctions_vec = Vec::new();
             for ((start, end), count) in junctions {
-                known.push((ref_name, start.get(), end.get(), count));
+                junctions_vec.push((start.get(), end.get(), count));
             }
+            known.push((ref_name.clone(), junctions_vec));
         }
 
         let mut partial_novel = Vec::new();
         for (ref_name, junctions) in &self.partial_novel {
+            let mut junctions_vec = Vec::new();
             for ((start, end), count) in junctions {
-                partial_novel.push((ref_name, start.get(), end.get(), count));
+                junctions_vec.push((start.get(), end.get(), count));
             }
+            partial_novel.push((ref_name.clone(), junctions_vec));
         }
 
         let mut complete_novel = Vec::new();
         for (ref_name, junctions) in &self.complete_novel {
+            let mut junctions_vec = Vec::new();
             for ((start, end), count) in junctions {
-                complete_novel.push((ref_name, start.get(), end.get(), count));
+                junctions_vec.push((start.get(), end.get(), count));
             }
+            complete_novel.push((ref_name.clone(), junctions_vec));
         }
 
         let mut unannotated_reference = Vec::new();
         for (ref_name, junctions) in &self.unannotated_reference {
+            let mut junctions_vec = Vec::new();
             for ((start, end), count) in junctions {
-                unannotated_reference.push((ref_name, start.get(), end.get(), count));
+                junctions_vec.push((start.get(), end.get(), count));
             }
+            unannotated_reference.push((ref_name.clone(), junctions_vec));
         }
 
         let mut s = serializer.serialize_struct("JunctionAnnotations", 4)?;
