@@ -429,289 +429,284 @@ pub fn predict(
     )
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::*;
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-//     // TODO add tests for unsegmented reads
-//     #[test]
-//     fn test_predict_endedness() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 1,
-//                 last: 1,
-//                 both: 0,
-//                 neither: 0,
-//             },
-//         );
-//         let result = predict_endedness(
-//             "overall".to_string(),
-//             ordering_flags.get(&Arc::clone(&OVERALL)).unwrap(),
-//             0.0,
-//             None,
-//             false,
-//         );
-//         assert!(result.succeeded);
-//         assert_eq!(result.endedness, "Paired-End");
-//         assert_eq!(result.first, 1);
-//         assert_eq!(result.last, 1);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//     }
+    // TODO add tests for unsegmented reads
+    #[test]
+    fn test_predict_endedness() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 1,
+                last: 1,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict_endedness(
+            "overall".to_string(),
+            ordering_flags
+                .get(&Arc::new("overall".to_string()))
+                .unwrap(),
+            0.0,
+            None,
+            false,
+        );
+        assert!(result.succeeded);
+        assert_eq!(result.endedness, "Paired-End");
+        assert_eq!(result.first, 1);
+        assert_eq!(result.last, 1);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_all_zero_counts() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(Arc::new(String::from("rg1")), OrderingFlagsCounts::new());
-//         let result = predict_endedness(
-//             String::from("rg1"),
-//             ordering_flags.get(&Arc::new(String::from("rg1"))).unwrap(),
-//             0.0,
-//             None,
-//             false,
-//         );
-//         assert!(!result.succeeded);
-//         assert_eq!(result.endedness, "Unknown");
-//         assert_eq!(result.first, 0);
-//         assert_eq!(result.last, 0);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//     }
+    #[test]
+    fn test_derive_endedness_from_all_zero_counts() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(Arc::new(String::from("rg1")), OrderingFlagsCounts::new());
+        let result = predict_endedness(
+            String::from("rg1"),
+            ordering_flags.get(&Arc::new(String::from("rg1"))).unwrap(),
+            0.0,
+            None,
+            false,
+        );
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_only_first() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 1,
-//                 last: 0,
-//                 both: 0,
-//                 neither: 0,
-//             },
-//         );
-//         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
-//         assert!(!result.succeeded);
-//         assert_eq!(result.endedness, "Unknown");
-//         assert_eq!(result.first, 1);
-//         assert_eq!(result.last, 0);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//         assert_eq!(result.read_groups.len(), 0);
-//     }
+    #[test]
+    fn test_derive_endedness_from_only_first() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 1,
+                last: 0,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 1);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 1);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_only_last() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 0,
-//                 last: 1,
-//                 both: 0,
-//                 neither: 0,
-//             },
-//         );
-//         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
-//         assert!(!result.succeeded);
-//         assert_eq!(result.endedness, "Unknown");
-//         assert_eq!(result.first, 0);
-//         assert_eq!(result.last, 1);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//         assert_eq!(result.read_groups.len(), 0);
-//     }
+    #[test]
+    fn test_derive_endedness_from_only_last() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 0,
+                last: 1,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 1);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 1);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_only_both() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 0,
-//                 last: 0,
-//                 both: 1,
-//                 neither: 0,
-//             },
-//         );
-//         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
-//         assert!(result.succeeded);
-//         assert_eq!(result.endedness, "Single-End");
-//         assert_eq!(result.first, 0);
-//         assert_eq!(result.last, 0);
-//         assert_eq!(result.both, 1);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//         assert_eq!(result.read_groups.len(), 0);
-//     }
+    #[test]
+    fn test_derive_endedness_from_only_both() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 0,
+                last: 0,
+                both: 1,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 1);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 1);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_only_neither() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 0,
-//                 last: 0,
-//                 both: 0,
-//                 neither: 1,
-//             },
-//         );
-//         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
-//         assert!(!result.succeeded);
-//         assert_eq!(result.endedness, "Unknown");
-//         assert_eq!(result.first, 0);
-//         assert_eq!(result.last, 0);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 1);
-//         assert_eq!(result.rpt, None);
-//         assert_eq!(result.read_groups.len(), 0);
-//     }
+    #[test]
+    fn test_derive_endedness_from_only_neither() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 0,
+                last: 0,
+                both: 0,
+                neither: 1,
+            },
+        );
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 1);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 1);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_first_and_last() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 1,
-//                 last: 1,
-//                 both: 0,
-//                 neither: 0,
-//             },
-//         );
-//         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
-//         assert!(result.succeeded);
-//         assert_eq!(result.endedness, "Paired-End");
-//         assert_eq!(result.first, 1);
-//         assert_eq!(result.last, 1);
-//         assert_eq!(result.both, 0);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, None);
-//         assert_eq!(result.read_groups.len(), 0);
-//     }
+    #[test]
+    fn test_derive_endedness_from_first_and_last() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 1,
+                last: 1,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        assert!(result.succeeded);
+        assert_eq!(result.endedness, "Paired-End");
+        assert_eq!(result.first, 1);
+        assert_eq!(result.last, 1);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+        assert_eq!(result.read_groups.len(), 1);
+    }
 
-//     #[test]
-//     fn test_calculate_reads_per_template() {
-//         let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
-//         let rg_paired = Arc::new("rg_paired".to_string());
-//         let rg_single = Arc::new("rg_single".to_string());
-//         read_names.insert(
-//             "read1".to_string(),
-//             vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
-//         );
-//         read_names.insert(
-//             "read2".to_string(),
-//             vec![
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_single),
-//             ],
-//         );
-//         read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
-//         read_names.insert(
-//             "read4".to_string(),
-//             vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
-//         );
-//         read_names.insert(
-//             "read5".to_string(),
-//             vec![
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_single),
-//             ],
-//         );
-//         let results = calculate_reads_per_template(read_names);
-//         assert_eq!(results.len(), 3);
-//         assert_eq!(results.get(&Arc::new("overall".to_string())).unwrap(), &2.2);
-//         assert_eq!(results.get(&Arc::clone(&rg_paired)).unwrap(), &2.0);
-//         assert_eq!(results.get(&Arc::clone(&rg_single)).unwrap(), &1.0);
-//     }
+    #[test]
+    fn test_calculate_reads_per_template() {
+        let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
+        read_names.insert(
+            "read1".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        let mut rg_rpts: HashMap<ReadGroupPtr, f64> = HashMap::new();
+        let overall_rpt = calculate_reads_per_template(read_names, &mut rg_rpts);
+        assert_eq!(rg_rpts.len(), 2);
+        assert_eq!(overall_rpt, 2.2);
+        assert_eq!(rg_rpts.get(&Arc::clone(&rg_paired)).unwrap(), &2.0);
+        assert_eq!(rg_rpts.get(&Arc::clone(&rg_single)).unwrap(), &1.0);
+    }
 
-//     #[test]
-//     fn test_derive_endedness_from_first_and_last_with_rpt() {
-//         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
-//         let rg_paired = Arc::new("rg_paired".to_string());
-//         let rg_single = Arc::new("rg_single".to_string());
-//         ordering_flags.insert(
-//             Arc::clone(&OVERALL),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 8,
-//                 last: 8,
-//                 both: 2,
-//                 neither: 0,
-//             },
-//         );
-//         ordering_flags.insert(
-//             Arc::clone(&rg_paired),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 8,
-//                 last: 8,
-//                 both: 0,
-//                 neither: 0,
-//             },
-//         );
-//         ordering_flags.insert(
-//             Arc::clone(&rg_single),
-//             OrderingFlagsCounts {
-//                 unsegmented: 0,
-//                 first: 0,
-//                 last: 0,
-//                 both: 2,
-//                 neither: 0,
-//             },
-//         );
-//         let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
-//         read_names.insert(
-//             "read1".to_string(),
-//             vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
-//         );
-//         read_names.insert(
-//             "read2".to_string(),
-//             vec![
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_single),
-//             ],
-//         );
-//         read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
-//         read_names.insert(
-//             "read4".to_string(),
-//             vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
-//         );
-//         read_names.insert(
-//             "read5".to_string(),
-//             vec![
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_paired),
-//                 Arc::clone(&rg_single),
-//             ],
-//         );
-//         let result = predict(ordering_flags, read_names, 0.0, false);
-//         assert!(!result.succeeded);
-//         assert_eq!(result.endedness, "Unknown");
-//         assert_eq!(result.first, 8);
-//         assert_eq!(result.last, 8);
-//         assert_eq!(result.both, 2);
-//         assert_eq!(result.neither, 0);
-//         assert_eq!(result.rpt, Some(2.2));
-//         assert_eq!(result.read_groups.len(), 2);
-//         // We can't know which read group will be first in the vector.
-//         // But both should succeed.
-//         assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
-//     }
-// }
+    #[test]
+    fn test_derive_endedness_from_first_and_last_with_rpt() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        let rg_paired = Arc::new("rg_paired".to_string());
+        let rg_single = Arc::new("rg_single".to_string());
+        ordering_flags.insert(
+            Arc::clone(&rg_paired),
+            OrderingFlagsCounts {
+                unsegmented: 0,
+                first: 8,
+                last: 8,
+                both: 0,
+                neither: 0,
+            },
+        );
+        ordering_flags.insert(
+            Arc::clone(&rg_single),
+            OrderingFlagsCounts {
+                unsegmented: 2,
+                first: 0,
+                last: 0,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
+        read_names.insert(
+            "read1".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read2".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        read_names.insert("read3".to_string(), vec![Arc::clone(&rg_single)]);
+        read_names.insert(
+            "read4".to_string(),
+            vec![Arc::clone(&rg_paired), Arc::clone(&rg_paired)],
+        );
+        read_names.insert(
+            "read5".to_string(),
+            vec![
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_paired),
+                Arc::clone(&rg_single),
+            ],
+        );
+        let result = predict(ordering_flags, read_names, 0.0, false);
+        assert!(!result.succeeded);
+        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.unsegmented, 2);
+        assert_eq!(result.first, 8);
+        assert_eq!(result.last, 8);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, Some(2.2));
+        assert_eq!(result.read_groups.len(), 2);
+        // We can't know which read group will be first in the vector.
+        // But both should succeed.
+        print!("{:?}", result.read_groups);
+        assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
+    }
+}
