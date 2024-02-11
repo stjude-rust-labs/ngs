@@ -14,9 +14,9 @@ pub fn filter_by_mapq(
     match min_mapq {
         Some(min_mapq) => match record.mapping_quality() {
             Some(mapq) => mapq.get() < min_mapq.get(),
-            None => false,
+            None => true, // Filter if no MAPQ is present
         },
-        None => false,
+        None => false, // Do not filter if no min MAPQ is specified
     }
 }
 
@@ -143,29 +143,29 @@ impl<'a> ReferenceRecordStepThrough<'a> {
 mod tests {
     use noodles::sam::record::{Cigar, MappingQuality, Sequence};
 
-    use super::ReferenceRecordStepThrough;
+    use super::*;
 
     #[test]
     pub fn it_filters_by_mapq() -> anyhow::Result<()> {
         let mut record = noodles::sam::alignment::Record::default();
-        assert!(super::filter_by_mapq(
+        assert!(filter_by_mapq(
             &record,
             Some(MappingQuality::new(0).unwrap())
         )); // Get filtered because MAPQ is missing
-        assert!(!super::filter_by_mapq(&record, None)); // Do not get filtered because filter is disabled
+        assert!(!filter_by_mapq(&record, None)); // Do not get filtered because filter is disabled
 
         record
             .mapping_quality_mut()
             .replace(MappingQuality::new(10).unwrap());
-        assert!(!super::filter_by_mapq(
+        assert!(!filter_by_mapq(
             &record,
             Some(MappingQuality::new(0).unwrap())
         )); // Do not get filtered because MAPQ is present
-        assert!(!super::filter_by_mapq(
+        assert!(!filter_by_mapq(
             &record,
             Some(MappingQuality::new(1).unwrap())
         )); // Do not get filtered because MAPQ is greater than 1
-        assert!(super::filter_by_mapq(
+        assert!(filter_by_mapq(
             &record,
             Some(MappingQuality::new(11).unwrap())
         )); // Do get filtered because MAPQ is less than 11

@@ -113,7 +113,7 @@ pub struct RecordMetrics {
 }
 
 /// Summary statistics for the junction-annotation subcommand.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Debug, Serialize)]
 pub struct SummaryResults {
     /// The total number of junctions observed in the file.
     pub total_junctions: usize,

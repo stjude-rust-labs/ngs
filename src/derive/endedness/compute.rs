@@ -307,9 +307,8 @@ pub fn predict(
 mod tests {
     use super::*;
 
-    // TODO add tests for unsegmented reads
     #[test]
-    fn test_predict_endedness() {
+    fn test_predict_endedness_from_first_and_last() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -340,7 +339,38 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_all_zero_counts() {
+    fn test_predict_endedness_from_unsegmented() {
+        let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
+        ordering_flags.insert(
+            Arc::new("overall".to_string()),
+            OrderingFlagsCounts {
+                unsegmented: 1,
+                first: 0,
+                last: 0,
+                both: 0,
+                neither: 0,
+            },
+        );
+        let result = predict_endedness(
+            "overall".to_string(),
+            ordering_flags
+                .get(&Arc::new("overall".to_string()))
+                .unwrap(),
+            0.0,
+            None,
+            false,
+        );
+        assert!(result.succeeded);
+        assert_eq!(result.endedness, "Single-End");
+        assert_eq!(result.first, 0);
+        assert_eq!(result.last, 0);
+        assert_eq!(result.both, 0);
+        assert_eq!(result.neither, 0);
+        assert_eq!(result.rpt, None);
+    }
+
+    #[test]
+    fn test_predict_endedness_from_all_zero_counts() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(Arc::new(String::from("rg1")), OrderingFlagsCounts::new());
         let result = predict_endedness(
@@ -360,7 +390,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_only_first() {
+    fn test_predict_from_only_first() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -384,7 +414,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_only_last() {
+    fn test_predict_from_only_last() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -408,7 +438,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_only_both() {
+    fn test_predict_from_only_both() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -432,7 +462,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_only_neither() {
+    fn test_predict_from_only_neither() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -456,7 +486,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_first_and_last() {
+    fn test_predict_from_first_and_last() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         ordering_flags.insert(
             Arc::new("overall".to_string()),
@@ -518,7 +548,7 @@ mod tests {
     }
 
     #[test]
-    fn test_derive_endedness_from_first_and_last_with_rpt() {
+    fn test_predict_with_rpt_complex() {
         let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
         let rg_paired = Arc::new("rg_paired".to_string());
         let rg_single = Arc::new("rg_single".to_string());
@@ -580,7 +610,6 @@ mod tests {
         assert_eq!(result.read_groups.len(), 2);
         // We can't know which read group will be first in the vector.
         // But both should succeed.
-        print!("{:?}", result.read_groups);
         assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
     }
 }

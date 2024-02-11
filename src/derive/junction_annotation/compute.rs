@@ -598,172 +598,157 @@ mod tests {
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
 
-        // TODO: Below tests are not working as expected. Need to fix them.
-        // Test complete novel junction
-        // let mut record = Record::default();
-        // let r6_name: ReadName = "complete1".parse().unwrap();
-        // *record.read_name_mut() = Some(r6_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 6);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 0);
-        // assert_eq!(results.records.low_mapq, 0);
-        // assert_eq!(results.records.missing_mapq, 0);
+        // Test complete novel junction with 2 junctions
+        let mut record = Record::default();
+        let r6_name: ReadName = "complete_twice1".parse().unwrap();
+        *record.read_name_mut() = Some(r6_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(200);
+        *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 5);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
-        // // Test complete novel junction (again for more read support)
-        // let mut record = Record::default();
-        // let r6_name: ReadName = "complete2".parse().unwrap();
-        // *record.read_name_mut() = Some(r6_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 7);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 0);
-        // assert_eq!(results.records.low_mapq, 0);
-        // assert_eq!(results.records.missing_mapq, 0);
+        // Test complete novel junction with 2 junctions (again for more read support)
+        let mut record = Record::default();
+        let r6_name: ReadName = "complete_twice2".parse().unwrap();
+        *record.read_name_mut() = Some(r6_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(200);
+        *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 6);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
 
-        // // Test fails MAPQ filter
-        // let mut record = Record::default();
-        // let r7_name: ReadName = "low_mapq".parse().unwrap();
-        // *record.read_name_mut() = Some(r7_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(20);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 6);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 0);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 0);
+        // Test fails MAPQ filter
+        let mut record = Record::default();
+        let r7_name: ReadName = "low_mapq".parse().unwrap();
+        *record.read_name_mut() = Some(r7_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(20);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 6);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 1);
 
-        // // Test missing MAPQ
-        // let mut record = Record::default();
-        // let r8_name: ReadName = "missing_mapq".parse().unwrap();
-        // *record.read_name_mut() = Some(r8_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(255);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 6);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 0);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 1);
+        // Test missing MAPQ
+        let mut record = Record::default();
+        let r8_name: ReadName = "bad_mapq".parse().unwrap();
+        *record.read_name_mut() = Some(r8_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = None;
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 6);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 2);
 
-        // // Test that intron is too short
-        // let mut record = Record::default();
-        // let r9_name: ReadName = "short".parse().unwrap();
-        // *record.read_name_mut() = Some(r9_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "5M5N5M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 7); // Still gets processed, will be filtered later
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 0);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 1);
+        // Test that intron is too short
+        let mut record = Record::default();
+        let r9_name: ReadName = "short".parse().unwrap();
+        *record.read_name_mut() = Some(r9_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "5M5N5M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 7); // Still gets processed, will be filtered later
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 2);
 
-        // // Test that that reads not spliced are ignored
-        // let mut record = Record::default();
-        // let r10_name: ReadName = "not_spliced".parse().unwrap();
-        // *record.read_name_mut() = Some(r10_name);
-        // *record.reference_sequence_id_mut() = Some(0);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 7);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 1);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 1);
+        // Test that that reads not spliced are ignored
+        let mut record = Record::default();
+        let r10_name: ReadName = "not_spliced".parse().unwrap();
+        *record.read_name_mut() = Some(r10_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 7);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 1);
+        assert_eq!(results.records.bad_mapq, 2);
 
-        // // Test unannoted reference
-        // let mut record = Record::default();
-        // let r11_name: ReadName = "unannotated1".parse().unwrap();
-        // *record.read_name_mut() = Some(r11_name);
-        // *record.reference_sequence_id_mut() = Some(1);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 8);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 1);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 1);
+        // Test unannoted reference
+        let mut record = Record::default();
+        let r11_name: ReadName = "unannotated1".parse().unwrap();
+        *record.read_name_mut() = Some(r11_name);
+        *record.reference_sequence_id_mut() = Some(1);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 8);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 1);
+        assert_eq!(results.records.bad_mapq, 2);
 
-        // // Test unannoted reference (again for more read support)
-        // let mut record = Record::default();
-        // let r11_name: ReadName = "unannotated2".parse().unwrap();
-        // *record.read_name_mut() = Some(r11_name);
-        // *record.reference_sequence_id_mut() = Some(1);
-        // *record.alignment_start_mut() = Position::new(1);
-        // *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        // *record.mapping_quality_mut() = MappingQuality::new(60);
-        // record.flags_mut().set(0x4.into(), false);
-        // process(&record, &exons, &header, &params, &mut results).unwrap();
-        // assert_eq!(results.records.processed, 9);
-        // assert_eq!(results.records.filtered_by_flags, 2);
-        // assert_eq!(results.records.not_spliced, 1);
-        // assert_eq!(results.records.low_mapq, 1);
-        // assert_eq!(results.records.missing_mapq, 1);
+        // Test unannoted reference (again for more read support)
+        let mut record = Record::default();
+        let r11_name: ReadName = "unannotated2".parse().unwrap();
+        *record.read_name_mut() = Some(r11_name);
+        *record.reference_sequence_id_mut() = Some(1);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 9);
+        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.not_spliced, 1);
+        assert_eq!(results.records.bad_mapq, 2);
 
-        // // Test summarize
-        // summarize(&mut results, &params);
+        // Test summarize
+        summarize(&mut results, &params);
 
-        // assert_eq!(results.summary.total_rejected_junctions, 1);
-        // assert_eq!(results.summary.intron_too_short, 1);
-        // assert_eq!(results.summary.junctions_with_not_enough_read_support, 1);
-        // assert_eq!(results.summary.known_junctions, 1);
-        // assert_eq!(results.summary.known_junctions_read_support, 2);
-        // assert_eq!(results.summary.partial_novel_junctions, 1);
-        // assert_eq!(results.summary.partial_novel_junctions_read_support, 2);
-        // assert_eq!(results.summary.complete_novel_junctions, 1);
-        // assert_eq!(results.summary.complete_novel_junctions_read_support, 2);
-        // assert_eq!(results.summary.unannotated_reference_junctions, 1);
-        // assert_eq!(
-        //     results.summary.unannotated_reference_junctions_read_support,
-        //     2
-        // );
-        // assert_eq!(results.summary.total_junctions, 4);
-        // assert_eq!(results.summary.total_junctions_read_support, 8);
-        // assert_eq!(results.summary.known_junctions_percent, 33.33333333333333);
-        // assert_eq!(
-        //     results.summary.partial_novel_junctions_percent,
-        //     33.33333333333333
-        // );
-        // assert_eq!(
-        //     results.summary.complete_novel_junctions_percent,
-        //     33.33333333333333
-        // );
-        // assert_eq!(results.summary.average_junction_read_support, 2.0);
-        // assert_eq!(results.summary.average_known_junction_read_support, 2.0);
-        // assert_eq!(
-        //     results.summary.average_partial_novel_junction_read_support,
-        //     2.0
-        // );
-        // assert_eq!(
-        //     results.summary.average_complete_novel_junction_read_support,
-        //     2.0
-        // );
+        assert_eq!(results.summary.total_rejected_junctions, 1);
+        assert_eq!(results.summary.intron_too_short, 1);
+        assert_eq!(results.summary.junctions_with_not_enough_read_support, 1);
+        assert_eq!(results.summary.known_junctions, 1);
+        assert_eq!(results.summary.known_junctions_read_support, 2);
+        assert_eq!(results.summary.partial_novel_junctions, 1);
+        assert_eq!(results.summary.partial_novel_junctions_read_support, 2);
+        assert_eq!(results.summary.complete_novel_junctions, 2);
+        assert_eq!(results.summary.complete_novel_junctions_read_support, 4);
+        assert_eq!(results.summary.unannotated_reference_junctions, 1);
+        assert_eq!(
+            results.summary.unannotated_reference_junctions_read_support,
+            2
+        );
+        assert_eq!(results.summary.total_junctions, 5);
+        assert_eq!(results.summary.total_junctions_read_support, 10);
+        assert_eq!(results.summary.known_junctions_percent, 25.0);
+        assert_eq!(results.summary.partial_novel_junctions_percent, 25.0);
+        assert_eq!(results.summary.complete_novel_junctions_percent, 50.0);
+        assert_eq!(results.summary.average_junction_read_support, 2.0);
+        assert_eq!(results.summary.average_known_junction_read_support, 2.0);
+        assert_eq!(
+            results.summary.average_partial_novel_junction_read_support,
+            2.0
+        );
+        assert_eq!(
+            results.summary.average_complete_novel_junction_read_support,
+            2.0
+        );
     }
 }
