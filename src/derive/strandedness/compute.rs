@@ -166,7 +166,7 @@ fn disqualify_gene(gene: &gff::Record, exons: &HashMap<&str, Lapper<usize, Stran
     let at_least_one_exon = match exons.get(gene.reference_sequence_name()) {
         Some(intervals) => intervals
             .find(gene.start().into(), gene.end().into())
-            .any(|exon| {
+            .all(|exon| {
                 if exon.val != gene_strand {
                     all_on_same_strand = false;
                 }
@@ -422,6 +422,7 @@ mod tests {
 
     #[test]
     fn test_disqualify_gene() {
+        // test mixed strands
         let mut exons = HashMap::new();
         exons.insert(
             "chr1",
@@ -439,9 +440,11 @@ mod tests {
             ]),
         );
 
-        let gene = gff::Record::default();
-        assert!(disqualify_gene(&gene, &exons));
+        let s = "chr1\tNOODLES\tgene\t5\t14\t.\t+\t.\tgene_id=ndls0;gene_name=gene0";
+        let record = s.parse::<gff::Record>().unwrap();
+        assert!(disqualify_gene(&record, &exons)); // disqualified
 
+        // test all on same strand
         let mut exons = HashMap::new();
         exons.insert(
             "chr1",
@@ -459,9 +462,11 @@ mod tests {
             ]),
         );
 
-        let s = "chr1\tNOODLES\tgene\t8\t13\t.\t+\t.\tgene_id=ndls0;gene_name=gene0";
-        let record = s.parse::<gff::Record>().unwrap();
-        assert!(!disqualify_gene(&record, &exons));
+        assert!(!disqualify_gene(&record, &exons)); // accepted
+
+        // test no exons
+        let exons = HashMap::new();
+        assert!(disqualify_gene(&record, &exons)); // disqualified
     }
 
     #[test]
