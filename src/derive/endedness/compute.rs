@@ -259,13 +259,13 @@ fn predict_endedness(
 /// resulting [`DerivedEndednessResult`] should be evaluated accordingly.
 pub fn predict(
     ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts>,
-    read_names: HashMap<String, Vec<ReadGroupPtr>>,
+    read_names: Option<HashMap<String, Vec<ReadGroupPtr>>>,
     paired_deviance: f64,
     round_rpt: bool,
 ) -> results::DerivedEndednessResult {
     let mut rg_rpts: HashMap<ReadGroupPtr, f64> = HashMap::new();
     let mut overall_rpt: Option<f64> = None;
-    if !read_names.is_empty() {
+    if let Some(read_names) = read_names {
         overall_rpt = Some(calculate_reads_per_template(read_names, &mut rg_rpts));
     }
 
@@ -401,7 +401,7 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, None, 0.0, false);
         assert!(!result.succeeded);
         assert_eq!(result.endedness, None);
         assert_eq!(result.first, 1);
@@ -425,7 +425,7 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, None, 0.0, false);
         assert!(!result.succeeded);
         assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
@@ -449,7 +449,7 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, None, 0.0, false);
         assert!(!result.succeeded);
         assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
@@ -473,7 +473,7 @@ mod tests {
                 neither: 1,
             },
         );
-        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, None, 0.0, false);
         assert!(!result.succeeded);
         assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
@@ -497,7 +497,7 @@ mod tests {
                 neither: 0,
             },
         );
-        let result = predict(ordering_flags, HashMap::new(), 0.0, false);
+        let result = predict(ordering_flags, None, 0.0, false);
         assert!(result.succeeded);
         assert_eq!(result.endedness, Some("Paired-End".to_string()));
         assert_eq!(result.first, 1);
@@ -597,7 +597,7 @@ mod tests {
                 Arc::clone(&rg_single),
             ],
         );
-        let result = predict(ordering_flags, read_names, 0.0, false);
+        let result = predict(ordering_flags, Some(read_names), 0.0, false);
         assert!(!result.succeeded);
         assert_eq!(result.endedness, None);
         assert_eq!(result.unsegmented, 2);

@@ -58,7 +58,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     let mut ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts> = HashMap::new();
 
     // only used if args.calc_rpt is true
-    let mut read_names: HashMap<String, Vec<ReadGroupPtr>> = HashMap::new();
+    let mut read_names: Option<HashMap<String, Vec<ReadGroupPtr>>> = None;
 
     let ParsedBAMFile {
         mut reader, header, ..
@@ -82,17 +82,18 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         let read_group = get_read_group(&record, Some(&mut found_rgs));
 
         if args.calc_rpt {
+            let read_name_map = read_names.get_or_insert_with(HashMap::new);
             match record.read_name() {
                 Some(rn) => {
                     let rn = rn.to_string();
-                    let rg_vec = read_names.get_mut(&rn);
+                    let rg_vec = read_name_map.get_mut(&rn);
 
                     match rg_vec {
                         Some(rg_vec) => {
                             rg_vec.push(Arc::clone(&read_group));
                         }
                         None => {
-                            read_names.insert(rn, vec![(Arc::clone(&read_group))]);
+                            read_name_map.insert(rn, vec![(Arc::clone(&read_group))]);
                         }
                     }
                 }
