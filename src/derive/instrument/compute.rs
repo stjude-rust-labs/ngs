@@ -297,7 +297,16 @@ pub fn predict(
     let instruments = instruments::build_instrument_lookup_table();
     let flowcells = flowcells::build_flowcell_lookup_table();
 
+    debug!(
+        "Predicting instruments from instrument names: {:?}",
+        instrument_names
+    );
     let iid_results = predict_instrument(instrument_names, &instruments);
+
+    debug!(
+        "Predicting instruments from flowcell names: {:?}",
+        flowcell_names
+    );
     let fcid_results = predict_instrument(flowcell_names, &flowcells);
 
     resolve_instrument_prediction(iid_results, fcid_results)
