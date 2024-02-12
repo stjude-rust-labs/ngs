@@ -324,7 +324,7 @@ pub fn predict_strandedness(
 
 /// Main method to evaluate the observed strand state and
 /// return a result for the derived strandedness. This may fail, and the
-/// resulting [`DerivedStrandednessResult`] should be evaluated accordingly.
+/// resulting [`results::DerivedStrandednessResult`] should be evaluated accordingly.
 pub fn predict(
     parsed_bam: &mut ParsedBAMFile,
     gene_records: &mut Vec<gff::Record>,

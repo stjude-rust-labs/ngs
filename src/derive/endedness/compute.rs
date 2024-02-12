@@ -256,7 +256,7 @@ fn predict_endedness(
 
 /// Main method to evaluate the collected ordering flags and
 /// return a result for the endedness of the file. This may fail, and the
-/// resulting [`DerivedEndednessResult`] should be evaluated accordingly.
+/// resulting [`results::DerivedEndednessResult`] should be evaluated accordingly.
 pub fn predict(
     ordering_flags: HashMap<ReadGroupPtr, OrderingFlagsCounts>,
     read_names: Option<HashMap<String, Vec<ReadGroupPtr>>>,
