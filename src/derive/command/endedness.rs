@@ -1,16 +1,12 @@
 //! Functionality relating to the `ngs derive endedness` subcommand itself.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-use std::path::PathBuf;
-use std::sync::Arc;
-
 use anyhow::Context;
 use clap::Args;
-use num_format::Locale;
-use num_format::ToFormattedString;
-use tracing::info;
-use tracing::trace;
+use num_format::{Locale, ToFormattedString};
+use std::collections::{HashMap, HashSet};
+use std::path::PathBuf;
+use std::sync::Arc;
+use tracing::{info, trace};
 
 use crate::derive::endedness::compute;
 use crate::derive::endedness::compute::OrderingFlagsCounts;

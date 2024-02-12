@@ -1,7 +1,8 @@
 //! Module holding the logic for computing the strandedness.
 
+use noodles::core::Region;
 use noodles::sam::record::MappingQuality;
-use noodles::{bam, core::Region, gff, sam};
+use noodles::{bam, gff, sam};
 use rand::Rng;
 use rust_lapper::Lapper;
 use std::collections::{HashMap, HashSet};
@@ -9,8 +10,9 @@ use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 
 use crate::derive::strandedness::results;
+use crate::utils::alignment::filter_by_mapq;
+use crate::utils::display::RecordCounter;
 use crate::utils::read_groups;
-use crate::utils::{alignment::filter_by_mapq, display::RecordCounter};
 
 const STRANDED_THRESHOLD: f64 = 80.0;
 const UNSTRANDED_THRESHOLD: f64 = 40.0;

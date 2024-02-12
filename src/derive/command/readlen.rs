@@ -1,12 +1,10 @@
 //! Functionality relating to the `ngs derive readlen` subcommand itself.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-
 use anyhow::Context;
 use clap::Args;
-use num_format::Locale;
-use num_format::ToFormattedString;
+use num_format::{Locale, ToFormattedString};
+use std::collections::HashMap;
+use std::path::PathBuf;
 use tracing::info;
 
 use crate::derive::readlen::compute;

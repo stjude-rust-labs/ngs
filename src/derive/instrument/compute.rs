@@ -1,14 +1,11 @@
 //! Combines the flowcell and instrument checks into a single workflow.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
-
 use regex::Regex;
 use serde::Serialize;
+use std::collections::{HashMap, HashSet};
 use tracing::debug;
 
-use super::flowcells;
-use super::instruments;
+use crate::derive::instrument::{flowcells, instruments};
 
 /// Generalized struct for holding instrument detection results.
 #[derive(Debug, Default, Serialize)]

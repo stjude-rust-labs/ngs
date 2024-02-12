@@ -1,14 +1,12 @@
 //! Module holding the logic for annotating junctions.
 
-use anyhow::bail;
-use anyhow::Ok;
+use anyhow::{bail, Ok};
 use noodles::core::Position;
 use noodles::sam::alignment::Record;
 use noodles::sam::record::cigar::op::Kind;
 use noodles::sam::record::MappingQuality;
 use noodles::sam::Header;
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use crate::derive::junction_annotation::results;
 use crate::utils::alignment::filter_by_mapq;

@@ -2,8 +2,7 @@
 
 use anyhow::bail;
 use clap::Args;
-use num_format::Locale;
-use num_format::ToFormattedString;
+use num_format::{Locale, ToFormattedString};
 use std::collections::HashSet;
 use std::path::PathBuf;
 use tracing::info;

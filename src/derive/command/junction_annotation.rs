@@ -1,15 +1,12 @@
 //! Functionality relating to the `ngs derive junction-annotation` subcommand itself.
 
-use std::collections::HashMap;
-use std::path::PathBuf;
-
 use anyhow::Context;
 use clap::Args;
 use noodles::sam::record::MappingQuality;
-use num_format::Locale;
-use num_format::ToFormattedString;
-use tracing::debug;
-use tracing::info;
+use num_format::{Locale, ToFormattedString};
+use std::collections::HashMap;
+use std::path::PathBuf;
+use tracing::{debug, info};
 
 use crate::derive::junction_annotation::compute;
 use crate::derive::junction_annotation::results::JunctionAnnotationResults;

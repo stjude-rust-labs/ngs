@@ -1,7 +1,6 @@
 //! Module holding the logic for computing the endedness of a BAM.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 use std::ops::{Add, AddAssign};
 use std::sync::Arc;
 use tracing::warn;

@@ -2,8 +2,7 @@
 
 use noodles::core::Position;
 use serde::ser::SerializeStruct;
-use serde::Serialize;
-use serde::Serializer;
+use serde::{Serialize, Serializer};
 use std::collections::HashMap;
 
 /// A junction is a tuple of (start, end) coordinates.

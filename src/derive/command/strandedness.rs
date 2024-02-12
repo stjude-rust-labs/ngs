@@ -1,23 +1,17 @@
 //! Functionality relating to the `ngs derive strandedness` subcommand itself.
 
-use std::collections::HashMap;
-use std::collections::HashSet;
+use anyhow::{bail, Context};
+use clap::Args;
+use noodles::sam::record::MappingQuality;
+use noodles::{bam, gff};
+use rust_lapper::{Interval, Lapper};
+use std::collections::{HashMap, HashSet};
 use std::fs::File;
 use std::path::PathBuf;
+use tracing::{debug, info};
 
-use anyhow::bail;
-use anyhow::Context;
-use clap::Args;
-use noodles::bam;
-use noodles::gff;
-use noodles::sam::record::MappingQuality;
-use rust_lapper::{Interval, Lapper};
-use tracing::debug;
-use tracing::info;
-
-use crate::derive::strandedness::compute;
 use crate::derive::strandedness::compute::ParsedBAMFile;
-use crate::derive::strandedness::results;
+use crate::derive::strandedness::{compute, results};
 use crate::utils::formats;
 use crate::utils::read_groups::validate_read_group_info;
 

@@ -1,15 +1,12 @@
 //! Functionality relating to the `ngs derive encoding` subcommand itself.
 
+use anyhow::{Context, Ok};
+use clap::Args;
+use noodles::bam;
+use num_format::{Locale, ToFormattedString};
 use std::collections::HashSet;
 use std::io::BufReader;
 use std::path::PathBuf;
-
-use anyhow::Context;
-use anyhow::Ok;
-use clap::Args;
-use noodles::bam;
-use num_format::Locale;
-use num_format::ToFormattedString;
 use tracing::info;
 
 use crate::derive::encoding::compute;
