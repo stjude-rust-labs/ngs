@@ -11,7 +11,7 @@ pub struct DerivedReadlenResult {
     /// Whether or not the `ngs derive readlen` subcommand succeeded.
     pub succeeded: bool,
 
-    /// The concsensus read length, if available.
+    /// The consensus read length, if derivable.
     pub consensus_read_length: Option<usize>,
 
     /// The majority vote percentage of the consensus read length.

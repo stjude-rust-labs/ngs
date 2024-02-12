@@ -158,7 +158,7 @@ fn predict_endedness(
         return results::ReadGroupDerivedEndednessResult::new(
             read_group_name,
             false,
-            "Unknown".to_string(),
+            None,
             rg_ordering_flags.clone(),
             reads_per_template,
         );
@@ -167,7 +167,7 @@ fn predict_endedness(
     let mut result = results::ReadGroupDerivedEndednessResult::new(
         read_group_name,
         false,
-        "Unknown".to_string(),
+        None,
         rg_ordering_flags.clone(),
         reads_per_template,
     );
@@ -178,12 +178,12 @@ fn predict_endedness(
             Some(rpt) => {
                 if rpt == 1.0 || (round_rpt && rpt.round() as usize == 1) {
                     result.succeeded = true;
-                    result.endedness = String::from("Single-End");
+                    result.endedness = Some(String::from("Single-End"));
                 }
             }
             None => {
                 result.succeeded = true;
-                result.endedness = String::from("Single-End");
+                result.endedness = Some(String::from("Single-End"));
             }
         }
         return result;
@@ -243,12 +243,12 @@ fn predict_endedness(
             Some(rpt) => {
                 if rpt == 2.0 || (round_rpt && rpt.round() as usize == 2) {
                     result.succeeded = true;
-                    result.endedness = String::from("Paired-End");
+                    result.endedness = Some(String::from("Paired-End"));
                 }
             }
             None => {
                 result.succeeded = true;
-                result.endedness = String::from("Paired-End");
+                result.endedness = Some(String::from("Paired-End"));
             }
         }
     }
@@ -330,7 +330,7 @@ mod tests {
             false,
         );
         assert!(result.succeeded);
-        assert_eq!(result.endedness, "Paired-End");
+        assert_eq!(result.endedness, Some("Paired-End".to_string()));
         assert_eq!(result.first, 1);
         assert_eq!(result.last, 1);
         assert_eq!(result.both, 0);
@@ -361,7 +361,7 @@ mod tests {
             false,
         );
         assert!(result.succeeded);
-        assert_eq!(result.endedness, "Single-End");
+        assert_eq!(result.endedness, Some("Single-End".to_string()));
         assert_eq!(result.first, 0);
         assert_eq!(result.last, 0);
         assert_eq!(result.both, 0);
@@ -381,7 +381,7 @@ mod tests {
             false,
         );
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
         assert_eq!(result.last, 0);
         assert_eq!(result.both, 0);
@@ -404,7 +404,7 @@ mod tests {
         );
         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.first, 1);
         assert_eq!(result.last, 0);
         assert_eq!(result.both, 0);
@@ -428,7 +428,7 @@ mod tests {
         );
         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
         assert_eq!(result.last, 1);
         assert_eq!(result.both, 0);
@@ -452,7 +452,7 @@ mod tests {
         );
         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
         assert_eq!(result.last, 0);
         assert_eq!(result.both, 1);
@@ -476,7 +476,7 @@ mod tests {
         );
         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.first, 0);
         assert_eq!(result.last, 0);
         assert_eq!(result.both, 0);
@@ -500,7 +500,7 @@ mod tests {
         );
         let result = predict(ordering_flags, HashMap::new(), 0.0, false);
         assert!(result.succeeded);
-        assert_eq!(result.endedness, "Paired-End");
+        assert_eq!(result.endedness, Some("Paired-End".to_string()));
         assert_eq!(result.first, 1);
         assert_eq!(result.last, 1);
         assert_eq!(result.both, 0);
@@ -600,7 +600,7 @@ mod tests {
         );
         let result = predict(ordering_flags, read_names, 0.0, false);
         assert!(!result.succeeded);
-        assert_eq!(result.endedness, "Unknown");
+        assert_eq!(result.endedness, None);
         assert_eq!(result.unsegmented, 2);
         assert_eq!(result.first, 8);
         assert_eq!(result.last, 8);

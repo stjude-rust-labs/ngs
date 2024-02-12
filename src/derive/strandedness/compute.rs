@@ -289,7 +289,7 @@ pub fn predict_strandedness(
         return results::ReadGroupDerivedStrandednessResult {
             read_group: rg_name.to_string(),
             succeeded: false,
-            strandedness: "Inconclusive".to_string(),
+            strandedness: None,
             total: 0,
             forward: 0,
             reverse: 0,
@@ -300,22 +300,22 @@ pub fn predict_strandedness(
     let mut result = results::ReadGroupDerivedStrandednessResult::new(
         rg_name.to_string(),
         false,
-        "Inconclusive".to_string(),
+        None,
         counts.forward,
         counts.reverse,
     );
 
     if result.forward_pct > STRANDED_THRESHOLD {
         result.succeeded = true;
-        result.strandedness = "Forward".to_string();
+        result.strandedness = Some("Forward".to_string());
     } else if result.reverse_pct > STRANDED_THRESHOLD {
         result.succeeded = true;
-        result.strandedness = "Reverse".to_string();
+        result.strandedness = Some("Reverse".to_string());
     } else if result.forward_pct > UNSTRANDED_THRESHOLD && result.reverse_pct > UNSTRANDED_THRESHOLD
     {
         result.succeeded = true;
-        result.strandedness = "Unstranded".to_string();
-    } // else Inconclusive
+        result.strandedness = Some("Unstranded".to_string());
+    } // else did not succeed
 
     result
 }
@@ -541,7 +541,7 @@ mod tests {
         };
         let result = predict_strandedness("rg1", &counts);
         assert!(result.succeeded);
-        assert_eq!(result.strandedness, "Reverse");
+        assert_eq!(result.strandedness, Some("Reverse".to_string()));
         assert_eq!(result.forward, 10);
         assert_eq!(result.reverse, 90);
         assert_eq!(result.forward_pct, 10.0);
@@ -553,7 +553,7 @@ mod tests {
         };
         let result = predict_strandedness("rg1", &counts);
         assert!(result.succeeded);
-        assert_eq!(result.strandedness, "Unstranded");
+        assert_eq!(result.strandedness, Some("Unstranded".to_string()));
         assert_eq!(result.forward, 50);
         assert_eq!(result.reverse, 50);
         assert_eq!(result.forward_pct, 50.0);
@@ -565,7 +565,7 @@ mod tests {
         };
         let result = predict_strandedness("rg1", &counts);
         assert!(result.succeeded);
-        assert_eq!(result.strandedness, "Forward");
+        assert_eq!(result.strandedness, Some("Forward".to_string()));
         assert_eq!(result.forward, 90);
         assert_eq!(result.reverse, 10);
         assert_eq!(result.forward_pct, 90.0);
@@ -577,7 +577,7 @@ mod tests {
         };
         let result = predict_strandedness("rg1", &counts);
         assert!(!result.succeeded);
-        assert_eq!(result.strandedness, "Inconclusive");
+        assert_eq!(result.strandedness, None);
         assert_eq!(result.forward, 0);
         assert_eq!(result.reverse, 0);
         assert_eq!(result.forward_pct, 0.0);

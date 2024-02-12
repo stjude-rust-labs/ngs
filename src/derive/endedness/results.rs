@@ -14,8 +14,8 @@ pub struct ReadGroupDerivedEndednessResult {
     /// Whether or not an endedness was determined for this read group.
     pub succeeded: bool,
 
-    /// The endedness of this read group or "Unknown".
-    pub endedness: String,
+    /// The endedness of this read group, if derivable.
+    pub endedness: Option<String>,
 
     /// The number of reads without 0x1 set.
     pub unsegmented: usize,
@@ -42,7 +42,7 @@ impl ReadGroupDerivedEndednessResult {
     pub fn new(
         read_group: String,
         succeeded: bool,
-        endedness: String,
+        endedness: Option<String>,
         counts: OrderingFlagsCounts,
         rpt: Option<f64>,
     ) -> Self {
@@ -67,8 +67,8 @@ pub struct DerivedEndednessResult {
     /// Whether or not the `ngs derive endedness` subcommand succeeded.
     pub succeeded: bool,
 
-    /// The overall endedness of the file or "Unknown".
-    pub endedness: String,
+    /// The overall endedness, if derivable.
+    pub endedness: Option<String>,
 
     /// The number of reads without 0x1 set.
     pub unsegmented: usize,
@@ -99,7 +99,7 @@ impl DerivedEndednessResult {
     /// Creates a new [`DerivedEndednessResult`].
     pub fn new(
         succeeded: bool,
-        endedness: String,
+        endedness: Option<String>,
         counts: OrderingFlagsCounts,
         rpt: Option<f64>,
         read_groups: Vec<ReadGroupDerivedEndednessResult>,

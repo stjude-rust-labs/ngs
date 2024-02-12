@@ -75,7 +75,7 @@ pub struct DerivedInstrumentResult {
     pub succeeded: bool,
 
     /// The possible instruments detected by `ngs derive instrument`, if
-    /// available.
+    /// derivable.
     pub instruments: Option<HashSet<String>>,
 
     /// The level of confidence that the tool has concerning these results.

@@ -16,7 +16,7 @@ pub struct DerivedEncodingResult {
     /// Whether or not the `ngs derive encoding` subcommand succeeded.
     pub succeeded: bool,
 
-    /// The detected quality score encoding, if available.
+    /// The detected quality score encoding, if derivable.
     pub encoding: Option<String>,
 
     /// The minimum quality score observed.

@@ -85,8 +85,8 @@ pub struct ReadGroupDerivedStrandednessResult {
     /// Whether or not strandedness was determined for this read group.
     pub succeeded: bool,
 
-    /// The strandedness of this read group or "Inconclusive".
-    pub strandedness: String,
+    /// The strandedness of this read group, if derivable.
+    pub strandedness: Option<String>,
 
     /// The total number of reads in this read group.
     pub total: usize,
@@ -109,7 +109,7 @@ impl ReadGroupDerivedStrandednessResult {
     pub fn new(
         read_group: String,
         succeeded: bool,
-        strandedness: String,
+        strandedness: Option<String>,
         forward: usize,
         reverse: usize,
     ) -> Self {
@@ -133,8 +133,8 @@ pub struct DerivedStrandednessResult {
     /// Whether or not the `ngs derive strandedness` subcommand succeeded.
     pub succeeded: bool,
 
-    /// The strandedness of this read group or "Inconclusive".
-    pub strandedness: String,
+    /// The strandedness of this read group, if derivable.
+    pub strandedness: Option<String>,
 
     /// The total number of reads.
     pub total: usize,
@@ -173,7 +173,7 @@ impl DerivedStrandednessResult {
     /// Creates a new [`DerivedStrandednessResult`].
     pub fn new(
         succeeded: bool,
-        strandedness: String,
+        strandedness: Option<String>,
         forward: usize,
         reverse: usize,
         read_groups: Vec<ReadGroupDerivedStrandednessResult>,
