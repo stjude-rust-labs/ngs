@@ -3,7 +3,6 @@
 use regex::Regex;
 use serde::Serialize;
 use std::collections::{HashMap, HashSet};
-use tracing::debug;
 
 use crate::derive::instrument::{flowcells, instruments};
 
@@ -39,7 +38,7 @@ impl InstrumentDetectionResults {
     }
 }
 
-/// TODO
+/// A query for a look-up table and the resulting hits from that table.
 #[derive(Debug, Serialize)]
 pub struct QueryResult {
     /// The query that was used to generate the result.
@@ -49,12 +48,13 @@ pub struct QueryResult {
     pub result: HashSet<String>,
 }
 
-/// TODO
+/// Utility struct for holding the results of look-ups for instrument and
+/// flowcell names.
 pub struct Queries {
-    /// TODO
+    /// The results of the instrument name look-ups.
     pub instrument_name_queries: Vec<QueryResult>,
 
-    /// TODO
+    /// The results of the flowcell name look-ups.
     pub flowcell_name_queries: Vec<QueryResult>,
 }
 
@@ -98,10 +98,10 @@ pub struct DerivedInstrumentResult {
     /// A general comment field, if available.
     pub comment: Option<String>,
 
-    /// TODO
+    /// The results of the instrument name look-ups.
     pub instrument_name_queries: Vec<QueryResult>,
 
-    /// TODO
+    /// The results of the flowcell name look-ups.
     pub flowcell_name_queries: Vec<QueryResult>,
 
     /// Metrics related to how read records were processed.
@@ -177,7 +177,6 @@ pub fn possible_instruments_for_query(
             result_set.extend(matching_machines);
         }
     }
-
     QueryResult {
         query,
         result: result_set,
@@ -221,7 +220,7 @@ pub fn predict_instrument(
 }
 
 /// Combines evidence from the instrument id detection and flowcell id detection
-/// to produce a final [`DerivedInstrumentResult`].
+/// to produce a [`DerivedInstrumentResult`].
 pub fn resolve_instrument_prediction(
     iid_results: InstrumentDetectionResults,
     fcid_results: InstrumentDetectionResults,
@@ -325,10 +324,7 @@ pub fn predict(
     let instruments = instruments::build_instrument_lookup_table();
     let flowcells = flowcells::build_flowcell_lookup_table();
 
-    debug!("Predicting instruments from instrument names");
     let (iid_results, instrument_name_queries) = predict_instrument(instrument_names, &instruments);
-
-    debug!("Predicting instruments from flowcell names");
     let (fcid_results, flowcell_name_queries) = predict_instrument(flowcell_names, &flowcells);
 
     let mut final_results = resolve_instrument_prediction(iid_results, fcid_results);
