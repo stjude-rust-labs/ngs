@@ -39,6 +39,16 @@ impl InstrumentDetectionResults {
     }
 }
 
+/// TODO
+#[derive(Debug, Serialize)]
+pub struct QueryResult {
+    /// The query that was used to generate the result.
+    pub query: String,
+
+    /// The possible instruments that could have generated the query.
+    pub result: HashSet<String>,
+}
+
 /// Metrics related to how read records were processed.
 #[derive(Debug, Default, Serialize)]
 pub struct RecordMetrics {
@@ -85,6 +95,12 @@ pub struct DerivedInstrumentResult {
     /// A general comment field, if available.
     pub comment: Option<String>,
 
+    /// TODO
+    pub instrument_name_queries: Vec<QueryResult>,
+
+    /// TODO
+    pub flowcell_name_queries: Vec<QueryResult>,
+
     /// Metrics related to how read records were processed.
     pub records: RecordMetrics,
 }
@@ -97,6 +113,8 @@ impl DerivedInstrumentResult {
         confidence: String,
         evidence: Option<String>,
         comment: Option<String>,
+        instrument_name_queries: Vec<QueryResult>,
+        flowcell_name_queries: Vec<QueryResult>,
         records: RecordMetrics,
     ) -> Self {
         DerivedInstrumentResult {
@@ -105,6 +123,8 @@ impl DerivedInstrumentResult {
             confidence,
             evidence,
             comment,
+            instrument_name_queries,
+            flowcell_name_queries,
             records,
         }
     }
@@ -118,6 +138,8 @@ impl Default for DerivedInstrumentResult {
             confidence: "unknown".to_string(),
             evidence: None,
             comment: None,
+            instrument_name_queries: Vec::new(),
+            flowcell_name_queries: Vec::new(),
             records: RecordMetrics::default(),
         }
     }
@@ -143,25 +165,28 @@ impl Default for DerivedInstrumentResult {
 pub fn possible_instruments_for_query(
     query: String,
     lookup_table: &HashMap<&'static str, HashSet<&'static str>>,
-) -> HashSet<String> {
-    let mut result: HashSet<String> = HashSet::new();
+) -> QueryResult {
+    let mut result_set: HashSet<String> = HashSet::new();
 
     for (pattern, machines) in lookup_table {
         let re = Regex::new(pattern).unwrap();
         if re.is_match(query.as_str()) {
             let matching_machines: Vec<String> = machines.iter().map(|x| x.to_string()).collect();
-            result.extend(matching_machines);
+            result_set.extend(matching_machines);
         }
     }
 
-    debug!(" [*] {}, Possible Instruments: {:?}", query, result);
-    result
+    debug!(" [*] {}, Possible Instruments: {:?}", query, result_set);
+    QueryResult {
+        query,
+        result: result_set,
+    }
 }
 
 /// Given a HashSet of unique queries (usually a instrument ID or flowcell ID
 /// parsed from a read name) that were detected from a SAM/BAM/CRAM file, return
 /// a HashSet that contains all possible machines that could have generated that
-/// list of queries.
+/// list of queries and a vec recording the query look-ups that were made.
 ///
 /// This is done by iterating through the HashSet of machines that could have
 /// produced each name and taking the intersection. It is possible, of course,
@@ -181,15 +206,17 @@ pub fn possible_instruments_for_query(
 pub fn predict_instrument(
     queries: HashSet<String>,
     lookup_table: &HashMap<&'static str, HashSet<&'static str>>,
-) -> InstrumentDetectionResults {
+) -> (InstrumentDetectionResults, Vec<QueryResult>) {
     let mut result = InstrumentDetectionResults::default();
+    let mut query_results = Vec::new();
 
     for name in queries {
         let derived = possible_instruments_for_query(name, lookup_table);
-        result.update_instruments(&derived);
+        result.update_instruments(&derived.result);
+        query_results.push(derived);
     }
 
-    result
+    (result, query_results)
 }
 
 /// Combines evidence from the instrument id detection and flowcell id detection
@@ -298,12 +325,15 @@ pub fn predict(
     let flowcells = flowcells::build_flowcell_lookup_table();
 
     debug!("Predicting instruments from instrument names");
-    let iid_results = predict_instrument(instrument_names, &instruments);
+    let (iid_results, instrument_name_queries) = predict_instrument(instrument_names, &instruments);
 
     debug!("Predicting instruments from flowcell names");
-    let fcid_results = predict_instrument(flowcell_names, &flowcells);
+    let (fcid_results, flowcell_name_queries) = predict_instrument(flowcell_names, &flowcells);
 
-    resolve_instrument_prediction(iid_results, fcid_results)
+    let mut final_results = resolve_instrument_prediction(iid_results, fcid_results);
+    final_results.instrument_name_queries = instrument_name_queries;
+    final_results.flowcell_name_queries = flowcell_name_queries;
+    final_results
 }
 
 #[cfg(test)]
@@ -314,30 +344,30 @@ mod tests {
     fn test_derive_instrument_from_invalid_instrument_name() {
         let instruments = instruments::build_instrument_lookup_table();
         let result = possible_instruments_for_query(String::from("NoMatchingName"), &instruments);
-        assert!(result.is_empty());
+        assert!(result.result.is_empty());
     }
 
     #[test]
     fn test_derive_instrument_from_valid_instrument_name() {
         let instruments = instruments::build_instrument_lookup_table();
         let result = possible_instruments_for_query(String::from("A00000"), &instruments);
-        assert_eq!(result.len(), 1);
-        assert!(result.contains("NovaSeq"));
+        assert_eq!(result.result.len(), 1);
+        assert!(result.result.contains("NovaSeq"));
     }
 
     #[test]
     fn test_derive_instrument_from_invalid_flowcell_name() {
         let flowcells = flowcells::build_flowcell_lookup_table();
         let result = possible_instruments_for_query(String::from("NoMatchingName"), &flowcells);
-        assert!(result.is_empty());
+        assert!(result.result.is_empty());
     }
 
     #[test]
     fn test_derive_instrument_from_valid_flowcell_name() {
         let flowcells = flowcells::build_flowcell_lookup_table();
         let result = possible_instruments_for_query(String::from("H00000RXX"), &flowcells);
-        assert_eq!(result.len(), 1);
-        assert!(result.contains("NovaSeq"));
+        assert_eq!(result.result.len(), 1);
+        assert!(result.result.contains("NovaSeq"));
     }
 
     #[test]
