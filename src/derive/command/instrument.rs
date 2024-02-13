@@ -81,8 +81,8 @@ pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
         counter.get().to_formatted_string(&Locale::en)
     );
     metrics.total_records = counter.get();
-    metrics.unique_instrument_names = instrument_names.len();
-    metrics.unique_flowcell_names = flowcell_names.len();
+    metrics.unique_instrument_names = instrument_names.clone();
+    metrics.unique_flowcell_names = flowcell_names.clone();
 
     // (2) Derive the predict instrument results based on these detected
     // instrument names and flowcell names.

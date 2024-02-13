@@ -57,11 +57,11 @@ pub struct RecordMetrics {
     /// flowcell name in their read name.
     pub found_flowcell_name: usize,
 
-    /// The number of unique instrument names that were detected.
-    pub unique_instrument_names: usize,
+    /// The unique instrument names that were detected.
+    pub unique_instrument_names: HashSet<String>,
 
-    /// The number of unique flowcell names that were detected.
-    pub unique_flowcell_names: usize,
+    /// The unique flowcell names that were detected.
+    pub unique_flowcell_names: HashSet<String>,
 }
 
 /// Struct holding the final results for an `ngs derive instrument` subcommand
@@ -297,16 +297,10 @@ pub fn predict(
     let instruments = instruments::build_instrument_lookup_table();
     let flowcells = flowcells::build_flowcell_lookup_table();
 
-    debug!(
-        "Predicting instruments from instrument names: {:?}",
-        instrument_names
-    );
+    debug!("Predicting instruments from instrument names");
     let iid_results = predict_instrument(instrument_names, &instruments);
 
-    debug!(
-        "Predicting instruments from flowcell names: {:?}",
-        flowcell_names
-    );
+    debug!("Predicting instruments from flowcell names");
     let fcid_results = predict_instrument(flowcell_names, &flowcells);
 
     resolve_instrument_prediction(iid_results, fcid_results)
