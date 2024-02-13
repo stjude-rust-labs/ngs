@@ -49,6 +49,15 @@ pub struct QueryResult {
     pub result: HashSet<String>,
 }
 
+/// TODO
+pub struct Queries {
+    /// TODO
+    pub instrument_name_queries: Vec<QueryResult>,
+
+    /// TODO
+    pub flowcell_name_queries: Vec<QueryResult>,
+}
+
 /// Metrics related to how read records were processed.
 #[derive(Debug, Default, Serialize)]
 pub struct RecordMetrics {
@@ -66,12 +75,6 @@ pub struct RecordMetrics {
     /// The total number of records that contained a valid
     /// flowcell name in their read name.
     pub found_flowcell_name: usize,
-
-    /// The unique instrument names that were detected.
-    pub unique_instrument_names: HashSet<String>,
-
-    /// The unique flowcell names that were detected.
-    pub unique_flowcell_names: HashSet<String>,
 }
 
 /// Struct holding the final results for an `ngs derive instrument` subcommand
@@ -113,8 +116,7 @@ impl DerivedInstrumentResult {
         confidence: String,
         evidence: Option<String>,
         comment: Option<String>,
-        instrument_name_queries: Vec<QueryResult>,
-        flowcell_name_queries: Vec<QueryResult>,
+        queries: Queries,
         records: RecordMetrics,
     ) -> Self {
         DerivedInstrumentResult {
@@ -123,8 +125,8 @@ impl DerivedInstrumentResult {
             confidence,
             evidence,
             comment,
-            instrument_name_queries,
-            flowcell_name_queries,
+            instrument_name_queries: queries.instrument_name_queries,
+            flowcell_name_queries: queries.flowcell_name_queries,
             records,
         }
     }
@@ -176,7 +178,6 @@ pub fn possible_instruments_for_query(
         }
     }
 
-    debug!(" [*] {}, Possible Instruments: {:?}", query, result_set);
     QueryResult {
         query,
         result: result_set,
