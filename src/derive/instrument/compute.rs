@@ -48,16 +48,6 @@ pub struct QueryResult {
     pub result: HashSet<String>,
 }
 
-/// Utility struct for holding the results of look-ups for instrument and
-/// flowcell names.
-pub struct Queries {
-    /// The results of the instrument name look-ups.
-    pub instrument_name_queries: Vec<QueryResult>,
-
-    /// The results of the flowcell name look-ups.
-    pub flowcell_name_queries: Vec<QueryResult>,
-}
-
 /// Metrics related to how read records were processed.
 #[derive(Debug, Default, Serialize)]
 pub struct RecordMetrics {
@@ -106,30 +96,6 @@ pub struct DerivedInstrumentResult {
 
     /// Metrics related to how read records were processed.
     pub records: RecordMetrics,
-}
-
-impl DerivedInstrumentResult {
-    /// Creates a new [`DerivedInstrumentResult`].
-    pub fn new(
-        succeeded: bool,
-        instruments: Option<HashSet<String>>,
-        confidence: String,
-        evidence: Option<String>,
-        comment: Option<String>,
-        queries: Queries,
-        records: RecordMetrics,
-    ) -> Self {
-        DerivedInstrumentResult {
-            succeeded,
-            instruments,
-            confidence,
-            evidence,
-            comment,
-            instrument_name_queries: queries.instrument_name_queries,
-            flowcell_name_queries: queries.flowcell_name_queries,
-            records,
-        }
-    }
 }
 
 impl Default for DerivedInstrumentResult {
