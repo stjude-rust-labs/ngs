@@ -362,6 +362,41 @@ mod tests {
     use noodles::sam::record::ReadName;
     use std::num::NonZeroUsize;
 
+    fn create_test_exons() -> ExonSets<'static> {
+        let exon_starts: HashMap<&str, HashSet<Position>> = HashMap::from([(
+            "sq1",
+            HashSet::from([
+                Position::new(1).unwrap(),
+                Position::new(11).unwrap(),
+                Position::new(21).unwrap(),
+                Position::new(31).unwrap(),
+                Position::new(41).unwrap(),
+                Position::new(51).unwrap(),
+                Position::new(61).unwrap(),
+                Position::new(71).unwrap(),
+            ]),
+        )]);
+        let exon_ends: HashMap<&str, HashSet<Position>> = exon_starts
+            .iter()
+            .map(|(k, v)| (*k, v.iter().map(|e| e.checked_add(10).unwrap()).collect()))
+            .collect::<HashMap<&str, HashSet<Position>>>();
+        let exons: ExonSets<'_> = ExonSets {
+            starts: exon_starts,
+            ends: exon_ends,
+        };
+        exons
+    }
+
+    fn create_test_header() -> Header {
+        Header::builder()
+            .set_header(Map::<map::Header>::new(Version::new(1, 6)))
+            .add_reference_sequence(
+                "sq1".parse().unwrap(),
+                Map::<ReferenceSequence>::new(NonZeroUsize::try_from(800).unwrap()),
+            )
+            .build()
+    }
+
     #[test]
     fn test_filter_by_flags() {
         // Setup
@@ -460,7 +495,7 @@ mod tests {
     }
 
     #[test]
-    fn test_process_and_summarize() {
+    fn test_process_known_junction() {
         // Setup
         let mut results = results::JunctionAnnotationResults::default();
         let params = JunctionAnnotationParameters {
@@ -471,38 +506,8 @@ mod tests {
             count_secondary: false,
             count_duplicates: false,
         };
-        let header = Header::builder()
-            .set_header(Map::<map::Header>::new(Version::new(1, 6)))
-            .add_reference_sequence(
-                "sq1".parse().unwrap(),
-                Map::<ReferenceSequence>::new(NonZeroUsize::try_from(800).unwrap()),
-            )
-            .add_reference_sequence(
-                "sq1_random".parse().unwrap(), // unannotated
-                Map::<ReferenceSequence>::new(NonZeroUsize::try_from(400).unwrap()),
-            )
-            .build();
-        let exon_starts: HashMap<&str, HashSet<Position>> = HashMap::from([(
-            "sq1",
-            HashSet::from([
-                Position::new(1).unwrap(),
-                Position::new(11).unwrap(),
-                Position::new(21).unwrap(),
-                Position::new(31).unwrap(),
-                Position::new(41).unwrap(),
-                Position::new(51).unwrap(),
-                Position::new(61).unwrap(),
-                Position::new(71).unwrap(),
-            ]),
-        )]);
-        let exon_ends = exon_starts
-            .iter()
-            .map(|(k, v)| (*k, v.iter().map(|e| e.checked_add(10).unwrap()).collect()))
-            .collect::<HashMap<&str, HashSet<Position>>>();
-        let exons = ExonSets {
-            starts: exon_starts,
-            ends: exon_ends,
-        };
+        let exons = create_test_exons();
+        let header = create_test_header();
 
         // Test known junction
         let mut record = Record::default();
@@ -518,56 +523,175 @@ mod tests {
         assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
+        assert_eq!(results.junction_annotations.known.len(), 1);
+        assert_eq!(
+            results.junction_annotations.known.get("sq1").unwrap().len(),
+            1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .known
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(11).unwrap(), Position::new(21).unwrap()))
+                .unwrap(),
+            &1
+        );
+    }
 
-        // Test that unmapped gets ignored
-        let mut record = Record::default();
-        let r2_name: ReadName = "unmapped".parse().unwrap();
-        *record.read_name_mut() = Some(r2_name);
-        *record.reference_sequence_id_mut() = Some(0);
-        *record.alignment_start_mut() = Position::new(1);
-        *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = MappingQuality::new(255);
-        record.flags_mut().set(0x4.into(), true);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 1);
-        assert_eq!(results.records.filtered_by_flags, 1);
-        assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.bad_mapq, 0);
+    #[test]
+    fn test_process_partial_novel_junction() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
 
         // Test partial novel junction
         let mut record = Record::default();
-        let r3_name: ReadName = "partial1".parse().unwrap();
-        *record.read_name_mut() = Some(r3_name);
+        let r1_name: ReadName = "partial1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M12N10M".parse().unwrap();
         *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 2);
-        assert_eq!(results.records.filtered_by_flags, 1);
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
+        assert_eq!(results.junction_annotations.partial_novel.len(), 1);
+        assert_eq!(
+            results
+                .junction_annotations
+                .partial_novel
+                .get("sq1")
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .partial_novel
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(11).unwrap(), Position::new(23).unwrap()))
+                .unwrap(),
+            &1
+        );
+    }
 
-        // Test partial novel junction (again for more read support)
+    #[test]
+    fn test_process_complete_novel_junction() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test complete novel junction
         let mut record = Record::default();
-        let r3_name: ReadName = "partial2".parse().unwrap();
-        *record.read_name_mut() = Some(r3_name);
+        let r1_name: ReadName = "complete1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
-        *record.cigar_mut() = "10M12N10M".parse().unwrap();
+        *record.cigar_mut() = "85M14N10M".parse().unwrap();
         *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 3);
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+        assert_eq!(results.junction_annotations.complete_novel.len(), 1);
+        assert_eq!(
+            results
+                .junction_annotations
+                .complete_novel
+                .get("sq1")
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .complete_novel
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(86).unwrap(), Position::new(100).unwrap()))
+                .unwrap(),
+            &1
+        );
+    }
+
+    #[test]
+    fn test_process_ignores_unmapped() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that unmapped gets ignored
+        let mut record = Record::default();
+        let r1_name: ReadName = "unmapped".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), true);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 0);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
+    }
 
-        // Test that supplementary alignments get counted
+    #[test]
+    fn test_process_supplementary_toggle() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let mut params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: true,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that supplementary gets ignored
         let mut record = Record::default();
-        let r4_name: ReadName = "supplementary".parse().unwrap();
-        *record.read_name_mut() = Some(r4_name);
+        let r1_name: ReadName = "supplementary1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M10N10M".parse().unwrap();
@@ -575,15 +699,49 @@ mod tests {
         record.flags_mut().set(0x4.into(), false);
         record.flags_mut().set(0x800.into(), true);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 4);
+        assert_eq!(results.records.processed, 0);
         assert_eq!(results.records.filtered_by_flags, 1);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
 
-        // Test that secondary alignments don't get counted
+        // Test that supplementary gets processed
+        params.no_supplementary = false;
+
         let mut record = Record::default();
-        let r5_name: ReadName = "secondary".parse().unwrap();
-        *record.read_name_mut() = Some(r5_name);
+        let r2_name = "supplementary2".parse().unwrap();
+        *record.read_name_mut() = Some(r2_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        record.flags_mut().set(0x800.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+    }
+
+    #[test]
+    fn test_process_secondary_toggle() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let mut params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: true,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that secondary gets processed
+        let mut record = Record::default();
+        let r1_name: ReadName = "secondary1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M10N10M".parse().unwrap();
@@ -591,158 +749,325 @@ mod tests {
         record.flags_mut().set(0x4.into(), false);
         record.flags_mut().set(0x100.into(), true);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 4);
-        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 0);
 
-        // Test complete novel junction with 2 junctions
-        let mut record = Record::default();
-        let r6_name: ReadName = "complete_twice1".parse().unwrap();
-        *record.read_name_mut() = Some(r6_name);
-        *record.reference_sequence_id_mut() = Some(0);
-        *record.alignment_start_mut() = Position::new(200);
-        *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = MappingQuality::new(60);
-        record.flags_mut().set(0x4.into(), false);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 5);
-        assert_eq!(results.records.filtered_by_flags, 2);
-        assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.bad_mapq, 0);
+        // Test that secondary gets ignored
+        params.count_secondary = false;
 
-        // Test complete novel junction with 2 junctions (again for more read support)
         let mut record = Record::default();
-        let r6_name: ReadName = "complete_twice2".parse().unwrap();
-        *record.read_name_mut() = Some(r6_name);
-        *record.reference_sequence_id_mut() = Some(0);
-        *record.alignment_start_mut() = Position::new(200);
-        *record.cigar_mut() = "10M10N10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = MappingQuality::new(60);
-        record.flags_mut().set(0x4.into(), false);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.filtered_by_flags, 2);
-        assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.bad_mapq, 0);
-
-        // Test fails MAPQ filter
-        let mut record = Record::default();
-        let r7_name: ReadName = "low_mapq".parse().unwrap();
-        *record.read_name_mut() = Some(r7_name);
+        let r2_name = "secondary2".parse().unwrap();
+        *record.read_name_mut() = Some(r2_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = MappingQuality::new(20);
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        record.flags_mut().set(0x100.into(), true);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 1);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+    }
+
+    #[test]
+    fn test_process_mapq_toggle() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let mut params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that mapq gets processed
+        let mut record = Record::default();
+        let r1_name: ReadName = "mapq1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+
+        // Test that mapq gets ignored
+        params.min_mapq = Some(MappingQuality::new(61).unwrap());
+
+        let mut record = Record::default();
+        let r2_name = "mapq2".parse().unwrap();
+        *record.read_name_mut() = Some(r2_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
         assert_eq!(results.records.bad_mapq, 1);
+    }
 
-        // Test missing MAPQ
+    #[test]
+    fn test_process_intron_too_short() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that intron too short gets processed
         let mut record = Record::default();
-        let r8_name: ReadName = "bad_mapq".parse().unwrap();
-        *record.read_name_mut() = Some(r8_name);
+        let r1_name: ReadName = "short1".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
-        *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = None;
-        record.flags_mut().set(0x4.into(), false);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 6);
-        assert_eq!(results.records.filtered_by_flags, 2);
-        assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.bad_mapq, 2);
-
-        // Test that intron is too short
-        let mut record = Record::default();
-        let r9_name: ReadName = "short".parse().unwrap();
-        *record.read_name_mut() = Some(r9_name);
-        *record.reference_sequence_id_mut() = Some(0);
-        *record.alignment_start_mut() = Position::new(1);
-        *record.cigar_mut() = "5M5N5M".parse().unwrap();
+        *record.cigar_mut() = "10M5N10M".parse().unwrap();
         *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 7); // Still gets processed, will be filtered later
-        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.processed, 1); // processed at first, gets filtered later
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 0);
-        assert_eq!(results.records.bad_mapq, 2);
+        assert_eq!(results.records.bad_mapq, 0);
+    }
 
-        // Test that that reads not spliced are ignored
+    #[test]
+    fn test_process_multiple_junctions() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that multiple junctions are processed
         let mut record = Record::default();
-        let r10_name: ReadName = "not_spliced".parse().unwrap();
-        *record.read_name_mut() = Some(r10_name);
+        let r1_name: ReadName = "long_read".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
+        *record.reference_sequence_id_mut() = Some(0);
+        *record.alignment_start_mut() = Position::new(1);
+        *record.cigar_mut() = "10M10N10M10N10M10N10M".parse().unwrap();
+        *record.mapping_quality_mut() = MappingQuality::new(60);
+        record.flags_mut().set(0x4.into(), false);
+        process(&record, &exons, &header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+        assert_eq!(results.junction_annotations.known.len(), 1);
+        assert_eq!(
+            results.junction_annotations.known.get("sq1").unwrap().len(),
+            3
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .known
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(11).unwrap(), Position::new(21).unwrap()))
+                .unwrap(),
+            &1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .known
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(31).unwrap(), Position::new(41).unwrap()))
+                .unwrap(),
+            &1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .known
+                .get("sq1")
+                .unwrap()
+                .get(&(Position::new(51).unwrap(), Position::new(61).unwrap()))
+                .unwrap(),
+            &1
+        );
+    }
+
+    #[test]
+    fn test_process_unspliced_read() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let exons = create_test_exons();
+        let header = create_test_header();
+
+        // Test that unspliced gets ignored
+        let mut record = Record::default();
+        let r1_name: ReadName = "unspliced".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
         *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M".parse().unwrap();
         *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
         process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 7);
-        assert_eq!(results.records.filtered_by_flags, 2);
+        assert_eq!(results.records.processed, 0);
+        assert_eq!(results.records.filtered_by_flags, 0);
         assert_eq!(results.records.not_spliced, 1);
-        assert_eq!(results.records.bad_mapq, 2);
+        assert_eq!(results.records.bad_mapq, 0);
+    }
 
-        // Test unannoted reference
+    #[test]
+    fn test_process_unannotated_reference() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        let rand_header = Header::builder()
+            .set_header(Map::<map::Header>::new(Version::new(1, 6)))
+            .add_reference_sequence(
+                "sq1_random".parse().unwrap(),
+                Map::<ReferenceSequence>::new(NonZeroUsize::try_from(800).unwrap()),
+            )
+            .build();
+        let exons = create_test_exons();
+
+        // Test that unannotated reference gets processed
         let mut record = Record::default();
-        let r11_name: ReadName = "unannotated1".parse().unwrap();
-        *record.read_name_mut() = Some(r11_name);
-        *record.reference_sequence_id_mut() = Some(1);
+        let r1_name: ReadName = "unannotated".parse().unwrap();
+        *record.read_name_mut() = Some(r1_name);
+        *record.reference_sequence_id_mut() = Some(0);
         *record.alignment_start_mut() = Position::new(1);
         *record.cigar_mut() = "10M10N10M".parse().unwrap();
         *record.mapping_quality_mut() = MappingQuality::new(60);
         record.flags_mut().set(0x4.into(), false);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 8);
-        assert_eq!(results.records.filtered_by_flags, 2);
-        assert_eq!(results.records.not_spliced, 1);
-        assert_eq!(results.records.bad_mapq, 2);
+        process(&record, &exons, &rand_header, &params, &mut results).unwrap();
+        assert_eq!(results.records.processed, 1);
+        assert_eq!(results.records.filtered_by_flags, 0);
+        assert_eq!(results.records.not_spliced, 0);
+        assert_eq!(results.records.bad_mapq, 0);
+        assert_eq!(results.junction_annotations.unannotated_reference.len(), 1);
+        assert_eq!(
+            results
+                .junction_annotations
+                .unannotated_reference
+                .get("sq1_random")
+                .unwrap()
+                .len(),
+            1
+        );
+        assert_eq!(
+            results
+                .junction_annotations
+                .unannotated_reference
+                .get("sq1_random")
+                .unwrap()
+                .get(&(Position::new(11).unwrap(), Position::new(21).unwrap()))
+                .unwrap(),
+            &1
+        );
+    }
 
-        // Test unannoted reference (again for more read support)
-        let mut record = Record::default();
-        let r11_name: ReadName = "unannotated2".parse().unwrap();
-        *record.read_name_mut() = Some(r11_name);
-        *record.reference_sequence_id_mut() = Some(1);
-        *record.alignment_start_mut() = Position::new(1);
-        *record.cigar_mut() = "10M10N10M".parse().unwrap();
-        *record.mapping_quality_mut() = MappingQuality::new(60);
-        record.flags_mut().set(0x4.into(), false);
-        process(&record, &exons, &header, &params, &mut results).unwrap();
-        assert_eq!(results.records.processed, 9);
-        assert_eq!(results.records.filtered_by_flags, 2);
-        assert_eq!(results.records.not_spliced, 1);
-        assert_eq!(results.records.bad_mapq, 2);
+    #[test]
+    fn test_summarize() {
+        // Setup
+        let mut results = results::JunctionAnnotationResults::default();
+        let params = JunctionAnnotationParameters {
+            min_intron_length: 10,
+            min_read_support: 2,
+            min_mapq: Some(MappingQuality::new(30).unwrap()),
+            no_supplementary: false,
+            count_secondary: false,
+            count_duplicates: false,
+        };
+        results.junction_annotations.known.insert(
+            "sq1".to_string(),
+            HashMap::from([
+                ((Position::new(11).unwrap(), Position::new(21).unwrap()), 4),
+                ((Position::new(31).unwrap(), Position::new(41).unwrap()), 1),
+                ((Position::new(21).unwrap(), Position::new(41).unwrap()), 3),
+            ]),
+        );
+        results.junction_annotations.partial_novel.insert(
+            "sq1".to_string(),
+            HashMap::from([
+                ((Position::new(11).unwrap(), Position::new(37).unwrap()), 3),
+                ((Position::new(11).unwrap(), Position::new(15).unwrap()), 2),
+            ]),
+        );
+        results.junction_annotations.complete_novel.insert(
+            "sq1".to_string(),
+            HashMap::from([(
+                (Position::new(103).unwrap(), Position::new(117).unwrap()),
+                2,
+            )]),
+        );
+        results.junction_annotations.unannotated_reference.insert(
+            "sq1_random".to_string(),
+            HashMap::from([((Position::new(1).unwrap(), Position::new(11).unwrap()), 5)]),
+        );
 
-        // Test summarize
+        // Test that results are summarized correctly
         summarize(&mut results, &params);
-
-        assert_eq!(results.summary.total_rejected_junctions, 1);
-        assert_eq!(results.summary.intron_too_short, 1);
-        assert_eq!(results.summary.junctions_with_not_enough_read_support, 1);
-        assert_eq!(results.summary.known_junctions, 1);
-        assert_eq!(results.summary.known_junctions_read_support, 2);
+        assert_eq!(results.summary.known_junctions, 2);
+        assert_eq!(results.summary.known_junctions_read_support, 7);
         assert_eq!(results.summary.partial_novel_junctions, 1);
-        assert_eq!(results.summary.partial_novel_junctions_read_support, 2);
-        assert_eq!(results.summary.complete_novel_junctions, 2);
-        assert_eq!(results.summary.complete_novel_junctions_read_support, 4);
+        assert_eq!(results.summary.partial_novel_junctions_read_support, 3);
+        assert_eq!(results.summary.complete_novel_junctions, 1);
+        assert_eq!(results.summary.complete_novel_junctions_read_support, 2);
         assert_eq!(results.summary.unannotated_reference_junctions, 1);
         assert_eq!(
             results.summary.unannotated_reference_junctions_read_support,
-            2
+            5
         );
         assert_eq!(results.summary.total_junctions, 5);
-        assert_eq!(results.summary.total_junctions_read_support, 10);
-        assert_eq!(results.summary.known_junctions_percent, 25.0);
+        assert_eq!(results.summary.total_junctions_read_support, 17);
+        assert_eq!(results.summary.known_junctions_percent, 50.0);
         assert_eq!(results.summary.partial_novel_junctions_percent, 25.0);
-        assert_eq!(results.summary.complete_novel_junctions_percent, 50.0);
-        assert_eq!(results.summary.average_junction_read_support, 2.0);
-        assert_eq!(results.summary.average_known_junction_read_support, 2.0);
+        assert_eq!(results.summary.complete_novel_junctions_percent, 25.0);
+        assert_eq!(results.summary.average_junction_read_support, 3.4);
+        assert_eq!(results.summary.average_known_junction_read_support, 3.5);
         assert_eq!(
             results.summary.average_partial_novel_junction_read_support,
-            2.0
+            3.0
         );
         assert_eq!(
             results.summary.average_complete_novel_junction_read_support,

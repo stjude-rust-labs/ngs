@@ -16,7 +16,7 @@ pub type JunctionCounter = HashMap<Junction, usize>;
 pub type JunctionsMap = HashMap<String, JunctionCounter>;
 
 /// Lists of annotated junctions.
-#[derive(Clone, Default)]
+#[derive(Clone, Debug, Default)]
 pub struct JunctionAnnotations {
     /// Known junctions. The outer key is the referece name, and the value is another
     /// HashMap. The inner key is the (start, end) coordinates of a junction,
@@ -90,7 +90,7 @@ impl Serialize for JunctionAnnotations {
 
 /// General record metrics that are tallied as a part of the
 /// junction-annotation subcommand.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 pub struct RecordMetrics {
     /// The number of records that have been fully processed.
     /// This is the number of spliced records that have been considered.
@@ -205,7 +205,7 @@ pub struct SummaryResults {
 
 /// Main Results struct. This struct aggregates all of the minor metrics structs
 /// outlined in this file so they can be kept track of as a unit.
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Default, Debug, Serialize)]
 pub struct JunctionAnnotationResults {
     /// Lists of annotated junctions.
     pub junction_annotations: JunctionAnnotations,
