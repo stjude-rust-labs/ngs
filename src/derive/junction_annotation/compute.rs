@@ -188,29 +188,25 @@ pub fn process(
                     intron_end_known = true;
                 }
 
-                // TODO: Better way to do this?
-                increment_junction_map(
-                    match (intron_start_known, intron_end_known) {
-                        (true, true) => {
-                            // We found both ends of the intron.
-                            // This is a Known Junction.
-                            &mut results.junction_annotations.known
-                        }
-                        (true, false) | (false, true) => {
-                            // We found one end of the intron,
-                            // but not the other.
-                            // This is a Partial Novel Junction.
-                            &mut results.junction_annotations.partial_novel
-                        }
-                        (false, false) => {
-                            // We found neither end of the intron.
-                            // This is a Complete Novel Junction.
-                            &mut results.junction_annotations.complete_novel
-                        }
-                    },
-                    seq_name,
-                    junction,
-                )
+                let junction_map = match (intron_start_known, intron_end_known) {
+                    (true, true) => {
+                        // We found both ends of the intron.
+                        // This is a Known Junction.
+                        &mut results.junction_annotations.known
+                    }
+                    (true, false) | (false, true) => {
+                        // We found one end of the intron,
+                        // but not the other.
+                        // This is a Partial Novel Junction.
+                        &mut results.junction_annotations.partial_novel
+                    }
+                    (false, false) => {
+                        // We found neither end of the intron.
+                        // This is a Complete Novel Junction.
+                        &mut results.junction_annotations.complete_novel
+                    }
+                };
+                increment_junction_map(junction_map, seq_name, junction)
             }
             // Operations that increment the reference position (beside Skip which is handled above).
             Kind::Match | Kind::Deletion | Kind::SequenceMatch | Kind::SequenceMismatch => {
@@ -445,6 +441,7 @@ mod tests {
         junction_map.insert(
             "sq1".to_string(),
             HashMap::from([
+                ((Position::new(1).unwrap(), Position::new(10).unwrap()), 3),
                 ((Position::new(1).unwrap(), Position::new(11).unwrap()), 1),
                 ((Position::new(1).unwrap(), Position::new(5).unwrap()), 1),
             ]),
@@ -467,9 +464,9 @@ mod tests {
         assert_eq!(junction_map.len(), 1);
         assert_eq!(junction_map.get("sq1"), None);
         assert_eq!(junction_map.get("sq2").unwrap().len(), 1);
-        assert_eq!(metrics.intron_too_short, 1);
+        assert_eq!(metrics.intron_too_short, 2);
         assert_eq!(metrics.junctions_with_not_enough_read_support, 2);
-        assert_eq!(metrics.total_rejected_junctions, 2);
+        assert_eq!(metrics.total_rejected_junctions, 3);
     }
 
     #[test]
