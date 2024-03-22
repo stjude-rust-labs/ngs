@@ -29,7 +29,7 @@ pub struct DeriveEndednessArgs {
     num_records: Option<usize>,
 
     /// Distance from 0.5 split between number of f+l- reads and f-l+ reads
-    /// allowed to be called 'Paired-End'. Default of `0.0` only appropriate
+    /// allowed to be called 'Paired-End'. The default value of `0.0` is only appropriate
     /// if the whole file is being processed.
     #[arg(long, value_name = "F64", default_value = "0.0")]
     paired_deviance: f64,
@@ -37,12 +37,12 @@ pub struct DeriveEndednessArgs {
     /// Calculate and output Reads-Per-Template. This will produce a more
     /// sophisticated estimate for endedness, but uses substantially more memory.
     #[arg(long, default_value = "false")]
-    calc_rpt: bool,
+    calculate_reads_per_template: bool,
 
     /// Round RPT to the nearest INT before comparing to expected values.
     /// Appropriate if using `-n` > 0. Unrounded value is reported in output.
     #[arg(long, default_value = "false")]
-    round_rpt: bool,
+    round_reads_per_template: bool,
 }
 
 /// Main function for the `ngs derive endedness` subcommand.

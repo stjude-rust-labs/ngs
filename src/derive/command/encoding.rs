@@ -20,7 +20,7 @@ pub struct DeriveEncodingArgs {
     #[arg(value_name = "BAM")]
     src: PathBuf,
 
-    /// Only examine the first n records in the file.
+    /// Examine the first `n` records in the file.
     #[arg(short, long, value_name = "USIZE")]
     num_records: Option<usize>,
 }

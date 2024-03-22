@@ -38,12 +38,10 @@ pub enum DeriveSubcommand {
     Readlen(self::readlen::DeriveReadlenArgs),
 
     /// Derives the strandedness of the RNA-Seq file.
-    /// This subcommand requires a GFF file.
     Strandedness(self::strandedness::DeriveStrandednessArgs),
 
     /// Annotates junctions in the file.
-    /// This subcommand requires a GFF file with features to annotate.
-    /// This subcommand does not "derive" anything, but is included here for
+    /// Note that, technically, this command doesn't derive anything—it will moved in the future to a better home.
     /// convenience.
     JunctionAnnotation(self::junction_annotation::JunctionAnnotationArgs),
 }
