@@ -74,7 +74,7 @@ impl RecordCounter {
     /// (if it exists, otherwise it loops forever).
     pub fn time_to_break(&self, limit: &NumberOfRecords) -> bool {
         match limit {
-            NumberOfRecords::Some(v) => self.count >= *v,
+            NumberOfRecords::Some(v) => self.count >= <usize>::from(*v),
             NumberOfRecords::All => false,
         }
     }

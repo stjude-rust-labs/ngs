@@ -1,6 +1,7 @@
 //! Functionality related to the `ngs qc` command itself.
 
 use std::fs::File;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::rc::Rc;
 
@@ -50,8 +51,8 @@ pub struct QcArgs {
     /// to process per sequence in the second pass.
     ///
     /// This is generally only used for testing purposes.
-    #[arg(short = 'n', long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    #[arg(short = 'n', long, value_name = "NonZeroUsize")]
+    num_records: Option<NonZeroUsize>,
 
     /// Directory to output files to. Defaults to current working directory.
     #[arg(short = 'o', long, value_name = "PATH")]

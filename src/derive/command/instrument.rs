@@ -4,6 +4,7 @@ use anyhow::bail;
 use clap::Args;
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashSet;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -21,9 +22,10 @@ pub struct DeriveInstrumentArgs {
     #[arg(value_name = "BAM")]
     src: PathBuf,
 
-    /// Only examine the first n records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    /// Examine the first `n` records in the file.
+    /// If `0`, all records are examined.
+    #[arg(short, long, value_name = "USIZE", default_value = "10000000")]
+    num_records: usize,
 }
 
 /// Main function for the `ngs derive instrument` subcommand.
@@ -41,7 +43,10 @@ pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
 
     // (1) Collect instrument names and flowcell names from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let num_records = NumberOfRecords::from(args.num_records);
+    let num_records = match args.num_records {
+        0 => NumberOfRecords::All,
+        _ => NumberOfRecords::Some(NonZeroUsize::new(args.num_records).unwrap()),
+    };
     let mut counter = RecordCounter::default();
 
     for result in reader.records(&header.parsed) {

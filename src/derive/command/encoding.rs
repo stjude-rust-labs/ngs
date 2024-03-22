@@ -6,6 +6,7 @@ use noodles::bam;
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashSet;
 use std::io::BufReader;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -21,8 +22,8 @@ pub struct DeriveEncodingArgs {
     src: PathBuf,
 
     /// Examine the first `n` records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    #[arg(short, long, value_name = "NonZeroUsize")]
+    num_records: Option<NonZeroUsize>,
 }
 
 /// Main function for the `ngs derive encoding` subcommand.

@@ -4,6 +4,7 @@ use anyhow::Context;
 use clap::Args;
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashMap;
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -21,9 +22,10 @@ pub struct DeriveReadlenArgs {
     #[arg(value_name = "BAM")]
     src: PathBuf,
 
-    /// Only examine the first n records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    /// Examine the first `n` records in the file.
+    /// If `0`, all records are examined.
+    #[arg(short, long, value_name = "USIZE", default_value = "10000000")]
+    num_records: usize,
 
     /// Majority vote cutoff value as a fraction between [0.0, 1.0].
     #[arg(short, long, value_name = "F64", default_value = "0.7")]
@@ -46,7 +48,10 @@ pub fn derive(args: DeriveReadlenArgs) -> anyhow::Result<()> {
 
     // (1) Collect read lengths from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let num_records = NumberOfRecords::from(args.num_records);
+    let num_records = match args.num_records {
+        0 => NumberOfRecords::All,
+        _ => NumberOfRecords::Some(NonZeroUsize::new(args.num_records).unwrap()),
+    };
     let mut counter = RecordCounter::default();
 
     for result in reader.records(&header.parsed) {

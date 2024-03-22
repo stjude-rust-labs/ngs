@@ -1,5 +1,6 @@
 //! Functionality related to the `ngs convert` command itself.
 
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use anyhow::bail;
@@ -31,8 +32,8 @@ pub struct ConvertArgs {
     to: PathBuf,
 
     /// Number of records to process before exiting the conversion.
-    #[arg(short = 'n', long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    #[arg(short = 'n', long, value_name = "NonZeroUsize")]
+    num_records: Option<NonZeroUsize>,
 
     /// If available, the FASTA reference file used to generate the file.
     #[arg(short, long)]

@@ -1,6 +1,7 @@
 //! Utilities related to the parsing of arguments.
 
 use std::fmt::Display;
+use std::num::NonZeroUsize;
 
 use noodles::{bgzf::writer::CompressionLevel, sam::record::MappingQuality};
 use tracing::debug;
@@ -17,11 +18,11 @@ pub enum NumberOfRecords {
 
     /// Designates that we should review _some_ of the records in the file. The
     /// exact count of records is stored in the `usize`.
-    Some(usize),
+    Some(NonZeroUsize),
 }
 
-impl From<Option<usize>> for NumberOfRecords {
-    fn from(num_records: Option<usize>) -> Self {
+impl From<Option<NonZeroUsize>> for NumberOfRecords {
+    fn from(num_records: Option<NonZeroUsize>) -> Self {
         match num_records {
             Some(n) => {
                 debug!("Reading a maximum of {} records.", n);

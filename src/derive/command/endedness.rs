@@ -4,6 +4,7 @@ use anyhow::Context;
 use clap::Args;
 use num_format::{Locale, ToFormattedString};
 use std::collections::{HashMap, HashSet};
+use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use std::sync::Arc;
 use tracing::{info, trace};
@@ -24,9 +25,9 @@ pub struct DeriveEndednessArgs {
     #[arg(value_name = "BAM")]
     src: PathBuf,
 
-    /// Only examine the first n records in the file.
-    #[arg(short, long, value_name = "USIZE")]
-    num_records: Option<usize>,
+    /// Examine the first `n` records in the file.
+    #[arg(short, long, value_name = "NonZeroUsize")]
+    num_records: Option<NonZeroUsize>,
 
     /// Distance from 0.5 split between number of f+l- reads and f-l+ reads
     /// allowed to be called 'Paired-End'. The default value of `0.0` is only appropriate
