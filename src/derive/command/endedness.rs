@@ -81,7 +81,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
 
         let read_group = get_read_group(&record, Some(&mut found_rgs));
 
-        if args.calc_rpt {
+        if args.calculate_reads_per_template {
             let read_name_map = read_names.get_or_insert_with(HashMap::new);
             match record.read_name() {
                 Some(rn) => {
@@ -145,7 +145,12 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
     }
 
     // (2) Derive the endedness based on the ordering flags gathered.
-    let result = compute::predict(ordering_flags, read_names, paired_deviance, args.round_rpt);
+    let result = compute::predict(
+        ordering_flags,
+        read_names,
+        paired_deviance,
+        args.round_reads_per_template,
+    );
 
     // (3) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
