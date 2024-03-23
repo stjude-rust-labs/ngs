@@ -1,6 +1,5 @@
 //! Functionality related to the `ngs convert` command itself.
 
-use std::num::NonZeroUsize;
 use std::path::PathBuf;
 
 use anyhow::bail;
@@ -32,8 +31,13 @@ pub struct ConvertArgs {
     to: PathBuf,
 
     /// Number of records to process before exiting the conversion.
-    #[arg(short = 'n', long, value_name = "NonZeroUsize")]
-    num_records: Option<NonZeroUsize>,
+    #[arg(
+        short,
+        long,
+        default_value_t,
+        value_name = "'all' or a positive, non-zero integer"
+    )]
+    num_records: NumberOfRecords,
 
     /// If available, the FASTA reference file used to generate the file.
     #[arg(short, long)]
@@ -92,7 +96,7 @@ pub fn convert(args: ConvertArgs) -> anyhow::Result<()> {
     // Number of Records //
     //===================//
 
-    let max_records = NumberOfRecords::from(args.num_records);
+    let max_records = args.num_records;
 
     //==========================//
     // Bioinformatics File Pair //

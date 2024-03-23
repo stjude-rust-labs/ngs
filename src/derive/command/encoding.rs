@@ -6,7 +6,6 @@ use noodles::bam;
 use num_format::{Locale, ToFormattedString};
 use std::collections::HashSet;
 use std::io::BufReader;
-use std::num::NonZeroUsize;
 use std::path::PathBuf;
 use tracing::info;
 
@@ -22,8 +21,13 @@ pub struct DeriveEncodingArgs {
     src: PathBuf,
 
     /// Examine the first `n` records in the file.
-    #[arg(short, long, value_name = "NonZeroUsize")]
-    num_records: Option<NonZeroUsize>,
+    #[arg(
+        short,
+        long,
+        default_value_t,
+        value_name = "'all' or a positive, non-zero integer"
+    )]
+    num_records: NumberOfRecords,
 }
 
 /// Main function for the `ngs derive encoding` subcommand.
@@ -42,9 +46,7 @@ pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
 
     // (1) Collect quality scores from reads within the
     // file. Support for sampling only a portion of the reads is provided.
-    let num_records = NumberOfRecords::from(args.num_records);
     let mut counter = RecordCounter::default();
-
     for result in reader.lazy_records() {
         let record = result?;
 
@@ -54,7 +56,7 @@ pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
         }
 
         counter.inc();
-        if counter.time_to_break(&num_records) {
+        if counter.time_to_break(&args.num_records) {
             break;
         }
     }
