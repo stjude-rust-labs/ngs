@@ -5,6 +5,7 @@ use serde::Serialize;
 use std::collections::{HashMap, HashSet};
 
 use crate::derive::instrument::{flowcells, instruments};
+use crate::utils::read_groups::ReadGroupPtr;
 
 /// Generalized struct for holding instrument detection results.
 #[derive(Debug, Default, Serialize)]
@@ -58,13 +59,59 @@ pub struct RecordMetrics {
     /// due to a missing or invalid read name.
     pub bad_read_name: usize,
 
-    /// The total number of records that contained a valid
+    /// The total number of records that contained a parseable
     /// instrument name in their read name.
     pub found_instrument_name: usize,
 
-    /// The total number of records that contained a valid
+    /// The total number of records that contained a parseable
     /// flowcell name in their read name.
     pub found_flowcell_name: usize,
+}
+
+/// Struct holding the per read group results for an `ngs derive instrument`
+/// subcommand call.
+#[derive(Debug, Serialize)]
+pub struct ReadGroupDerivedInstrumentResult {
+    /// The read group that these results are associated with.
+    pub read_group: String,
+
+    /// Whether or not the `ngs derive instrument` subcommand succeeded
+    /// for this read group.
+    pub succeeded: bool,
+
+    /// The possible instruments detected for this read group, if derivable.
+    pub instruments: Option<HashSet<String>>,
+
+    /// The level of confidence that the tool has concerning these results.
+    pub confidence: String,
+
+    /// Status of the evidence that supports (or lack thereof) these predicted
+    /// instruments, if available.
+    pub evidence: Option<String>,
+
+    /// A general comment field, if available.
+    pub comment: Option<String>,
+
+    /// The results of the instrument name look-ups for this read group.
+    pub instrument_name_queries: Vec<QueryResult>,
+
+    /// The results of the flowcell name look-ups for this read group.
+    pub flowcell_name_queries: Vec<QueryResult>,
+}
+
+impl Default for ReadGroupDerivedInstrumentResult {
+    fn default() -> Self {
+        ReadGroupDerivedInstrumentResult {
+            read_group: String::new(),
+            succeeded: false,
+            instruments: None,
+            confidence: "unknown".to_string(),
+            evidence: None,
+            comment: None,
+            instrument_name_queries: Vec::new(),
+            flowcell_name_queries: Vec::new(),
+        }
+    }
 }
 
 /// Struct holding the final results for an `ngs derive instrument` subcommand
@@ -88,11 +135,10 @@ pub struct DerivedInstrumentResult {
     /// A general comment field, if available.
     pub comment: Option<String>,
 
-    /// The results of the instrument name look-ups.
-    pub instrument_name_queries: Vec<QueryResult>,
-
-    /// The results of the flowcell name look-ups.
-    pub flowcell_name_queries: Vec<QueryResult>,
+    /// Vector of [`ReadGroupDerivedInstrumentResult`]s.
+    /// One for each read group in the BAM,
+    /// and potentially one for any reads with an unknown read group.
+    pub read_groups: Vec<ReadGroupDerivedInstrumentResult>,
 
     /// Metrics related to how read records were processed.
     pub records: RecordMetrics,
@@ -106,8 +152,7 @@ impl Default for DerivedInstrumentResult {
             confidence: "unknown".to_string(),
             evidence: None,
             comment: None,
-            instrument_name_queries: Vec::new(),
-            flowcell_name_queries: Vec::new(),
+            read_groups: Vec::new(),
             records: RecordMetrics::default(),
         }
     }
@@ -186,15 +231,15 @@ pub fn predict_instrument(
 }
 
 /// Combines evidence from the instrument id detection and flowcell id detection
-/// to produce a [`DerivedInstrumentResult`].
+/// to produce a [`ReadGroupDerivedInstrumentResult`].
 pub fn resolve_instrument_prediction(
     iid_results: InstrumentDetectionResults,
     fcid_results: InstrumentDetectionResults,
-) -> DerivedInstrumentResult {
+) -> ReadGroupDerivedInstrumentResult {
     let possible_instruments_by_iid = iid_results.possible_instruments.unwrap_or_default();
     let possible_instruments_by_fcid = fcid_results.possible_instruments.unwrap_or_default();
 
-    let mut result = DerivedInstrumentResult::default();
+    let mut result = ReadGroupDerivedInstrumentResult::default();
 
     // (1) If the set of possible instruments as determined by the instrument id
     // is empty _and_ we have seen at least one machine, then the only possible
@@ -284,19 +329,45 @@ pub fn resolve_instrument_prediction(
 /// return a result for the derived instruments. This may fail, and the
 /// resulting [`DerivedInstrumentResult`] should be evaluated accordingly.
 pub fn predict(
-    instrument_names: HashSet<String>,
-    flowcell_names: HashSet<String>,
+    instrument_names: HashMap<ReadGroupPtr, HashSet<String>>,
+    flowcell_names: HashMap<ReadGroupPtr, HashSet<String>>,
 ) -> DerivedInstrumentResult {
     let instruments = instruments::build_instrument_lookup_table();
     let flowcells = flowcells::build_flowcell_lookup_table();
 
-    let (iid_results, instrument_name_queries) = predict_instrument(instrument_names, &instruments);
-    let (fcid_results, flowcell_name_queries) = predict_instrument(flowcell_names, &flowcells);
+    let mut rg_results = Vec::new();
+    let mut all_instrument_names = HashSet::new();
+    let mut all_flowcell_names = HashSet::new();
 
-    let mut final_results = resolve_instrument_prediction(iid_results, fcid_results);
-    final_results.instrument_name_queries = instrument_name_queries;
-    final_results.flowcell_name_queries = flowcell_name_queries;
-    final_results
+    for rg in instrument_names.keys() {
+        all_instrument_names.extend(instrument_names[rg].iter().cloned());
+        all_flowcell_names.extend(flowcell_names[rg].iter().cloned());
+
+        let (rg_iid_results, rg_instrument_name_queries) =
+            predict_instrument(instrument_names[rg].clone(), &instruments);
+        let (rg_fcid_results, rg_flowcell_name_queries) =
+            predict_instrument(flowcell_names[rg].clone(), &flowcells);
+
+        let mut rg_result = resolve_instrument_prediction(rg_iid_results, rg_fcid_results);
+        rg_result.read_group = rg.to_string();
+        rg_result.instrument_name_queries = rg_instrument_name_queries;
+        rg_result.flowcell_name_queries = rg_flowcell_name_queries;
+        rg_results.push(rg_result);
+    }
+
+    let (iid_results, _) = predict_instrument(all_instrument_names, &instruments);
+    let (fcid_results, _) = predict_instrument(all_flowcell_names, &flowcells);
+
+    let overall_prediction = resolve_instrument_prediction(iid_results, fcid_results);
+    DerivedInstrumentResult {
+        succeeded: overall_prediction.succeeded,
+        instruments: overall_prediction.instruments,
+        confidence: overall_prediction.confidence,
+        evidence: overall_prediction.evidence,
+        comment: overall_prediction.comment,
+        read_groups: rg_results,
+        ..DerivedInstrumentResult::default()
+    }
 }
 
 #[cfg(test)]
@@ -335,8 +406,14 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_novaseq_succesfully() {
-        let detected_iids = HashSet::from(["A00000".to_string()]);
-        let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let detected_iids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["A00000".to_string()]),
+        )]);
+        let detected_fcids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["H00000RXX".to_string()]),
+        )]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(result.succeeded);
@@ -354,8 +431,23 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_conflicting_instrument_ids() {
-        let detected_iids = HashSet::from(["A00000".to_string(), "D00000".to_string()]);
-        let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let detected_iids = HashMap::from([
+            (
+                ReadGroupPtr::from("RG1".to_string()),
+                HashSet::from(["A00000".to_string()]),
+            ),
+            (
+                ReadGroupPtr::from("RG2".to_string()),
+                HashSet::from(["D00000".to_string()]),
+            ),
+        ]);
+        let detected_fcids = HashMap::from([
+            (
+                ReadGroupPtr::from("RG1".to_string()),
+                HashSet::from(["H00000RXX".to_string()]),
+            ),
+            (ReadGroupPtr::from("RG2".to_string()), HashSet::new()),
+        ]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(!result.succeeded);
@@ -372,8 +464,23 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_conflicting_flowcell_ids() {
-        let detected_iids = HashSet::from(["A00000".to_string()]);
-        let detected_fcids = HashSet::from(["H00000RXX".to_string(), "B0000".to_string()]);
+        let detected_iids = HashMap::from([
+            (
+                ReadGroupPtr::from("RG1".to_string()),
+                HashSet::from(["A00000".to_string()]),
+            ),
+            (ReadGroupPtr::from("RG2".to_string()), HashSet::new()),
+        ]);
+        let detected_fcids = HashMap::from([
+            (
+                ReadGroupPtr::from("RG1".to_string()),
+                HashSet::from(["H00000RXX".to_string()]),
+            ),
+            (
+                ReadGroupPtr::from("RG2".to_string()),
+                HashSet::from(["B0000".to_string()]),
+            ),
+        ]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(!result.succeeded);
@@ -388,8 +495,12 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_medium_instrument_evidence() {
-        let detected_iids = HashSet::from(["A00000".to_string()]);
-        let detected_fcids = HashSet::new();
+        let detected_iids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["A00000".to_string()]),
+        )]);
+        let detected_fcids =
+            HashMap::from([(ReadGroupPtr::from("RG1".to_string()), HashSet::new())]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(result.succeeded);
@@ -404,8 +515,12 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_low_instrument_evidence() {
-        let detected_iids = HashSet::from(["K00000".to_string()]);
-        let detected_fcids = HashSet::new();
+        let detected_iids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["K00000".to_string()]),
+        )]);
+        let detected_fcids =
+            HashMap::from([(ReadGroupPtr::from("RG1".to_string()), HashSet::new())]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(result.succeeded);
@@ -423,8 +538,12 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_medium_flowcell_evidence() {
-        let detected_iids = HashSet::new();
-        let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let detected_iids =
+            HashMap::from([(ReadGroupPtr::from("RG1".to_string()), HashSet::new())]);
+        let detected_fcids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["H00000RXX".to_string()]),
+        )]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(result.succeeded);
@@ -439,8 +558,12 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_low_flowcell_evidence() {
-        let detected_iids = HashSet::new();
-        let detected_fcids = HashSet::from(["H0000ADXX".to_string()]);
+        let detected_iids =
+            HashMap::from([(ReadGroupPtr::from("RG1".to_string()), HashSet::new())]);
+        let detected_fcids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["H0000ADXX".to_string()]),
+        )]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(result.succeeded);
@@ -459,8 +582,14 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_conflicting_flowcell_and_instrument_evidence() {
-        let detected_iids = HashSet::from(["K00000".to_string()]);
-        let detected_fcids = HashSet::from(["H00000RXX".to_string()]);
+        let detected_iids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["K00000".to_string()]),
+        )]);
+        let detected_fcids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["H00000RXX".to_string()]),
+        )]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(!result.succeeded);
@@ -475,8 +604,14 @@ mod tests {
 
     #[test]
     fn test_derive_instrument_no_matches() {
-        let detected_iids = HashSet::from(["QQQQQ".to_string()]);
-        let detected_fcids = HashSet::from(["ZZZZZZ".to_string()]);
+        let detected_iids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["QQQQQ".to_string()]),
+        )]);
+        let detected_fcids = HashMap::from([(
+            ReadGroupPtr::from("RG1".to_string()),
+            HashSet::from(["ZZZZZZ".to_string()]),
+        )]);
         let result = predict(detected_iids, detected_fcids);
 
         assert!(!result.succeeded);

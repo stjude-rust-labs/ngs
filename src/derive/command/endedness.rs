@@ -141,13 +141,13 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         counter.get().to_formatted_string(&Locale::en)
     );
 
-    // (1.5) Validate the read group information.
+    // (2) Validate the read group information.
     let rgs_in_header_not_records = validate_read_group_info(&found_rgs, &header.parsed);
     for rg_id in rgs_in_header_not_records {
         ordering_flags.insert(Arc::new(rg_id), OrderingFlagsCounts::new());
     }
 
-    // (2) Derive the endedness based on the ordering flags gathered.
+    // (3) Derive the endedness based on the ordering flags gathered.
     let result = compute::predict(
         ordering_flags,
         read_names,
@@ -155,7 +155,7 @@ pub fn derive(args: DeriveEndednessArgs) -> anyhow::Result<()> {
         args.round_reads_per_template,
     );
 
-    // (3) Print the output to stdout as JSON (more support for different output
+    // (4) Print the output to stdout as JSON (more support for different output
     // types may be added in the future, but for now, only JSON).
     let output = serde_json::to_string_pretty(&result).unwrap();
     println!("{}", output);

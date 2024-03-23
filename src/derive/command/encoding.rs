@@ -32,7 +32,7 @@ pub struct DeriveEncodingArgs {
 
 /// Main function for the `ngs derive encoding` subcommand.
 pub fn derive(args: DeriveEncodingArgs) -> anyhow::Result<()> {
-    info!("Starting derive readlen subcommand.");
+    info!("Starting derive encoding subcommand.");
 
     let file = std::fs::File::open(args.src);
     let reader = file
