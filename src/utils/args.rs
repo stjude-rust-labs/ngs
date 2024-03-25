@@ -3,7 +3,7 @@
 use std::fmt::Display;
 use std::num::NonZeroUsize;
 
-use noodles::{bgzf::writer::CompressionLevel, sam::record::MappingQuality};
+use noodles::bgzf::writer::CompressionLevel;
 use tracing::debug;
 
 //===================//
@@ -148,16 +148,5 @@ pub fn arg_in_range(arg: f64, range: std::ops::RangeInclusive<f64>) -> anyhow::R
             range.start(),
             range.end()
         ),
-    }
-}
-
-// TODO dead code, not used. Doesn't work as written.
-/// Utility method to parse command line integers and ensure they are
-/// within the range [0, 255) and return them as MappingQualities.
-pub fn parse_min_mapq(s: &str) -> Result<Option<MappingQuality>, std::num::ParseIntError> {
-    let value = s.parse()?;
-    match value {
-        0..=254 => Ok(Some(MappingQuality::new(value).unwrap())),
-        255 => Ok(None),
     }
 }

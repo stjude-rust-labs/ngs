@@ -470,10 +470,6 @@ mod tests {
     }
 
     #[test]
-    fn test_query_and_filter() { // TODO
-    }
-
-    #[test]
     fn test_classify_read() {
         // Set up
         let mut all_counts = AllReadGroupsCounts {
