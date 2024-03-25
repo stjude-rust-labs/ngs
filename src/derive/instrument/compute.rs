@@ -460,6 +460,9 @@ mod tests {
                 "multiple instruments were detected in this file via the instrument id".to_string()
             )
         );
+        // We can't know which read group will be first in the vector.
+        // But both should succeed.
+        assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
     }
 
     #[test]
@@ -491,6 +494,9 @@ mod tests {
             result.comment,
             Some("multiple instruments were detected in this file via the flowcell id".to_string())
         );
+        // We can't know which read group will be first in the vector.
+        // But both should succeed.
+        assert!(result.read_groups[0].succeeded && result.read_groups[1].succeeded);
     }
 
     #[test]
