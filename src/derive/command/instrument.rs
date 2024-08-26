@@ -63,8 +63,10 @@ pub fn derive(args: DeriveInstrumentArgs) -> anyhow::Result<()> {
                         .or_default()
                         .insert(read.instrument_name);
                     metrics.found_instrument_name += 1;
+                    // Get or init the flowcell set for this read group.
+                    let fc_entry = flowcell_names.entry(read_group).or_default();
                     if let Some(fc) = read.flowcell {
-                        flowcell_names.entry(read_group).or_default().insert(fc);
+                        fc_entry.insert(fc);
                         metrics.found_flowcell_name += 1;
                     }
                 }
